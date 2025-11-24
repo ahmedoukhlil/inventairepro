@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Scanner">
+    
+    <title>Inventaire Scanner</title>
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192x192.png">
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- HTML5 QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-50 font-sans antialiased">
+
+    <!-- Container principal -->
+    <div id="app" class="min-h-screen flex flex-col">
+        
+        <!-- Header fixe -->
+        <header class="bg-indigo-600 text-white shadow-lg fixed top-0 left-0 right-0 z-50">
+            <div class="px-4 py-3">
+                <div class="flex items-center justify-between">
+                    <!-- Logo et titre -->
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                        <div>
+                            <h1 class="text-lg font-bold">Inventaire Scanner</h1>
+                            <p class="text-xs text-indigo-200" id="user-name">Chargement...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Menu dropdown -->
+                    <button id="menu-btn" class="p-2 rounded-lg hover:bg-indigo-700 transition" aria-label="Ouvrir le menu">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Compteur de progression -->
+                <div id="progress-bar" class="mt-3 hidden">
+                    <div class="flex items-center justify-between text-sm mb-1">
+                        <span id="current-location-name">Aucun bureau actif</span>
+                        <span id="progress-text">0/0</span>
+                    </div>
+                    <div class="w-full bg-indigo-800 rounded-full h-2">
+                        <div id="progress-fill" class="bg-green-400 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Menu latéral (drawer) -->
+        <div id="menu-drawer" class="fixed inset-0 z-40 hidden">
+            <!-- Overlay -->
+            <div id="menu-overlay" class="absolute inset-0 bg-black bg-opacity-50"></div>
+            
+            <!-- Drawer content -->
+            <div class="absolute right-0 top-0 bottom-0 w-80 max-w-full bg-white shadow-xl transform transition-transform">
+                <div class="p-4">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold text-gray-800">Menu</h2>
+                        <button id="close-menu" class="p-2 rounded-lg hover:bg-gray-100" aria-label="Fermer le menu">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Informations utilisateur -->
+                    <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                        <p class="text-sm text-gray-600">Connecté en tant que</p>
+                        <p class="font-semibold text-gray-800" id="menu-user-name">-</p>
+                        <p class="text-sm text-gray-600" id="menu-user-role">-</p>
+                    </div>
+                    
+                    <!-- Navigation -->
+                    <nav class="space-y-2" aria-label="Navigation principale">
+                        <a href="#" id="nav-mes-localisations" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 transition">
+                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span class="text-gray-700">Mes localisations</span>
+                        </a>
+                        
+                        <a href="#" id="nav-historique" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 transition">
+                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="text-gray-700">Historique</span>
+                        </a>
+                        
+                        <a href="#" id="nav-parametres" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 transition">
+                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span class="text-gray-700">Paramètres</span>
+                        </a>
+                        
+                        <div class="border-t border-gray-200 my-4"></div>
+                        
+                        <button id="nav-logout" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-red-50 text-red-600 w-full transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            <span>Déconnexion</span>
+                        </button>
+                    </nav>
+                    
+                    <!-- Sync status -->
+                    <div class="mt-6 p-3 bg-blue-50 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-blue-800" id="sync-status">Synchronisé</span>
+                            <div id="pending-scans-badge" class="hidden bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenu principal -->
+        <main class="flex-1 pt-24 pb-6 px-4" style="padding-top: 7rem;">
+            
+            <!-- Vue: Login -->
+            <div id="view-login" class="max-w-md mx-auto">
+                <div class="bg-white rounded-xl shadow-lg p-8">
+                    <div class="text-center mb-8">
+                        <div class="inline-block p-4 bg-indigo-100 rounded-full mb-4">
+                            <svg class="w-12 h-12 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-800">Connexion</h2>
+                        <p class="text-gray-600 mt-2">Scanner d'inventaire mobile</p>
+                    </div>
+                    
+                    <form id="login-form" class="space-y-4">
+                        <div>
+                            <label for="login-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="login-email" required 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                   placeholder="votre@email.com"
+                                   autocomplete="email">
+                        </div>
+                        
+                        <div>
+                            <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
+                            <input type="password" id="login-password" required 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                   placeholder="••••••••"
+                                   autocomplete="current-password">
+                        </div>
+                        
+                        <div id="login-error" class="hidden p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"></div>
+                        
+                        <button type="submit" id="login-btn" 
+                                class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition flex items-center justify-center">
+                            <span id="login-btn-text">Se connecter</span>
+                            <svg id="login-spinner" class="hidden animate-spin ml-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Vue: Scanner (cachée initialement) -->
+            <div id="view-scanner" class="hidden">
+                
+                <!-- État actuel / Bureau actif -->
+                <div id="current-state" class="mb-4">
+                    <!-- État: Aucun bureau -->
+                    <div id="state-no-location" class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="text-center">
+                            <div class="inline-block p-4 bg-blue-100 rounded-full mb-4">
+                                <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">Scannez un bureau pour commencer</h3>
+                            <p class="text-gray-600 text-sm">Pointez votre caméra vers le QR code d'un bureau</p>
+                        </div>
+                    </div>
+                    
+                    <!-- État: Bureau actif -->
+                    <div id="state-active-location" class="hidden bg-indigo-600 text-white rounded-xl shadow-lg p-6">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    </svg>
+                                    <span class="text-sm font-medium">Bureau actif</span>
+                                </div>
+                                <h3 id="active-location-name" class="text-xl font-bold mb-1">-</h3>
+                                <p id="active-location-details" class="text-indigo-200 text-sm">-</p>
+                                <div class="mt-3 flex items-center space-x-4 text-sm">
+                                    <span id="active-location-progress">✓ 0/0 biens scannés</span>
+                                </div>
+                            </div>
+                            <button id="btn-terminer-bureau" class="bg-white text-indigo-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-50 transition">
+                                Terminer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Zone Scanner -->
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-4">
+                    <div id="qr-reader" class="w-full" style="min-height: 300px;"></div>
+                    <div id="scanner-status" class="p-4 text-center">
+                        <button id="start-scanner-btn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition">
+                            📷 Activer la caméra
+                        </button>
+                        <p id="scanner-message" class="text-gray-600 text-sm mt-2">Prêt à scanner</p>
+                    </div>
+                </div>
+
+                <!-- Zone résultat scan (cachée par défaut) -->
+                <div id="scan-result" class="hidden bg-white rounded-xl shadow-lg p-6 mb-4">
+                    <!-- Contenu dynamique inséré par JS -->
+                </div>
+
+                <!-- Historique des scans (collapsible) -->
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <button id="toggle-history" class="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="font-semibold text-gray-800">Derniers scans</span>
+                            <span id="history-count" class="bg-gray-200 text-gray-700 text-xs font-bold px-2 py-1 rounded-full">0</span>
+                        </div>
+                        <svg id="history-chevron" class="w-5 h-5 text-gray-600 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div id="history-content" class="hidden border-t border-gray-200">
+                        <div id="history-list" class="divide-y divide-gray-200 max-h-96 overflow-y-auto">
+                            <!-- Contenu dynamique -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vue: Mes localisations (cachée initialement) -->
+            <div id="view-mes-localisations" class="hidden">
+                <div class="mb-4">
+                    <button id="back-to-scanner" class="text-indigo-600 font-semibold flex items-center space-x-1 hover:text-indigo-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                        <span>Retour au scanner</span>
+                    </button>
+                </div>
+                
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Mes localisations assignées</h2>
+                
+                <div id="localisations-list" class="space-y-4">
+                    <!-- Contenu dynamique -->
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Toast notifications (position fixe) -->
+        <div id="toast-container" class="fixed top-20 right-4 z-50 space-y-2 max-w-sm">
+            <!-- Toasts insérés dynamiquement -->
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+    
+    <script>
+        // Enregistrement du Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/pwa/service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker enregistré:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.error('Erreur enregistrement Service Worker:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
