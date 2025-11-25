@@ -20,9 +20,52 @@
         ];
     @endphp
 
-    {{-- Auto-refresh si inventaire en cours --}}
+    {{-- Indicateur de mise à jour discret et élégant --}}
     @if($inventaire->statut === 'en_cours')
-        <div wire:poll.10s="refresh"></div>
+        <div 
+            x-data="{ 
+                updating: false,
+                lastUpdate: null,
+                init() {
+                    // Écouter les mises à jour Livewire
+                    Livewire.on('statistiques-updated', () => {
+                        this.updating = true;
+                        this.lastUpdate = new Date();
+                        setTimeout(() => {
+                            this.updating = false;
+                        }, 1500);
+                    });
+                    
+                    // Afficher un indicateur subtil lors du polling
+                    this.$watch('$wire.__instance.loading', (loading) => {
+                        if (loading && !this.updating) {
+                            this.updating = true;
+                            setTimeout(() => {
+                                this.updating = false;
+                            }, 800);
+                        }
+                    });
+                }
+            }"
+            class="fixed top-4 right-4 z-50 pointer-events-none"
+            x-show="updating"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 transform scale-95 translate-y-1"
+            x-transition:enter-end="opacity-100 transform scale-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            style="display: none;">
+            <div class="bg-indigo-600/95 backdrop-blur-sm text-white px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2 text-xs font-medium">
+                <svg class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Actualisation...</span>
+            </div>
+        </div>
+        
+        {{-- Polling léger optimisé (15 secondes) uniquement pour les statistiques --}}
+        <div wire:poll.15s="refreshStatistiques" wire:key="stats-poll" wire:loading.class="opacity-50" class="transition-opacity duration-300"></div>
     @endif
 
     {{-- Header avec breadcrumb et actions --}}
@@ -129,21 +172,46 @@
     {{-- Section statistiques globales (5 cards) --}}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         {{-- Card 1 : Progression --}}
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div 
+            wire:key="card-progression-{{ $this->statistiques['progression_globale'] }}"
+            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:shadow-md"
+            x-data="{ updated: false }"
+            x-effect="updated = true; setTimeout(() => updated = false, 1000)"
+            :class="{ 'ring-2 ring-indigo-200': updated }">
             <h3 class="text-sm font-medium text-gray-500 mb-2">Progression globale</h3>
-            <p class="text-4xl font-bold text-indigo-600 mb-3">{{ round($this->statistiques['progression_globale'], 1) }}%</p>
-            <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+            <p 
+                wire:key="progression-{{ $this->statistiques['progression_globale'] }}"
+                class="text-4xl font-bold text-indigo-600 mb-3 transition-all duration-500 ease-out"
+                x-data="{ value: {{ round($this->statistiques['progression_globale'], 1) }} }"
+                x-effect="value = {{ round($this->statistiques['progression_globale'], 1) }}"
+                x-text="value.toFixed(1) + '%'"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100">
+                {{ round($this->statistiques['progression_globale'], 1) }}%
+            </p>
+            <div class="w-full bg-gray-200 rounded-full h-3 mb-2 overflow-hidden">
                 <div 
-                    class="bg-indigo-600 h-3 rounded-full transition-all duration-300"
+                    wire:key="progress-bar-{{ $this->statistiques['progression_globale'] }}"
+                    class="bg-indigo-600 h-3 rounded-full transition-all duration-700 ease-out"
                     style="width: {{ $this->statistiques['progression_globale'] }}%"></div>
             </div>
-            <p class="text-xs text-gray-500">{{ $this->statistiques['total_biens_scannes'] }}/{{ $this->statistiques['total_biens_attendus'] }} immobilisations scannées</p>
+            <p 
+                wire:key="progress-text-{{ $this->statistiques['total_biens_scannes'] }}"
+                class="text-xs text-gray-500 transition-colors duration-300">
+                {{ $this->statistiques['total_biens_scannes'] }}/{{ $this->statistiques['total_biens_attendus'] }} immobilisations scannées
+            </p>
         </div>
 
         {{-- Card 2 : Localisations --}}
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:shadow-md">
             <h3 class="text-sm font-medium text-gray-500 mb-2">Localisations</h3>
-            <p class="text-4xl font-bold text-gray-900 mb-3">
+            <p 
+                wire:key="localisations-{{ $this->statistiques['localisations_terminees'] }}-{{ $this->statistiques['total_localisations'] }}"
+                class="text-4xl font-bold text-gray-900 mb-3 transition-all duration-500 ease-out"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100">
                 {{ $this->statistiques['localisations_terminees'] }}/{{ $this->statistiques['total_localisations'] }}
             </p>
             <div class="space-y-1 text-xs">
@@ -163,22 +231,36 @@
         </div>
 
         {{-- Card 3 : Conformité --}}
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:shadow-md">
             <h3 class="text-sm font-medium text-gray-500 mb-2">Taux de conformité</h3>
             @php
                 $conformiteColor = $this->statistiques['taux_conformite'] >= 90 ? 'text-green-600' : ($this->statistiques['taux_conformite'] >= 70 ? 'text-yellow-600' : 'text-red-600');
                 $conformiteBg = $this->statistiques['taux_conformite'] >= 90 ? 'bg-green-100 text-green-800' : ($this->statistiques['taux_conformite'] >= 70 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800');
             @endphp
-            <p class="text-4xl font-bold {{ $conformiteColor }} mb-3">{{ round($this->statistiques['taux_conformite'], 1) }}%</p>
+            <p 
+                wire:key="conformite-{{ round($this->statistiques['taux_conformite'], 1) }}"
+                class="text-4xl font-bold {{ $conformiteColor }} mb-3 transition-all duration-500 ease-out"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100">
+                {{ round($this->statistiques['taux_conformite'], 1) }}%
+            </p>
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $conformiteBg }}">
                 {{ $this->statistiques['biens_presents'] }} immobilisations conformes
             </span>
         </div>
 
         {{-- Card 4 : Anomalies --}}
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:shadow-md">
             <h3 class="text-sm font-medium text-gray-500 mb-2">Alertes</h3>
-            <p class="text-4xl font-bold text-red-600 mb-3">{{ $this->totalAlertes }}</p>
+            <p 
+                wire:key="alertes-{{ $this->totalAlertes }}"
+                class="text-4xl font-bold text-red-600 mb-3 transition-all duration-500 ease-out"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100">
+                {{ $this->totalAlertes }}
+            </p>
             <div class="space-y-1 text-xs">
                 <div class="flex justify-between">
                     <span class="text-gray-500">Déplacés</span>
@@ -215,7 +297,7 @@
                 <h3 class="text-lg font-semibold text-gray-900 mb-2">Répartition des scans</h3>
                 <p class="text-sm text-gray-500">État des immobilisations scannées</p>
             </div>
-            <div class="relative" style="height: 320px;">
+            <div class="relative" style="height: 320px;" wire:key="chart-scans-{{ $this->statistiques['total_biens_scannes'] }}">
                 <canvas id="chart-scans"></canvas>
             </div>
             <div class="mt-4 pt-4 border-t border-gray-200">
@@ -238,7 +320,7 @@
                 <h3 class="text-lg font-semibold text-gray-900 mb-2">Progression par localisation</h3>
                 <p class="text-sm text-gray-500">Top 10 des localisations par taux de progression</p>
             </div>
-            <div class="relative" style="height: 320px;">
+            <div class="relative" style="height: 320px;" wire:key="chart-prog-loc-{{ $this->inventaireLocalisations->count() }}">
                 <canvas id="chart-progression-loc"></canvas>
             </div>
             <div class="mt-4 pt-4 border-t border-gray-200">
@@ -266,7 +348,7 @@
             <h3 class="text-lg font-semibold text-gray-900 mb-2">Progression temporelle</h3>
             <p class="text-sm text-gray-500">Évolution du nombre d'immobilisations scannées au fil du temps</p>
         </div>
-        <div class="relative" style="height: 350px;">
+        <div class="relative" style="height: 350px;" wire:key="chart-temp-{{ $this->statistiques['total_biens_scannes'] }}">
             <canvas id="chart-progression-temporelle"></canvas>
         </div>
         <div class="mt-4 pt-4 border-t border-gray-200">
@@ -509,7 +591,45 @@
 
     {{-- Scripts pour les graphiques Chart.js --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* Animations élégantes pour les mises à jour */
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        
+        .stat-card-updating {
+            animation: pulse-subtle 1.5s ease-in-out;
+        }
+        
+        .value-update {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .value-update.updated {
+            animation: highlight-update 0.6s ease-out;
+        }
+        
+        @keyframes highlight-update {
+            0% { 
+                transform: scale(1);
+                background-color: transparent;
+            }
+            50% { 
+                transform: scale(1.05);
+            }
+            100% { 
+                transform: scale(1);
+                background-color: transparent;
+            }
+        }
+    </style>
     <script>
+        // Variables globales pour les graphiques
+        let chartScans = null;
+        let chartProgLoc = null;
+        let chartTemp = null;
+        
         document.addEventListener('DOMContentLoaded', function() {
             // Plugin personnalisé pour afficher le texte au centre du doughnut
             const centerTextPlugin = {
@@ -546,7 +666,7 @@
                 const stats = @json($this->statistiques);
                 const total = stats.biens_presents + stats.biens_deplaces + stats.biens_absents + stats.biens_deteriores;
                 
-                new Chart(ctxScans, {
+                chartScans = new Chart(ctxScans, {
                     type: 'doughnut',
                     data: {
                         labels: [
@@ -629,7 +749,7 @@
                     return Math.round((loc.nombre_biens_scannes / total) * 100);
                 });
                 
-                new Chart(ctxProgLoc, {
+                chartProgLoc = new Chart(ctxProgLoc, {
                     type: 'bar',
                     data: {
                         labels: invLocs.map(loc => loc.localisation.code),
@@ -759,7 +879,7 @@
                     cumulatif.push(cumul);
                 });
 
-                new Chart(ctxTemp, {
+                chartTemp = new Chart(ctxTemp, {
                     type: 'line',
                     data: {
                         labels: dates,
@@ -897,6 +1017,20 @@
                     }
                 });
             }
+            
+            // Fonction pour mettre à jour les graphiques de manière élégante
+            function updateCharts() {
+                // Les graphiques seront mis à jour automatiquement via wire:poll
+                // qui recharge les données, et on utilise wire:key pour forcer le re-render
+            }
+            
+            // Écouter les événements Livewire pour mettre à jour les graphiques
+            document.addEventListener('livewire:init', () => {
+                Livewire.on('statistiques-updated', () => {
+                    // Les graphiques seront recréés automatiquement lors du re-render
+                    // grâce aux wire:key sur les éléments
+                });
+            });
         });
     </script>
 

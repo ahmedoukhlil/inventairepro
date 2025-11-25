@@ -279,6 +279,17 @@ class DashboardInventaire extends Component
     }
 
     /**
+     * Rafraîchit uniquement les statistiques de manière légère
+     * Émet un événement pour déclencher l'animation
+     */
+    public function refreshStatistiques(): void
+    {
+        $this->inventaire->refresh();
+        // Émettre un événement pour l'indicateur visuel
+        $this->dispatch('statistiques-updated');
+    }
+
+    /**
      * Passe l'inventaire en cours
      */
     public function passerEnCours(): void

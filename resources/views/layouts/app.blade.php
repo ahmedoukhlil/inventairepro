@@ -2,10 +2,26 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data="{ sidebarOpen: false, profileOpen: false }" :class="{ 'overflow-hidden': sidebarOpen }">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    
+    {{-- PWA Meta Tags --}}
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Inventaire Pro">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="description" content="Application de gestion d'inventaire professionnelle">
 
     <title>{{ config('app.name', 'Inventaire Pro') }} - @yield('title', 'Dashboard')</title>
+    
+    {{-- PWA Manifest --}}
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    
+    {{-- PWA Icons --}}
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('images/icons/icon-192x192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('images/icons/icon-512x512.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/icons/icon-192x192.png') }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -364,5 +380,88 @@
     </script>
 
     @livewireScripts
+    
+    {{-- PWA Service Worker Registration --}}
+    <script>
+        // Enregistrement du Service Worker pour PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('{{ asset('sw.js') }}')
+                    .then((registration) => {
+                        console.log('✅ Service Worker enregistré avec succès:', registration.scope);
+                        
+                        // Vérifier les mises à jour périodiquement
+                        setInterval(() => {
+                            registration.update();
+                        }, 60000); // Vérifier toutes les minutes
+                    })
+                    .catch((error) => {
+                        console.error('❌ Erreur lors de l\'enregistrement du Service Worker:', error);
+                    });
+            });
+            
+            // Gestion de l'installation PWA
+            let deferredPrompt;
+            window.addEventListener('beforeinstallprompt', (e) => {
+                // Empêcher l'affichage automatique du prompt
+                e.preventDefault();
+                deferredPrompt = e;
+                
+                // Afficher un bouton d'installation personnalisé
+                showInstallButton();
+            });
+            
+            // Fonction pour afficher le bouton d'installation
+            function showInstallButton() {
+                // Vérifier si l'app n'est pas déjà installée
+                if (window.matchMedia('(display-mode: standalone)').matches || 
+                    window.navigator.standalone === true) {
+                    return; // Déjà installée
+                }
+                
+                // Créer un bouton d'installation si nécessaire
+                let installBtn = document.getElementById('pwa-install-btn');
+                if (!installBtn) {
+                    installBtn = document.createElement('button');
+                    installBtn.id = 'pwa-install-btn';
+                    installBtn.className = 'fixed bottom-4 right-4 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 hover:bg-indigo-700 transition';
+                    installBtn.innerHTML = '📱 Installer l\'app';
+                    installBtn.onclick = installPWA;
+                    document.body.appendChild(installBtn);
+                }
+            }
+            
+            // Fonction pour installer l'application
+            function installPWA() {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') {
+                            console.log('✅ Application installée par l\'utilisateur');
+                        } else {
+                            console.log('❌ Installation refusée par l\'utilisateur');
+                        }
+                        deferredPrompt = null;
+                        
+                        // Masquer le bouton après installation
+                        const installBtn = document.getElementById('pwa-install-btn');
+                        if (installBtn) {
+                            installBtn.remove();
+                        }
+                    });
+                }
+            }
+            
+            // Masquer le bouton si l'app est déjà installée
+            window.addEventListener('appinstalled', () => {
+                console.log('✅ Application installée avec succès');
+                const installBtn = document.getElementById('pwa-install-btn');
+                if (installBtn) {
+                    installBtn.remove();
+                }
+                deferredPrompt = null;
+            });
+        }
+    </script>
 </body>
 </html>
