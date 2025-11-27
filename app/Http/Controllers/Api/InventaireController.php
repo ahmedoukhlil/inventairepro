@@ -125,10 +125,18 @@ class InventaireController extends Controller
             'user_id' => 'required|exists:users,id',
         ]);
 
-        // Vérifier que l'inventaire est en_cours
-        if ($inventaire->statut !== 'en_cours') {
+        // Vérifier que l'inventaire est en_cours ou en_preparation
+        if (!in_array($inventaire->statut, ['en_cours', 'en_preparation'])) {
+            \Log::warning('[API] Inventaire pas en cours', [
+                'inventaire_id' => $inventaire->id,
+                'statut_actuel' => $inventaire->statut,
+                'statuts_valides' => ['en_cours', 'en_preparation']
+            ]);
+            
             return response()->json([
-                'message' => 'L\'inventaire n\'est pas en cours'
+                'message' => 'L\'inventaire n\'est pas en cours',
+                'statut_actuel' => $inventaire->statut,
+                'statuts_valides' => ['en_cours', 'en_preparation']
             ], 400);
         }
 

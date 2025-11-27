@@ -529,7 +529,12 @@ class API {
      * @returns {Promise<Array>} Liste des biens
      */
     static async getBiensLocalisation(localisationId) {
-        return this.request(`/localisations/${localisationId}/biens`);
+        console.log('[API] getBiensLocalisation appelée avec ID:', localisationId);
+        const response = await this.request(`/localisations/${localisationId}/biens`);
+        // Le contrôleur retourne { biens: [...], total: ... }, extraire le tableau biens
+        const biens = response?.biens || response || [];
+        console.log('[API] Biens extraits:', biens.length, 'biens');
+        return biens;
     }
 
     /**
@@ -1287,22 +1292,46 @@ class ScannerManager {
 
             // Démarrer le scan de cette localisation
             console.log('[Scanner] Démarrage scan localisation...');
+            console.log('[Scanner] Inventaire ID:', AppState.inventaire.id);
+            console.log('[Scanner] Localisation ID:', localisation.id);
+            
             let inventaireLocalisation;
             try {
-                inventaireLocalisation = await API.demarrerLocalisation(
+                const response = await API.demarrerLocalisation(
                     AppState.inventaire.id, 
                     localisation.id
                 );
-                console.log('[Scanner] Inventaire localisation créé:', inventaireLocalisation);
+                console.log('[Scanner] Réponse API complète:', response);
+                
+                // Le contrôleur retourne { inventaire_localisation: {...} }
+                inventaireLocalisation = response?.inventaire_localisation || response;
+                console.log('[Scanner] Inventaire localisation extrait:', inventaireLocalisation);
             } catch (error) {
                 console.error('[Scanner] ✗ Erreur démarrage localisation:', error);
-                showToast('Erreur lors du démarrage du scan', 'error');
+                console.error('[Scanner] Message:', error.message);
+                console.error('[Scanner] Status:', error.status);
+                
+                // Message spécifique selon le type d'erreur
+                let message = error.message || 'Erreur lors du démarrage du scan';
+                
+                if (error.message && error.message.includes("n'est pas en cours")) {
+                    message = "❌ L'inventaire n'est pas actif. Contactez l'administrateur.";
+                } else if (error.message && error.message.includes("non assignée")) {
+                    message = "⚠️ Cette localisation ne vous est pas assignée.";
+                } else if (error.message && error.message.includes("non trouvée")) {
+                    message = "❌ Localisation introuvable.";
+                } else if (error.status === 400) {
+                    message = "❌ Erreur: " + (error.message || "Requête invalide");
+                }
+                
+                showToast(message, 'error');
                 setTimeout(() => this.start(), 2000);
                 return;
             }
 
             if (!inventaireLocalisation || !inventaireLocalisation.id) {
                 console.error('[Scanner] ✗ Inventaire localisation invalide:', inventaireLocalisation);
+                console.error('[Scanner] Réponse complète reçue:', response);
                 showToast('Erreur lors de la création du scan', 'error');
                 setTimeout(() => this.start(), 2000);
                 return;
@@ -1369,7 +1398,19 @@ class ScannerManager {
             console.error('[Scanner] Erreur:', error);
             console.error('[Scanner] Message:', error.message);
             console.error('[Scanner] Stack:', error.stack);
-            showToast(error.message || 'Erreur lors du scan', 'error');
+            
+            // Message spécifique selon le type d'erreur
+            let message = error.message || 'Erreur lors du scan';
+            
+            if (error.message && error.message.includes("n'est pas en cours")) {
+                message = "❌ L'inventaire n'est pas actif. Contactez l'administrateur.";
+            } else if (error.message && error.message.includes("non assignée")) {
+                message = "⚠️ Cette localisation ne vous est pas assignée.";
+            } else if (error.message && error.message.includes("non trouvée")) {
+                message = "❌ Localisation introuvable.";
+            }
+            
+            showToast(message, 'error');
             setTimeout(() => this.start(), 2000);
         }
     }
