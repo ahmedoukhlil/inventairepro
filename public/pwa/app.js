@@ -4,6 +4,8 @@
  * le stockage local et la synchronisation
  */
 
+console.log('[App] Script app.js chargé');
+
 // ============================================
 // CONFIGURATION ET CONSTANTES
 // ============================================
@@ -2811,94 +2813,103 @@ function activerLocalisation(code) {
 /**
  * Fonction de diagnostic pour vérifier l'état de la page "Mes Localisations"
  * À appeler depuis la console du navigateur: diagnosticMesLocalisations()
+ * OU: window.diagnosticMesLocalisations()
  */
-function diagnosticMesLocalisations() {
-    console.log('========== 🔍 DIAGNOSTIC MES LOCALISATIONS ==========');
-    
-    // 1. Vérifier l'élément de la vue
-    const viewElement = document.getElementById('view-mes-localisations');
-    console.log('1️⃣ Élément view-mes-localisations:', viewElement ? '✅ TROUVÉ' : '❌ INTROUVABLE');
-    if (viewElement) {
-        console.log('   - Classes:', viewElement.className);
-        console.log('   - Contient "hidden"?', viewElement.classList.contains('hidden'));
-        console.log('   - Display:', window.getComputedStyle(viewElement).display);
-        console.log('   - Visibility:', window.getComputedStyle(viewElement).visibility);
-        console.log('   - OffsetParent:', viewElement.offsetParent ? 'Visible' : 'Hidden');
-    }
-    
-    // 2. Vérifier le lien de navigation
-    const navElement = document.getElementById('nav-mes-localisations');
-    console.log('2️⃣ Élément nav-mes-localisations:', navElement ? '✅ TROUVÉ' : '❌ INTROUVABLE');
-    if (navElement) {
-        console.log('   - Visible?', navElement.offsetParent !== null);
-        console.log('   - Classes:', navElement.className);
-    }
-    
-    // 3. Vérifier le bouton quick-access
-    const quickAccessElement = document.getElementById('quick-access-localisations');
-    console.log('3️⃣ Élément quick-access-localisations:', quickAccessElement ? '✅ TROUVÉ' : '❌ INTROUVABLE');
-    
-    // 4. Vérifier le bouton btn-voir-localisations
-    const btnVoirElement = document.getElementById('btn-voir-localisations');
-    console.log('4️⃣ Élément btn-voir-localisations:', btnVoirElement ? '✅ TROUVÉ' : '❌ INTROUVABLE');
-    
-    // 5. Vérifier l'état de l'application
-    console.log('5️⃣ État de l\'application:');
-    console.log('   - Inventaire chargé?', AppState.inventaire ? '✅ OUI' : '❌ NON');
-    console.log('   - Inventaire ID:', AppState.inventaire?.id || 'N/A');
-    console.log('   - Utilisateur connecté?', AppState.user ? '✅ OUI' : '❌ NON');
-    console.log('   - Token présent?', AppState.token ? '✅ OUI' : '❌ NON');
-    
-    // 6. Vérifier toutes les vues
-    console.log('6️⃣ Toutes les vues disponibles:');
-    const allViews = document.querySelectorAll('[id^="view-"]');
-    allViews.forEach(v => {
-        const isHidden = v.classList.contains('hidden');
-        const display = window.getComputedStyle(v).display;
-        console.log(`   - ${v.id}: ${isHidden ? '❌ CACHÉE' : '✅ VISIBLE'} (display: ${display})`);
-    });
-    
-    // 7. Tester l'API
-    if (AppState.inventaire?.id && AppState.token) {
-        console.log('7️⃣ Test de l\'API...');
-        const apiUrl = `${CONFIG.API_BASE_URL}/inventaires/${AppState.inventaire.id}/mes-localisations`;
-        console.log('   - URL:', apiUrl);
+window.diagnosticMesLocalisations = function diagnosticMesLocalisations() {
+    try {
+        console.log('========== 🔍 DIAGNOSTIC MES LOCALISATIONS ==========');
         
-        fetch(apiUrl, {
-            headers: {
-                'Authorization': `Bearer ${AppState.token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            console.log('   - Status:', response.status, response.statusText);
-            return response.json();
-        })
-        .then(data => {
-            console.log('   - ✅ Réponse reçue:', data);
-            console.log('   - Type:', Array.isArray(data) ? 'Array' : typeof data);
-            if (data?.localisations) {
-                console.log('   - Localisations dans data.localisations:', data.localisations.length);
-            } else if (Array.isArray(data)) {
-                console.log('   - Localisations (array direct):', data.length);
-            }
-        })
-        .catch(error => {
-            console.error('   - ❌ Erreur API:', error);
+        // 1. Vérifier l'élément de la vue
+        const viewElement = document.getElementById('view-mes-localisations');
+        console.log('1️⃣ Élément view-mes-localisations:', viewElement ? '✅ TROUVÉ' : '❌ INTROUVABLE');
+        if (viewElement) {
+            console.log('   - Classes:', viewElement.className);
+            console.log('   - Contient "hidden"?', viewElement.classList.contains('hidden'));
+            console.log('   - Display:', window.getComputedStyle(viewElement).display);
+            console.log('   - Visibility:', window.getComputedStyle(viewElement).visibility);
+            console.log('   - OffsetParent:', viewElement.offsetParent ? 'Visible' : 'Hidden');
+        }
+        
+        // 2. Vérifier le lien de navigation
+        const navElement = document.getElementById('nav-mes-localisations');
+        console.log('2️⃣ Élément nav-mes-localisations:', navElement ? '✅ TROUVÉ' : '❌ INTROUVABLE');
+        if (navElement) {
+            console.log('   - Visible?', navElement.offsetParent !== null);
+            console.log('   - Classes:', navElement.className);
+        }
+        
+        // 3. Vérifier le bouton quick-access
+        const quickAccessElement = document.getElementById('quick-access-localisations');
+        console.log('3️⃣ Élément quick-access-localisations:', quickAccessElement ? '✅ TROUVÉ' : '❌ INTROUVABLE');
+        
+        // 4. Vérifier le bouton btn-voir-localisations
+        const btnVoirElement = document.getElementById('btn-voir-localisations');
+        console.log('4️⃣ Élément btn-voir-localisations:', btnVoirElement ? '✅ TROUVÉ' : '❌ INTROUVABLE');
+        
+        // 5. Vérifier l'état de l'application
+        console.log('5️⃣ État de l\'application:');
+        console.log('   - Inventaire chargé?', AppState.inventaire ? '✅ OUI' : '❌ NON');
+        console.log('   - Inventaire ID:', AppState.inventaire?.id || 'N/A');
+        console.log('   - Utilisateur connecté?', AppState.user ? '✅ OUI' : '❌ NON');
+        console.log('   - Token présent?', AppState.token ? '✅ OUI' : '❌ NON');
+        
+        // 6. Vérifier toutes les vues
+        console.log('6️⃣ Toutes les vues disponibles:');
+        const allViews = document.querySelectorAll('[id^="view-"]');
+        allViews.forEach(v => {
+            const isHidden = v.classList.contains('hidden');
+            const display = window.getComputedStyle(v).display;
+            console.log(`   - ${v.id}: ${isHidden ? '❌ CACHÉE' : '✅ VISIBLE'} (display: ${display})`);
         });
-    } else {
-        console.log('7️⃣ Test API: ❌ Impossible');
-        console.log('   - Inventaire ID:', AppState.inventaire?.id || 'MANQUANT');
-        console.log('   - Token:', AppState.token ? 'PRÉSENT' : 'MANQUANT');
+        
+        // 7. Tester l'API
+        if (AppState.inventaire?.id && AppState.token) {
+            console.log('7️⃣ Test de l\'API...');
+            const apiUrl = `${CONFIG.API_BASE_URL}/inventaires/${AppState.inventaire.id}/mes-localisations`;
+            console.log('   - URL:', apiUrl);
+            
+            fetch(apiUrl, {
+                headers: {
+                    'Authorization': `Bearer ${AppState.token}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log('   - Status:', response.status, response.statusText);
+                return response.json();
+            })
+            .then(data => {
+                console.log('   - ✅ Réponse reçue:', data);
+                console.log('   - Type:', Array.isArray(data) ? 'Array' : typeof data);
+                if (data?.localisations) {
+                    console.log('   - Localisations dans data.localisations:', data.localisations.length);
+                } else if (Array.isArray(data)) {
+                    console.log('   - Localisations (array direct):', data.length);
+                }
+            })
+            .catch(error => {
+                console.error('   - ❌ Erreur API:', error);
+            });
+        } else {
+            console.log('7️⃣ Test API: ❌ Impossible');
+            console.log('   - Inventaire ID:', AppState.inventaire?.id || 'MANQUANT');
+            console.log('   - Token:', AppState.token ? 'PRÉSENT' : 'MANQUANT');
+        }
+        
+        console.log('========== ✅ FIN DIAGNOSTIC ==========');
+        console.log('💡 Commandes utiles:');
+        console.log('   - showView("mes-localisations")');
+        console.log('   - loadMesLocalisations()');
+        console.log('   - document.getElementById("view-mes-localisations").classList.remove("hidden")');
+    } catch (error) {
+        console.error('❌ Erreur dans diagnosticMesLocalisations:', error);
+        console.error('Stack trace:', error.stack);
     }
-    
-    console.log('========== ✅ FIN DIAGNOSTIC ==========');
-    console.log('💡 Commandes utiles:');
-    console.log('   - showView("mes-localisations")');
-    console.log('   - loadMesLocalisations()');
-    console.log('   - document.getElementById("view-mes-localisations").classList.remove("hidden")');
 }
+
+// Vérification immédiate que la fonction est disponible
+console.log('[App] ✅ diagnosticMesLocalisations définie:', typeof window.diagnosticMesLocalisations);
 
 // Exposer les fonctions globalement pour les event handlers inline
 window.enregistrerScan = enregistrerScan;
@@ -2909,7 +2920,7 @@ window.closeTerminerBureauModal = closeTerminerBureauModal;
 window.confirmTerminerBureau = confirmTerminerBureau;
 window.loadMesLocalisations = loadMesLocalisations; // Pour le bouton "Réessayer" dans les erreurs
 window.showView = showView; // Pour tester depuis la console
-window.diagnosticMesLocalisations = diagnosticMesLocalisations; // Fonction de diagnostic
+// diagnosticMesLocalisations est déjà exposée directement dans sa déclaration
 
 // ============================================
 // INITIALIZATION
@@ -2971,3 +2982,12 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
+
+// Confirmation que les fonctions globales sont disponibles
+setTimeout(() => {
+    console.log('[App] ✅ Vérification des fonctions globales:');
+    console.log('[App]   - diagnosticMesLocalisations:', typeof window.diagnosticMesLocalisations);
+    console.log('[App]   - showView:', typeof window.showView);
+    console.log('[App]   - loadMesLocalisations:', typeof window.loadMesLocalisations);
+    console.log('[App] 💡 Tapez "diagnosticMesLocalisations()" dans la console pour diagnostiquer');
+}, 1000);
