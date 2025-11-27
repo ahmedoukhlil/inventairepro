@@ -798,21 +798,45 @@ class SyncManager {
  * @param {string} viewName - Nom de la vue à afficher (sans le préfixe "view-")
  */
 function showView(viewName) {
-    console.log('[UI] Affichage de la vue:', viewName);
+    console.log('[UI] ========== showView() appelée ==========');
+    console.log('[UI] Paramètre viewName:', viewName);
+    console.log('[UI] ID recherché:', `view-${viewName}`);
+    
+    // Lister toutes les vues existantes
+    const allViews = document.querySelectorAll('[id^="view-"]');
+    console.log('[UI] Vues trouvées dans le DOM:', Array.from(allViews).map(v => v.id));
     
     // Cacher toutes les vues
-    document.querySelectorAll('[id^="view-"]').forEach(view => {
+    allViews.forEach(view => {
+        console.log('[UI] Masquage de la vue:', view.id);
         view.classList.add('hidden');
     });
 
     // Afficher la vue demandée
-    const view = document.getElementById(`view-${viewName}`);
+    const viewId = `view-${viewName}`;
+    const view = document.getElementById(viewId);
+    
     if (view) {
+        console.log('[UI] ✅ Vue trouvée:', viewId);
+        console.log('[UI] Classes avant:', view.className);
         view.classList.remove('hidden');
-        console.log('[UI] Vue affichée avec succès:', `view-${viewName}`);
+        console.log('[UI] Classes après:', view.className);
+        console.log('[UI] ✅ Vue affichée avec succès');
+        
+        // Vérification visuelle
+        const isVisible = !view.classList.contains('hidden') && window.getComputedStyle(view).display !== 'none';
+        console.log('[UI] Vérification visibilité:', isVisible ? 'VISIBLE' : 'CACHÉE');
+        
+        if (!isVisible) {
+            console.error('[UI] ⚠️ La vue est toujours cachée malgré remove("hidden")');
+            console.error('[UI] Style computed:', window.getComputedStyle(view).display);
+        }
     } else {
-        console.error(`[UI] Vue "${viewName}" introuvable (élément view-${viewName} non trouvé)`);
+        console.error(`[UI] ❌ Vue "${viewName}" introuvable (élément ${viewId} non trouvé)`);
+        console.error('[UI] Vues disponibles:', Array.from(allViews).map(v => v.id));
     }
+    
+    console.log('[UI] ========== Fin showView() ==========');
 }
 
 /**
@@ -2316,17 +2340,41 @@ function attachEventListeners() {
     }
 
     // Navigation
+    console.log('[App] Attachement event listener pour nav-mes-localisations...');
     const navMesLocalisations = document.getElementById('nav-mes-localisations');
     if (navMesLocalisations) {
+        console.log('[App] ✅ Élément nav-mes-localisations trouvé');
         navMesLocalisations.addEventListener('click', (e) => {
             e.preventDefault();
+            console.log('[App] ========== Clic sur nav-mes-localisations ==========');
             console.log('[App] Navigation vers Mes Localisations (depuis le menu)');
+            
+            // Vérifier que la vue existe avant de l'afficher
+            const viewElement = document.getElementById('view-mes-localisations');
+            if (!viewElement) {
+                console.error('[App] ❌ ERREUR: view-mes-localisations n\'existe pas dans le DOM!');
+                showToast('Erreur: Vue introuvable', 'error');
+                return;
+            }
+            console.log('[App] ✅ Vue view-mes-localisations trouvée dans le DOM');
+            
             showView('mes-localisations');
-            loadMesLocalisations();
-            if (menuDrawer) menuDrawer.classList.add('hidden');
+            
+            // Attendre un peu avant de charger les données
+            setTimeout(() => {
+                loadMesLocalisations();
+            }, 100);
+            
+            if (menuDrawer) {
+                menuDrawer.classList.add('hidden');
+                console.log('[App] Menu drawer fermé');
+            }
+            console.log('[App] ========== Fin clic nav-mes-localisations ==========');
         });
+        console.log('[App] ✅ Event listener attaché pour nav-mes-localisations');
     } else {
-        console.warn('[App] Élément nav-mes-localisations introuvable');
+        console.error('[App] ❌ Élément nav-mes-localisations introuvable dans le DOM');
+        console.error('[App] Vérifiez que l\'élément existe dans index.html');
     }
 
     const navHistorique = document.getElementById('nav-historique');
@@ -2390,11 +2438,17 @@ function attachEventListeners() {
     }
 
     // Back to scanner
+    console.log('[App] Attachement event listener pour back-to-scanner...');
     const backToScanner = document.getElementById('back-to-scanner');
     if (backToScanner) {
+        console.log('[App] ✅ Élément back-to-scanner trouvé');
         backToScanner.addEventListener('click', () => {
+            console.log('[App] Clic sur bouton retour au scanner');
             showView('scanner');
         });
+        console.log('[App] ✅ Event listener attaché pour back-to-scanner');
+    } else {
+        console.warn('[App] ⚠️ Élément back-to-scanner introuvable');
     }
 
     // Quick access to localisations (bouton dans la vue scanner)
@@ -2754,6 +2808,98 @@ function activerLocalisation(code) {
     }
 }
 
+/**
+ * Fonction de diagnostic pour vérifier l'état de la page "Mes Localisations"
+ * À appeler depuis la console du navigateur: diagnosticMesLocalisations()
+ */
+function diagnosticMesLocalisations() {
+    console.log('========== 🔍 DIAGNOSTIC MES LOCALISATIONS ==========');
+    
+    // 1. Vérifier l'élément de la vue
+    const viewElement = document.getElementById('view-mes-localisations');
+    console.log('1️⃣ Élément view-mes-localisations:', viewElement ? '✅ TROUVÉ' : '❌ INTROUVABLE');
+    if (viewElement) {
+        console.log('   - Classes:', viewElement.className);
+        console.log('   - Contient "hidden"?', viewElement.classList.contains('hidden'));
+        console.log('   - Display:', window.getComputedStyle(viewElement).display);
+        console.log('   - Visibility:', window.getComputedStyle(viewElement).visibility);
+        console.log('   - OffsetParent:', viewElement.offsetParent ? 'Visible' : 'Hidden');
+    }
+    
+    // 2. Vérifier le lien de navigation
+    const navElement = document.getElementById('nav-mes-localisations');
+    console.log('2️⃣ Élément nav-mes-localisations:', navElement ? '✅ TROUVÉ' : '❌ INTROUVABLE');
+    if (navElement) {
+        console.log('   - Visible?', navElement.offsetParent !== null);
+        console.log('   - Classes:', navElement.className);
+    }
+    
+    // 3. Vérifier le bouton quick-access
+    const quickAccessElement = document.getElementById('quick-access-localisations');
+    console.log('3️⃣ Élément quick-access-localisations:', quickAccessElement ? '✅ TROUVÉ' : '❌ INTROUVABLE');
+    
+    // 4. Vérifier le bouton btn-voir-localisations
+    const btnVoirElement = document.getElementById('btn-voir-localisations');
+    console.log('4️⃣ Élément btn-voir-localisations:', btnVoirElement ? '✅ TROUVÉ' : '❌ INTROUVABLE');
+    
+    // 5. Vérifier l'état de l'application
+    console.log('5️⃣ État de l\'application:');
+    console.log('   - Inventaire chargé?', AppState.inventaire ? '✅ OUI' : '❌ NON');
+    console.log('   - Inventaire ID:', AppState.inventaire?.id || 'N/A');
+    console.log('   - Utilisateur connecté?', AppState.user ? '✅ OUI' : '❌ NON');
+    console.log('   - Token présent?', AppState.token ? '✅ OUI' : '❌ NON');
+    
+    // 6. Vérifier toutes les vues
+    console.log('6️⃣ Toutes les vues disponibles:');
+    const allViews = document.querySelectorAll('[id^="view-"]');
+    allViews.forEach(v => {
+        const isHidden = v.classList.contains('hidden');
+        const display = window.getComputedStyle(v).display;
+        console.log(`   - ${v.id}: ${isHidden ? '❌ CACHÉE' : '✅ VISIBLE'} (display: ${display})`);
+    });
+    
+    // 7. Tester l'API
+    if (AppState.inventaire?.id && AppState.token) {
+        console.log('7️⃣ Test de l\'API...');
+        const apiUrl = `${CONFIG.API_BASE_URL}/inventaires/${AppState.inventaire.id}/mes-localisations`;
+        console.log('   - URL:', apiUrl);
+        
+        fetch(apiUrl, {
+            headers: {
+                'Authorization': `Bearer ${AppState.token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('   - Status:', response.status, response.statusText);
+            return response.json();
+        })
+        .then(data => {
+            console.log('   - ✅ Réponse reçue:', data);
+            console.log('   - Type:', Array.isArray(data) ? 'Array' : typeof data);
+            if (data?.localisations) {
+                console.log('   - Localisations dans data.localisations:', data.localisations.length);
+            } else if (Array.isArray(data)) {
+                console.log('   - Localisations (array direct):', data.length);
+            }
+        })
+        .catch(error => {
+            console.error('   - ❌ Erreur API:', error);
+        });
+    } else {
+        console.log('7️⃣ Test API: ❌ Impossible');
+        console.log('   - Inventaire ID:', AppState.inventaire?.id || 'MANQUANT');
+        console.log('   - Token:', AppState.token ? 'PRÉSENT' : 'MANQUANT');
+    }
+    
+    console.log('========== ✅ FIN DIAGNOSTIC ==========');
+    console.log('💡 Commandes utiles:');
+    console.log('   - showView("mes-localisations")');
+    console.log('   - loadMesLocalisations()');
+    console.log('   - document.getElementById("view-mes-localisations").classList.remove("hidden")');
+}
+
 // Exposer les fonctions globalement pour les event handlers inline
 window.enregistrerScan = enregistrerScan;
 window.annulerScan = annulerScan;
@@ -2762,6 +2908,8 @@ window.showTerminerBureauModal = showTerminerBureauModal;
 window.closeTerminerBureauModal = closeTerminerBureauModal;
 window.confirmTerminerBureau = confirmTerminerBureau;
 window.loadMesLocalisations = loadMesLocalisations; // Pour le bouton "Réessayer" dans les erreurs
+window.showView = showView; // Pour tester depuis la console
+window.diagnosticMesLocalisations = diagnosticMesLocalisations; // Fonction de diagnostic
 
 // ============================================
 // INITIALIZATION
