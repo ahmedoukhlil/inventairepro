@@ -1167,15 +1167,35 @@ class ScannerManager {
         console.log('[Scanner] Type de QR détecté:', qrData.type);
         console.log('[Scanner] Données QR:', qrData);
 
-        // Router selon le type et le mode
-        if (qrData.type === 'localisation' || this.currentMode === 'localisation') {
+        // Router selon le TYPE du QR (prioritaire) ET le mode
+        console.log('[Scanner] Vérification routage...');
+        console.log('[Scanner]   Type QR détecté:', qrData.type);
+        console.log('[Scanner]   Mode scanner actuel:', this.currentMode);
+
+        // RÈGLE 1 : Si c'est un QR de LOCALISATION
+        if (qrData.type === 'localisation') {
+            console.log('[Scanner] → Type LOCALISATION détecté');
             console.log('[Scanner] → Traitement en tant que LOCALISATION');
             await this.handleLocalisationScan(qrData);
-        } else if (qrData.type === 'bien' || this.currentMode === 'bien') {
-            console.log('[Scanner] → Traitement en tant que BIEN');
-            await this.handleBienScan(qrData);
-        } else {
-            console.error('[Scanner] ✗ Type de QR non reconnu');
+        }
+        // RÈGLE 2 : Si c'est un QR de BIEN
+        else if (qrData.type === 'bien') {
+            console.log('[Scanner] → Type BIEN détecté');
+            
+            // Vérifier que le mode est "bien" (bureau actif)
+            if (this.currentMode === 'bien') {
+                console.log('[Scanner] → Mode BIEN actif, traitement du bien');
+                await this.handleBienScan(qrData);
+            } else {
+                console.error('[Scanner] ✗ QR de BIEN scanné mais aucun bureau actif');
+                console.log('[Scanner] → Mode actuel:', this.currentMode);
+                showToast('⚠️ Scannez d\'abord le QR code d\'un bureau (porte)', 'warning');
+                setTimeout(() => this.start(), 2000);
+            }
+        }
+        // RÈGLE 3 : Type inconnu
+        else {
+            console.error('[Scanner] ✗ Type de QR non reconnu:', qrData.type);
             showToast('QR code non reconnu. Format invalide.', 'error');
             setTimeout(() => this.start(), 2000);
         }

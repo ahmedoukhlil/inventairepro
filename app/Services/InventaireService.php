@@ -143,9 +143,9 @@ class InventaireService
     public function demarrerLocalisation(InventaireLocalisation $invLoc, User $user): bool
     {
         return DB::transaction(function () use ($invLoc, $user) {
-            // Vérifier que inventaire parent = 'en_cours'
-            if ($invLoc->inventaire->statut !== 'en_cours') {
-                throw new Exception("L'inventaire parent doit être en cours pour démarrer une localisation.");
+            // Vérifier que inventaire parent est 'en_cours' ou 'en_preparation'
+            if (!in_array($invLoc->inventaire->statut, ['en_cours', 'en_preparation'])) {
+                throw new Exception("L'inventaire parent doit être en cours ou en préparation pour démarrer une localisation. Statut actuel : {$invLoc->inventaire->statut}");
             }
 
             // Vérifier que invLoc statut = 'en_attente'

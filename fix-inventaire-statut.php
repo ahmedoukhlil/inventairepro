@@ -50,6 +50,28 @@ if (!$inventaire) {
     }
 }
 
+// Vérifier aussi l'inventaire ID 2 spécifiquement (celui chargé par la PWA)
+echo "\n=== VÉRIFICATION INVENTAIRE ID 2 (PWA) ===\n";
+$inventaire2 = Inventaire::find(2);
+if ($inventaire2) {
+    echo "ID: {$inventaire2->id}\n";
+    echo "Année: {$inventaire2->annee}\n";
+    echo "Statut: {$inventaire2->statut}\n";
+    
+    if (!in_array($inventaire2->statut, ['en_cours', 'en_preparation'])) {
+        echo "❌ PROBLÈME: Le statut '{$inventaire2->statut}' n'est pas valide\n";
+        echo "Correction automatique...\n";
+        $inventaire2->statut = 'en_cours';
+        $inventaire2->save();
+        echo "✅ Statut changé en: {$inventaire2->statut}\n";
+    } else {
+        echo "✅ Le statut '{$inventaire2->statut}' est valide pour les scans\n";
+    }
+} else {
+    echo "⚠️ Inventaire ID 2 n'existe pas en base locale\n";
+    echo "   (Il existe peut-être en production)\n";
+}
+
 echo "=== ÉTAT ACTUEL ===\n";
 echo "ID: {$inventaire->id}\n";
 echo "Année: {$inventaire->annee}\n";
