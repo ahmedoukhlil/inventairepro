@@ -740,12 +740,23 @@ class SyncManager {
                 if (pendingScans.length > 0) {
                     badge.textContent = pendingScans.length;
                     badge.classList.remove('hidden');
-                    statusText.textContent = `${pendingScans.length} scan(s) en attente`;
+                    if (navigator.onLine) {
+                        statusText.textContent = `${pendingScans.length} scan(s) en attente`;
+                    } else {
+                        statusText.textContent = `${pendingScans.length} scan(s) hors ligne`;
+                    }
                 } else {
                     badge.classList.add('hidden');
-                    statusText.textContent = 'Synchronisé';
+                    if (navigator.onLine) {
+                        statusText.textContent = 'Synchronisé';
+                    } else {
+                        statusText.textContent = 'Mode hors ligne';
+                    }
                 }
             }
+
+            // Mettre à jour l'indicateur de connexion dans le header
+            updateOnlineStatusIndicator();
         } catch (error) {
             console.error('[Sync] Erreur mise à jour badge:', error);
         }
@@ -844,18 +855,36 @@ function closeToast(toast) {
 
 /**
  * Joue un son de feedback
- * @param {string} type - Type de son (success ou error)
+ * @param {string} type - Type de son (success, error, warning, info)
  */
 function playSound(type) {
     try {
-        const sound = type === 'success' ? 'beep-success' : 'beep-error';
-        const audio = new Audio(`/pwa/assets/sounds/${sound}.mp3`);
-        audio.volume = 0.3;
-        audio.play().catch(() => {
-            // Ignore si le son ne peut pas être joué (pas de fichier, permissions, etc.)
-        });
+        // Créer un contexte audio simple pour générer un beep
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        // Fréquences selon le type
+        const frequencies = {
+            success: 800,
+            error: 400,
+            warning: 600,
+            info: 500
+        };
+
+        oscillator.frequency.value = frequencies[type] || 500;
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.2);
     } catch (error) {
-        // Ignore les erreurs de son
+        // Ignore les erreurs de son (peut ne pas être supporté)
+        console.debug('[Sound] Audio non disponible:', error);
     }
 }
 
@@ -985,10 +1014,13 @@ class ScannerManager {
     async onScanSuccess(decodedText, decodedResult) {
         console.log('[Scanner] QR code scanné:', decodedText);
 
-        // Vibration si disponible
+            // Vibration si disponible
         if (navigator.vibrate) {
             navigator.vibrate(200);
         }
+
+        // Son de feedback (optionnel)
+        playSound('success');
 
         // Parser le QR code (format JSON attendu)
         let qrData;
@@ -1059,6 +1091,7 @@ class ScannerManager {
             // Mettre à jour le state
             AppState.activeLocation = inventaireLocalisation;
             AppState.localisation = localisation;
+            AppState.scansSession = []; // Réinitialiser les scans de la session
 
             // Charger les biens attendus
             const biens = await API.getBiensLocalisation(localisation.id);
@@ -1121,10 +1154,14 @@ class ScannerManager {
                 return;
             }
 
-            // Vérifier si déjà scanné dans cet inventaire
+            // Vérifier si déjà scanné dans cette session
             const dejaScan = AppState.scansSession.some(s => s.bien_id === bien.id);
             if (dejaScan) {
-                showToast('Ce bien a déjà été scanné', 'warning');
+                showToast('Ce bien a déjà été scanné dans ce bureau', 'warning');
+                playSound('warning');
+                if (navigator.vibrate) {
+                    navigator.vibrate([100, 50, 100, 50, 100]);
+                }
                 setTimeout(() => this.start(), 2000);
                 return;
             }
@@ -1315,29 +1352,29 @@ function displayBienResult(bien) {
             <!-- Actions -->
             <div class="space-y-3">
                 <button onclick="enregistrerScan('${bien.id}', 'present')" 
-                        class="w-full bg-green-600 text-white py-4 rounded-lg font-semibold hover:bg-green-700 transition flex items-center justify-center space-x-2 text-lg">
+                        class="action-button-large btn-success">
                     <span>✓</span>
-                    <span>Présent</span>
+                    <span>PRÉSENT</span>
                 </button>
 
                 ${!isCorrectLocation ? `
                 <button onclick="enregistrerScan('${bien.id}', 'deplace')" 
-                        class="w-full bg-orange-600 text-white py-4 rounded-lg font-semibold hover:bg-orange-700 transition flex items-center justify-center space-x-2 text-lg">
+                        class="action-button-large btn-warning">
                     <span>⚠️</span>
-                    <span>Confirmer déplacement</span>
+                    <span>CONFIRMER DÉPLACEMENT</span>
                 </button>
                 ` : `
                 <button onclick="enregistrerScan('${bien.id}', 'deplace')" 
-                        class="w-full bg-orange-500 text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition flex items-center justify-center space-x-2">
+                        class="action-button-large btn-warning">
                     <span>⚠️</span>
-                    <span>Déplacé</span>
+                    <span>DÉPLACÉ</span>
                 </button>
                 `}
 
                 <button onclick="enregistrerScan('${bien.id}', 'absent')" 
-                        class="w-full bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition flex items-center justify-center space-x-2">
+                        class="action-button-large btn-danger">
                     <span>✗</span>
-                    <span>Absent</span>
+                    <span>ABSENT</span>
                 </button>
 
                 <button onclick="annulerScan()" 
@@ -1374,16 +1411,36 @@ async function enregistrerScan(bienId, statut) {
         let scanResult;
 
         if (navigator.onLine) {
-            // Mode online : envoyer directement à l'API
-            scanResult = await API.enregistrerScan(AppState.inventaire.id, scanData);
-            showToast('Scan enregistré', 'success');
+            try {
+                // Mode online : envoyer directement à l'API
+                scanResult = await API.enregistrerScan(AppState.inventaire.id, scanData);
+                showToast('Scan enregistré', 'success');
+                
+                // Vibration de succès
+                if (navigator.vibrate) {
+                    navigator.vibrate(100);
+                }
+            } catch (error) {
+                // Si erreur API, basculer en mode offline
+                console.warn('[Scan] Erreur API, basculement en mode offline:', error);
+                await dbManager.addPendingScan({
+                    inventaire_id: AppState.inventaire.id,
+                    data: scanData
+                });
+                showToast('Scan enregistré (hors ligne)', 'warning');
+            }
         } else {
             // Mode offline : ajouter à la file d'attente
             await dbManager.addPendingScan({
                 inventaire_id: AppState.inventaire.id,
                 data: scanData
             });
-            showToast('Scan enregistré (en attente de sync)', 'warning');
+            showToast('Scan enregistré (hors ligne)', 'warning');
+            
+            // Vibration différente pour offline
+            if (navigator.vibrate) {
+                navigator.vibrate([50, 50, 50]);
+            }
         }
 
         // Mettre à jour le state local
@@ -1429,32 +1486,217 @@ function annulerScan() {
 }
 
 /**
- * Termine le scan de la localisation active
+ * Affiche la modal de confirmation pour terminer un bureau
  */
-async function terminerBureau() {
+function showTerminerBureauModal() {
+    if (!AppState.activeLocation || !AppState.localisation) {
+        return;
+    }
+
+    // Calculer les statistiques
+    const scanned = AppState.activeLocation.nombre_biens_scannes || 0;
+    const total = AppState.activeLocation.nombre_biens_attendus || 0;
+    const nonScannes = total - scanned;
+
+    // Compter les statuts des scans
+    const stats = {
+        present: AppState.scansSession.filter(s => s.statut_scan === 'present').length,
+        deplace: AppState.scansSession.filter(s => s.statut_scan === 'deplace').length,
+        absent: AppState.scansSession.filter(s => s.statut_scan === 'absent').length
+    };
+
+    // Créer la modal
+    const modalHTML = `
+        <div id="modal-terminer-bureau" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="text-xl font-bold text-gray-800">Terminer le bureau</h3>
+                    <button onclick="closeTerminerBureauModal()" class="modal-close" aria-label="Fermer">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <p class="text-gray-700 mb-2">
+                            Vous êtes sur le point de terminer le scan de :
+                        </p>
+                        <p class="text-lg font-semibold text-indigo-600">
+                            ${AppState.localisation.code} - ${AppState.localisation.designation}
+                        </p>
+                    </div>
+
+                    <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                        <h4 class="font-semibold text-gray-800 mb-3">Récapitulatif des scans</h4>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-600">✓ Présents</span>
+                                <span class="font-semibold text-green-600">${stats.present}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-600">⚠️ Déplacés</span>
+                                <span class="font-semibold text-orange-600">${stats.deplace}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-600">✗ Absents</span>
+                                <span class="font-semibold text-red-600">${stats.absent}</span>
+                            </div>
+                            <div class="border-t border-gray-300 pt-2 mt-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-700 font-medium">Total scannés</span>
+                                    <span class="font-bold text-gray-800">${scanned}/${total}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${nonScannes > 0 ? `
+                    <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                        <div class="flex items-start space-x-2">
+                            <svg class="w-5 h-5 text-orange-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <div class="flex-1">
+                                <p class="text-sm font-semibold text-orange-800 mb-1">
+                                    ${nonScannes} bien(s) non scanné(s)
+                                </p>
+                                <p class="text-sm text-orange-700">
+                                    Certains biens attendus dans ce bureau n'ont pas été scannés.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    <div class="mb-4">
+                        <label class="flex items-start space-x-2 cursor-pointer">
+                            <input type="checkbox" id="mark-non-scanned-absent" class="mt-1">
+                            <span class="text-sm text-gray-700">
+                                Marquer les biens non scannés comme absents
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button onclick="closeTerminerBureauModal()" 
+                            class="btn-secondary">
+                        Annuler
+                    </button>
+                    <button onclick="confirmTerminerBureau()" 
+                            class="btn-primary">
+                        Terminer le bureau
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Ajouter la modal au body
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHTML;
+    document.body.appendChild(modalContainer.firstElementChild);
+
+    // Animation d'entrée
+    setTimeout(() => {
+        const modal = document.getElementById('modal-terminer-bureau');
+        if (modal) {
+            modal.classList.add('modal-show');
+        }
+    }, 10);
+}
+
+/**
+ * Ferme la modal de terminer bureau
+ */
+function closeTerminerBureauModal() {
+    const modal = document.getElementById('modal-terminer-bureau');
+    if (modal) {
+        modal.classList.remove('modal-show');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    }
+}
+
+/**
+ * Confirme et exécute la terminaison du bureau
+ */
+async function confirmTerminerBureau() {
     if (!AppState.activeLocation) {
         return;
     }
 
-    const confirmMsg = `Terminer le scan de ${AppState.localisation.code} ?\n\n` +
-        `Biens scannés : ${AppState.activeLocation.nombre_biens_scannes}/${AppState.activeLocation.nombre_biens_attendus}`;
-
-    if (!confirm(confirmMsg)) {
-        return;
-    }
+    const markNonScannedAbsent = document.getElementById('mark-non-scanned-absent')?.checked || false;
+    const scanned = AppState.activeLocation.nombre_biens_scannes || 0;
+    const total = AppState.activeLocation.nombre_biens_attendus || 0;
+    const nonScannes = total - scanned;
 
     try {
+        // Désactiver le bouton pendant le traitement
+        const confirmBtn = document.querySelector('#modal-terminer-bureau .btn-primary');
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Traitement...';
+        }
+
+        // Si demandé, marquer les non-scannés comme absents
+        if (markNonScannedAbsent && nonScannes > 0) {
+            const biensNonScannes = AppState.biensAttendus.filter(bien => {
+                return !AppState.scansSession.some(scan => scan.bien_id === bien.id);
+            });
+
+            for (const bien of biensNonScannes) {
+                const scanData = {
+                    inventaire_id: AppState.inventaire.id,
+                    inventaire_localisation_id: AppState.activeLocation.id,
+                    bien_id: bien.id,
+                    statut_scan: 'absent',
+                    localisation_reelle_id: AppState.localisation.id,
+                    etat_constate: 'bon',
+                    commentaire: 'Marqué absent automatiquement lors de la fermeture du bureau',
+                    user_id: AppState.user.id
+                };
+
+                if (navigator.onLine) {
+                    try {
+                        await API.enregistrerScan(AppState.inventaire.id, scanData);
+                    } catch (error) {
+                        console.error('[Scan] Erreur marquage absent:', error);
+                        // Continuer même en cas d'erreur
+                    }
+                } else {
+                    await dbManager.addPendingScan({
+                        inventaire_id: AppState.inventaire.id,
+                        data: scanData
+                    });
+                }
+            }
+        }
+
+        // Terminer la localisation
         await API.terminerLocalisation(
             AppState.inventaire.id,
             AppState.activeLocation.id
         );
 
-        showToast('Bureau terminé avec succès', 'success');
+        // Fermer la modal
+        closeTerminerBureauModal();
+
+        // Vibration de succès
+        if (navigator.vibrate) {
+            navigator.vibrate([100, 50, 100]);
+        }
+
+        showToast(`✓ ${AppState.localisation.code} terminé ! Passez au bureau suivant`, 'success');
 
         // Réinitialiser le state
         AppState.activeLocation = null;
         AppState.localisation = null;
         AppState.biensAttendus = [];
+        AppState.scansSession = [];
         localStorage.removeItem(CONFIG.STORAGE_KEY_LOCATION);
 
         // Changer le mode
@@ -1462,6 +1704,8 @@ async function terminerBureau() {
 
         // Mettre à jour l'UI
         updateActiveLocationUI();
+        updateHistoryUI();
+        await SyncManager.updatePendingScansBadge();
 
         // Redémarrer le scanner
         await scannerManager.stop();
@@ -1470,7 +1714,47 @@ async function terminerBureau() {
     } catch (error) {
         console.error('[Scan] Erreur terminer bureau:', error);
         showToast(error.message || 'Erreur lors de la fermeture', 'error');
+        
+        // Réactiver le bouton
+        const confirmBtn = document.querySelector('#modal-terminer-bureau .btn-primary');
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Terminer le bureau';
+        }
     }
+}
+
+/**
+ * Termine le scan de la localisation active (fonction legacy pour compatibilité)
+ */
+async function terminerBureau() {
+    showTerminerBureauModal();
+}
+
+/**
+ * Met à jour l'indicateur de statut de connexion dans l'interface
+ */
+function updateOnlineStatusIndicator() {
+    const header = document.querySelector('header');
+    if (!header) return;
+
+    // Supprimer l'ancien indicateur s'il existe
+    const existingIndicator = document.getElementById('online-status-indicator');
+    if (existingIndicator) {
+        existingIndicator.remove();
+    }
+
+    // Créer le nouvel indicateur
+    const indicator = document.createElement('div');
+    indicator.id = 'online-status-indicator';
+    indicator.className = `absolute top-2 right-2 w-3 h-3 rounded-full ${
+        navigator.onLine ? 'bg-green-500' : 'bg-red-500'
+    } ${navigator.onLine ? 'animate-pulse' : ''}`;
+    indicator.title = navigator.onLine ? 'En ligne' : 'Hors ligne';
+    indicator.setAttribute('aria-label', navigator.onLine ? 'En ligne' : 'Hors ligne');
+    
+    header.style.position = 'relative';
+    header.appendChild(indicator);
 }
 
 /**
@@ -1677,7 +1961,7 @@ function attachEventListeners() {
     const btnTerminerBureau = document.getElementById('btn-terminer-bureau');
     if (btnTerminerBureau) {
         btnTerminerBureau.addEventListener('click', () => {
-            terminerBureau();
+            showTerminerBureauModal();
         });
     }
 
@@ -1713,12 +1997,15 @@ function attachEventListeners() {
     window.addEventListener('online', () => {
         AppState.isOnline = true;
         showToast('Connexion rétablie', 'success');
+        updateOnlineStatusIndicator();
         SyncManager.syncPendingScans();
     });
 
     window.addEventListener('offline', () => {
         AppState.isOnline = false;
         showToast('Mode hors ligne activé', 'warning');
+        updateOnlineStatusIndicator();
+        SyncManager.updatePendingScansBadge();
     });
 }
 
@@ -1886,6 +2173,9 @@ function activerLocalisation(code) {
 window.enregistrerScan = enregistrerScan;
 window.annulerScan = annulerScan;
 window.activerLocalisation = activerLocalisation;
+window.showTerminerBureauModal = showTerminerBureauModal;
+window.closeTerminerBureauModal = closeTerminerBureauModal;
+window.confirmTerminerBureau = confirmTerminerBureau;
 
 // ============================================
 // INITIALIZATION
@@ -1920,6 +2210,9 @@ async function init() {
 
             // Mettre à jour le badge des scans en attente
             await SyncManager.updatePendingScansBadge();
+
+            // Mettre à jour l'indicateur de connexion
+            updateOnlineStatusIndicator();
 
             // Synchroniser si en ligne
             if (navigator.onLine) {
