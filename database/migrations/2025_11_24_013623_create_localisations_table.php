@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('localisations', function (Blueprint $table) {
             $table->id();
-            $table->string('code')->unique();
-            $table->string('designation');
-            $table->string('batiment')->nullable();
+            $table->string('code', 50)->unique();
+            $table->string('designation', 100);
+            $table->string('batiment', 50)->nullable();
             $table->integer('etage')->nullable();
-            $table->string('service_rattache')->nullable();
-            $table->string('responsable')->nullable();
-            $table->string('qr_code_path')->nullable();
+            $table->string('service_rattache', 100)->nullable();
+            $table->string('responsable', 100)->nullable();
+            $table->string('qr_code_path', 100)->nullable();
             $table->boolean('actif')->default(true);
             $table->timestamps();
 

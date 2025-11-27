@@ -34,13 +34,13 @@ class LocalisationController extends Controller
 
         return response()->json([
             'localisation' => [
-                'id' => $localisation->id,
-                'code' => $localisation->code,
-                'designation' => $localisation->designation,
-                'batiment' => $localisation->batiment,
-                'etage' => $localisation->etage,
-                'service_rattache' => $localisation->service_rattache,
-                'responsable' => $localisation->responsable,
+            'id' => $localisation->id,
+            'code' => $localisation->code,
+            'designation' => $localisation->designation,
+            'batiment' => $localisation->batiment,
+            'etage' => $localisation->etage,
+            'service_rattache' => $localisation->service_rattache,
+            'responsable' => $localisation->responsable,
                 'qr_code_path' => $localisation->qr_code_path,
             ]
         ]);

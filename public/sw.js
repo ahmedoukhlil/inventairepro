@@ -3,13 +3,12 @@ const CACHE_NAME = 'inventaire-pro-v1';
 const RUNTIME_CACHE = 'inventaire-pro-runtime-v1';
 
 // Fichiers à mettre en cache lors de l'installation
+// Note: Les fichiers CSS/JS compilés par Vite sont gérés dynamiquement
 const PRECACHE_URLS = [
   '/',
-  '/dashboard',
-  '/css/app.css',
-  '/js/app.js',
   '/images/icons/icon-192x192.png',
-  '/images/icons/icon-512x512.png'
+  '/images/icons/icon-512x512.png',
+  '/manifest.json'
 ];
 
 // Installation du Service Worker
@@ -19,9 +18,26 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('[Service Worker] Mise en cache des fichiers statiques');
-        return cache.addAll(PRECACHE_URLS);
+        // Utiliser Promise.all avec cache.add() pour gérer les erreurs individuellement
+        return Promise.allSettled(
+          PRECACHE_URLS.map((url) => {
+            return cache.add(url).catch((error) => {
+              console.warn(`[Service Worker] Impossible de mettre en cache ${url}:`, error);
+              // Ne pas faire échouer l'installation si un fichier ne peut pas être mis en cache
+              return null;
+            });
+          })
+        );
       })
-      .then(() => self.skipWaiting())
+      .then(() => {
+        console.log('[Service Worker] Installation terminée');
+        return self.skipWaiting();
+      })
+      .catch((error) => {
+        console.error('[Service Worker] Erreur lors de l\'installation:', error);
+        // Même en cas d'erreur, on continue l'installation
+        return self.skipWaiting();
+      })
   );
 });
 
@@ -47,42 +63,103 @@ self.addEventListener('activate', (event) => {
 
 // Stratégie de mise en cache : Network First, puis Cache
 self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  const url = new URL(request.url);
+
   // Ignorer les requêtes non-GET
-  if (event.request.method !== 'GET') {
+  if (request.method !== 'GET') {
     return;
   }
 
   // Ignorer les requêtes vers l'API (doivent toujours être en ligne)
-  if (event.request.url.includes('/api/')) {
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  // Ignorer les requêtes cross-origin (domaines externes)
+  // Ne mettre en cache que les ressources du même domaine
+  if (url.origin !== location.origin) {
+    // Pour les ressources externes, laisser le navigateur gérer normalement
+    return;
+  }
+
+  // Ignorer les requêtes vers des CDN externes (fonts, chart.js, etc.)
+  const externalDomains = [
+    'fonts.bunny.net',
+    'cdn.jsdelivr.net',
+    'fonts.googleapis.com',
+    'fonts.gstatic.com',
+    'unpkg.com',
+    'cdnjs.cloudflare.com'
+  ];
+  
+  if (externalDomains.some(domain => url.hostname.includes(domain))) {
     return;
   }
 
   event.respondWith(
-    fetch(event.request)
+    fetch(request)
       .then((response) => {
+        // Vérifier que la réponse est valide
+        if (!response || response.status !== 200 || response.type === 'error') {
+          // Si la réponse n'est pas valide, essayer le cache
+          return caches.match(request).then((cachedResponse) => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            // Si pas de cache, retourner la réponse originale même si elle est en erreur
+            return response;
+          });
+        }
+
         // Cloner la réponse car elle ne peut être utilisée qu'une fois
         const responseToCache = response.clone();
 
-        // Mettre en cache les réponses réussies
-        if (response.status === 200) {
+        // Mettre en cache les réponses réussies (uniquement pour le même domaine)
+        if (response.status === 200 && url.origin === location.origin) {
           caches.open(RUNTIME_CACHE).then((cache) => {
-            cache.put(event.request, responseToCache);
+            cache.put(request, responseToCache).catch((error) => {
+              console.warn('[Service Worker] Erreur lors de la mise en cache:', error);
+            });
           });
         }
 
         return response;
       })
-      .catch(() => {
+      .catch((error) => {
+        console.warn('[Service Worker] Erreur de fetch pour', request.url, error);
+        
         // Si le réseau échoue, essayer le cache
-        return caches.match(event.request).then((cachedResponse) => {
+        return caches.match(request).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;
           }
 
-          // Si pas de cache, retourner une page offline pour les navigations
-          if (event.request.mode === 'navigate') {
-            return caches.match('/');
+          // Si pas de cache et que c'est une navigation, retourner la page d'accueil
+          if (request.mode === 'navigate') {
+            return caches.match('/').then((homePage) => {
+              if (homePage) {
+                return homePage;
+              }
+              // Si même la page d'accueil n'est pas en cache, retourner une réponse d'erreur
+              return new Response('Hors ligne', {
+                status: 503,
+                statusText: 'Service Unavailable',
+                headers: new Headers({
+                  'Content-Type': 'text/html'
+                })
+              });
+            });
           }
+
+          // Pour les autres requêtes, retourner une réponse d'erreur
+          return new Response('Ressource non disponible hors ligne', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: new Headers({
+              'Content-Type': 'text/plain'
+            })
+          });
         });
       })
   );

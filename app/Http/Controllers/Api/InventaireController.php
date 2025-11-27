@@ -51,11 +51,11 @@ class InventaireController extends Controller
 
         return response()->json([
             'inventaire' => [
-                'id' => $inventaire->id,
-                'annee' => $inventaire->annee,
+            'id' => $inventaire->id,
+            'annee' => $inventaire->annee,
                 'date_debut' => $inventaire->date_debut->format('Y-m-d'),
                 'date_fin' => $inventaire->date_fin?->format('Y-m-d'),
-                'statut' => $inventaire->statut,
+            'statut' => $inventaire->statut,
                 'observation' => $inventaire->observation,
                 'created_by' => $inventaire->created_by,
                 'creator_name' => $inventaire->creator->name ?? null,
@@ -160,7 +160,7 @@ class InventaireController extends Controller
                     'message' => 'Localisation déjà en cours ou terminée',
                     'inventaire_localisation' => $this->formatInventaireLocalisation($inventaireLocalisation)
                 ]);
-            }
+        }
 
             // Démarrer le scan via le service
             $result = $this->inventaireService->demarrerLocalisation(
@@ -177,7 +177,7 @@ class InventaireController extends Controller
             // Recharger pour avoir les données à jour
             $inventaireLocalisation->refresh();
 
-            return response()->json([
+        return response()->json([
                 'message' => 'Scan de la localisation démarré',
                 'inventaire_localisation' => $this->formatInventaireLocalisation($inventaireLocalisation)
             ]);
@@ -226,11 +226,11 @@ class InventaireController extends Controller
                 return response()->json([
                     'message' => 'Impossible de terminer la localisation'
                 ], 400);
-            }
+        }
 
             $inventaireLocalisation->refresh();
 
-            return response()->json([
+        return response()->json([
                 'message' => 'Scan de la localisation terminé',
                 'inventaire_localisation' => $this->formatInventaireLocalisation($inventaireLocalisation)
             ]);

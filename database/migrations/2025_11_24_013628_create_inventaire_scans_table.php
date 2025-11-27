@@ -21,7 +21,7 @@ return new class extends Migration
             $table->foreignId('localisation_reelle_id')->nullable()->constrained('localisations')->onDelete('set null');
             $table->enum('etat_constate', ['neuf', 'bon', 'moyen', 'mauvais']);
             $table->text('commentaire')->nullable();
-            $table->string('photo_path')->nullable();
+            $table->string('photo_path', 100)->nullable();
             $table->foreignId('user_id')->constrained('users')->onDelete('restrict');
             $table->timestamps();
 

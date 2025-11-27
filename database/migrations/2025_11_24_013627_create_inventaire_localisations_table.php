@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
         Schema::create('inventaire_localisations', function (Blueprint $table) {
@@ -19,12 +22,17 @@ return new class extends Migration
             $table->integer('nombre_biens_scannes')->default(0);
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
+
+            // Index et contraintes
             $table->unique(['inventaire_id', 'localisation_id']);
             $table->index('statut');
             $table->index('user_id');
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::dropIfExists('inventaire_localisations');

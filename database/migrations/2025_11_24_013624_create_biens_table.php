@@ -13,15 +13,15 @@ return new class extends Migration
     {
         Schema::create('biens', function (Blueprint $table) {
             $table->id();
-            $table->string('code_inventaire')->unique();
-            $table->string('designation');
+            $table->string('code_inventaire', 50)->unique();
+            $table->string('designation', 100);
             $table->date('date_acquisition');
             $table->enum('nature', ['mobilier', 'informatique', 'vehicule', 'materiel']);
-            $table->string('service_usager');
+            $table->string('service_usager', 100);
             $table->foreignId('localisation_id')->constrained('localisations')->onDelete('restrict');
             $table->decimal('valeur_acquisition', 10, 2);
             $table->enum('etat', ['neuf', 'bon', 'moyen', 'mauvais', 'reforme']);
-            $table->string('qr_code_path')->nullable();
+            $table->string('qr_code_path', 100)->nullable();
             $table->text('observation')->nullable();
             $table->foreignId('user_id')->constrained('users')->onDelete('restrict');
             $table->timestamps();

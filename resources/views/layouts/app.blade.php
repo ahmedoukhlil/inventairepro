@@ -462,6 +462,106 @@
                 deferredPrompt = null;
             });
         }
+        
+        // Gestion de l'expiration de session (30 minutes d'inactivité)
+        (function() {
+            const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes en millisecondes
+            const WARNING_TIME = 5 * 60 * 1000; // Avertir 5 minutes avant expiration
+            let lastActivity = Date.now();
+            let warningShown = false;
+            let timeoutId;
+            
+            // Fonction pour réinitialiser le timer
+            function resetTimer() {
+                lastActivity = Date.now();
+                warningShown = false;
+                clearTimeout(timeoutId);
+                scheduleWarning();
+            }
+            
+            // Fonction pour programmer l'avertissement
+            function scheduleWarning() {
+                clearTimeout(timeoutId);
+                const timeUntilWarning = SESSION_TIMEOUT - WARNING_TIME;
+                
+                timeoutId = setTimeout(() => {
+                    if (!warningShown) {
+                        showSessionWarning();
+                        warningShown = true;
+                    }
+                }, timeUntilWarning);
+            }
+            
+            // Fonction pour afficher l'avertissement
+            function showSessionWarning() {
+                const minutesLeft = Math.floor(WARNING_TIME / 60000);
+                const message = `Votre session expirera dans ${minutesLeft} minute${minutesLeft > 1 ? 's' : ''} d'inactivité. Cliquez sur "Prolonger" pour continuer.`;
+                
+                // Créer une notification
+                const notification = document.createElement('div');
+                notification.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg shadow-lg z-50 max-w-md';
+                notification.innerHTML = `
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-yellow-400 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-yellow-800 mb-3">${message}</p>
+                            <div class="flex space-x-2">
+                                <button onclick="extendSession()" class="px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-lg hover:bg-yellow-700 transition-colors">
+                                    Prolonger la session
+                                </button>
+                                <button onclick="this.parentElement.parentElement.parentElement.remove()" class="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 transition-colors">
+                                    Fermer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(notification);
+                
+                // Auto-supprimer après 10 secondes si pas d'action
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                    }
+                }, 10000);
+            }
+            
+            // Fonction pour prolonger la session
+            window.extendSession = function() {
+                // Faire une requête pour mettre à jour la session
+                fetch('{{ route('dashboard') }}', {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(() => {
+                    resetTimer();
+                    // Supprimer toutes les notifications d'avertissement
+                    document.querySelectorAll('.fixed.top-4.left-1\\/2').forEach(el => {
+                        if (el.textContent.includes('session expirera')) {
+                            el.remove();
+                        }
+                    });
+                })
+                .catch(err => {
+                    console.error('Erreur lors de la prolongation de session:', err);
+                });
+            };
+            
+            // Écouter les événements d'activité utilisateur
+            const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+            events.forEach(event => {
+                document.addEventListener(event, resetTimer, { passive: true });
+            });
+            
+            // Initialiser le timer au chargement de la page
+            scheduleWarning();
+        })();
     </script>
 </body>
 </html>

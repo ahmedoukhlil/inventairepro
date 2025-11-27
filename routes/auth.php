@@ -21,7 +21,9 @@ Route::middleware('guest')->group(function () {
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 
-    Route::post('login', [AuthenticatedSessionController::class, 'store']);
+    // Protection contre les attaques par force brute : 5 tentatives par minute
+    Route::post('login', [AuthenticatedSessionController::class, 'store'])
+        ->middleware('throttle:5,1');
 
     // Routes d'inscription (désactivées pour l'instant)
     // Route::get('register', [RegisteredUserController::class, 'create'])

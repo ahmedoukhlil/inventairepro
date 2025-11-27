@@ -22,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Fix pour MySQL : limite la longueur des chaînes pour les index
         // MySQL avec utf8mb4 a une limite de 767 bytes pour les index
-        // 191 caractères * 4 bytes = 764 bytes < 767
-        Schema::defaultStringLength(191);
+        // Utilisation de 100 caractères pour être sûr (100 * 4 = 400 bytes < 1000)
+        Schema::defaultStringLength(100);
     }
 }

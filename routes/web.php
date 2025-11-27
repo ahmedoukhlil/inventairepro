@@ -41,7 +41,7 @@ if (file_exists(__DIR__.'/auth.php')) {
 |
 */
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'session.timeout'])->group(function () {
 
     /*
     |----------------------------------------------------------------------
@@ -203,17 +203,16 @@ Route::middleware(['auth'])->group(function () {
         | Gestion des utilisateurs (création, modification, etc.)
         |
         */
-        // Routes utilisateurs désactivées pour l'instant (composants à créer)
-        // Route::prefix('users')->name('users.')->group(function () {
-        //     // Liste des utilisateurs
-        //     Route::get('/', \App\Livewire\Users\ListeUsers::class)->name('index');
-        //     
-        //     // Création d'un utilisateur
-        //     Route::get('/create', \App\Livewire\Users\FormUser::class)->name('create');
-        //     
-        //     // Édition d'un utilisateur
-        //     Route::get('/{user}/edit', \App\Livewire\Users\FormUser::class)->name('edit');
-        // });
+        Route::prefix('users')->name('users.')->group(function () {
+            // Liste des utilisateurs
+            Route::get('/', \App\Livewire\Users\ListeUsers::class)->name('index');
+            
+            // Création d'un utilisateur
+            Route::get('/create', \App\Livewire\Users\FormUser::class)->name('create');
+            
+            // Édition d'un utilisateur
+            Route::get('/{user}/edit', \App\Livewire\Users\FormUser::class)->name('edit');
+        });
 
         /*
         |------------------------------------------------------------------
