@@ -344,6 +344,8 @@ class API {
      */
     static async request(endpoint, options = {}) {
         const url = `${CONFIG.API_BASE_URL}${endpoint}`;
+        const method = options.method || 'GET';
+        console.log(`[API] ${method} ${url}`);
         
         const defaultOptions = {
             headers: {
@@ -355,6 +357,9 @@ class API {
         // Ajouter le token d'authentification si disponible
         if (AppState.token) {
             defaultOptions.headers['Authorization'] = `Bearer ${AppState.token}`;
+            console.log('[API] Token d\'authentification ajouté');
+        } else {
+            console.warn('[API] Aucun token d\'authentification disponible');
         }
 
         // Ajouter le CSRF token si disponible
@@ -374,40 +379,59 @@ class API {
 
         try {
             const response = await fetch(url, finalOptions);
+            console.log(`[API] Réponse ${response.status} ${response.statusText}`);
             
             if (!response.ok) {
                 // Gestion des erreurs HTTP
                 if (response.status === 401) {
                     // Token invalide ou expiré, déconnecter l'utilisateur
-                    console.warn('[API] Token invalide, déconnexion...');
+                    console.warn('[API] Token invalide ou expiré, déconnexion...');
                     AuthManager.logout();
                     throw new Error('Session expirée. Veuillez vous reconnecter.');
                 }
                 
                 // Essayer de récupérer le message d'erreur depuis la réponse
-                let errorMessage = `Erreur HTTP ${response.status}`;
+                let errorMessage = `Erreur HTTP ${response.status}: ${response.statusText}`;
                 try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.message || errorData.error || errorMessage;
-                } catch (e) {
-                    // Si la réponse n'est pas du JSON, utiliser le status text
-                    errorMessage = response.statusText || errorMessage;
+                    const errorText = await response.text();
+                    if (errorText) {
+                        try {
+                            const errorData = JSON.parse(errorText);
+                            errorMessage = errorData.message || errorData.error || errorMessage;
+                            console.error('[API] Détails erreur:', errorData);
+                        } catch (parseError) {
+                            console.warn('[API] Erreur non-JSON:', errorText);
+                            errorMessage = errorText || errorMessage;
+                        }
+                    }
+                } catch (textError) {
+                    console.error('[API] Erreur lecture réponse:', textError);
                 }
                 
-                throw new Error(errorMessage);
+                const error = new Error(errorMessage);
+                error.status = response.status;
+                throw error;
             }
 
             // Parser la réponse JSON
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
-                return await response.json();
+                const jsonData = await response.json();
+                console.log('[API] Données JSON reçues');
+                return jsonData;
             } else {
                 // Si ce n'est pas du JSON, retourner le texte
-                return await response.text();
+                const textData = await response.text();
+                console.log('[API] Données texte reçues:', textData);
+                return textData;
             }
         } catch (error) {
+            console.error('[API] Erreur requête:', error);
+            console.error('[API] URL:', url);
+            console.error('[API] Method:', method);
+            
             // Si offline et requête GET, ne pas lever d'erreur (utiliser le cache)
-            if (!navigator.onLine && options.method !== 'POST' && options.method !== 'PUT' && options.method !== 'DELETE') {
+            if (!navigator.onLine && method !== 'POST' && method !== 'PUT' && method !== 'DELETE') {
                 console.warn('[API] Mode offline, utilisation du cache');
                 return null;
             }
@@ -774,6 +798,8 @@ class SyncManager {
  * @param {string} viewName - Nom de la vue à afficher (sans le préfixe "view-")
  */
 function showView(viewName) {
+    console.log('[UI] Affichage de la vue:', viewName);
+    
     // Cacher toutes les vues
     document.querySelectorAll('[id^="view-"]').forEach(view => {
         view.classList.add('hidden');
@@ -783,8 +809,9 @@ function showView(viewName) {
     const view = document.getElementById(`view-${viewName}`);
     if (view) {
         view.classList.remove('hidden');
+        console.log('[UI] Vue affichée avec succès:', `view-${viewName}`);
     } else {
-        console.warn(`[UI] Vue "${viewName}" introuvable`);
+        console.error(`[UI] Vue "${viewName}" introuvable (élément view-${viewName} non trouvé)`);
     }
 }
 
@@ -1063,66 +1090,166 @@ class ScannerManager {
      */
     async handleLocalisationScan(qrData) {
         try {
+            console.log('[Scanner] Scan localisation détecté:', qrData);
+            
+            // Validation des données d'entrée
+            if (!qrData || !qrData.code) {
+                console.error('[Scanner] Données QR code invalides:', qrData);
+                showToast('QR code invalide', 'error');
+                setTimeout(() => this.start(), 2000);
+                return;
+            }
+
+            // Validation de l'inventaire
+            if (!AppState.inventaire || !AppState.inventaire.id) {
+                console.error('[Scanner] Aucun inventaire chargé');
+                showToast('Aucun inventaire en cours', 'error');
+                setTimeout(() => this.start(), 2000);
+                return;
+            }
+
             showToast('Localisation détectée, vérification...', 'info');
 
             // Récupérer les infos de la localisation
-            const localisation = await API.getLocalisationByCode(qrData.code);
+            let localisation;
+            try {
+                localisation = await API.getLocalisationByCode(qrData.code);
+                console.log('[Scanner] Localisation récupérée:', localisation);
+            } catch (error) {
+                console.error('[Scanner] Erreur récupération localisation:', error);
+                showToast('Erreur lors de la récupération de la localisation', 'error');
+                setTimeout(() => this.start(), 2000);
+                return;
+            }
 
-            if (!localisation) {
+            if (!localisation || !localisation.id) {
+                console.warn('[Scanner] Localisation non trouvée pour le code:', qrData.code);
                 showToast('Localisation non trouvée', 'error');
                 setTimeout(() => this.start(), 2000);
                 return;
             }
 
             // Vérifier que cette localisation est assignée à l'agent
-            const mesLocalisations = await API.getMesLocalisations(AppState.inventaire.id);
+            let mesLocalisations;
+            try {
+                mesLocalisations = await API.getMesLocalisations(AppState.inventaire.id);
+                console.log('[Scanner] Localisations assignées:', mesLocalisations);
+            } catch (error) {
+                console.error('[Scanner] Erreur récupération localisations assignées:', error);
+                showToast('Erreur lors de la vérification des assignations', 'error');
+                setTimeout(() => this.start(), 2000);
+                return;
+            }
+
+            if (!Array.isArray(mesLocalisations)) {
+                console.error('[Scanner] Format de réponse invalide pour mesLocalisations:', mesLocalisations);
+                showToast('Erreur de format de données', 'error');
+                setTimeout(() => this.start(), 2000);
+                return;
+            }
+
             const isAssigned = mesLocalisations.some(loc => loc.localisation_id === localisation.id);
+            console.log('[Scanner] Localisation assignée?', isAssigned);
 
             if (!isAssigned) {
+                console.warn('[Scanner] Localisation non assignée à l\'agent:', localisation.code);
                 showToast('Cette localisation ne vous est pas assignée', 'error');
                 setTimeout(() => this.start(), 2000);
                 return;
             }
 
             // Démarrer le scan de cette localisation
-            const inventaireLocalisation = await API.demarrerLocalisation(
-                AppState.inventaire.id, 
-                localisation.id
-            );
+            let inventaireLocalisation;
+            try {
+                inventaireLocalisation = await API.demarrerLocalisation(
+                    AppState.inventaire.id, 
+                    localisation.id
+                );
+                console.log('[Scanner] Inventaire localisation créé:', inventaireLocalisation);
+            } catch (error) {
+                console.error('[Scanner] Erreur démarrage localisation:', error);
+                showToast('Erreur lors du démarrage du scan', 'error');
+                setTimeout(() => this.start(), 2000);
+                return;
+            }
+
+            if (!inventaireLocalisation || !inventaireLocalisation.id) {
+                console.error('[Scanner] Inventaire localisation invalide:', inventaireLocalisation);
+                showToast('Erreur lors de la création du scan', 'error');
+                setTimeout(() => this.start(), 2000);
+                return;
+            }
 
             // Mettre à jour le state
             AppState.activeLocation = inventaireLocalisation;
             AppState.localisation = localisation;
             AppState.scansSession = []; // Réinitialiser les scans de la session
+            console.log('[Scanner] State mis à jour');
 
             // Charger les biens attendus
-            const biens = await API.getBiensLocalisation(localisation.id);
-            AppState.biensAttendus = biens;
+            let biens;
+            try {
+                biens = await API.getBiensLocalisation(localisation.id);
+                console.log('[Scanner] Biens récupérés:', biens?.length || 0);
+            } catch (error) {
+                console.error('[Scanner] Erreur récupération biens:', error);
+                // Continuer même si les biens ne peuvent pas être chargés
+                biens = [];
+                showToast('Attention: impossible de charger les biens', 'warning');
+            }
+
+            AppState.biensAttendus = Array.isArray(biens) ? biens : [];
 
             // Mettre en cache
-            await dbManager.cacheBiens(biens);
+            try {
+                await dbManager.cacheBiens(AppState.biensAttendus);
+                console.log('[Scanner] Biens mis en cache');
+            } catch (error) {
+                console.error('[Scanner] Erreur mise en cache biens:', error);
+                // Ne pas bloquer le workflow si le cache échoue
+            }
 
             // Sauvegarder dans localStorage
-            localStorage.setItem(CONFIG.STORAGE_KEY_LOCATION, JSON.stringify({
-                activeLocation: inventaireLocalisation,
-                localisation: localisation,
-                biens: biens
-            }));
+            try {
+                localStorage.setItem(CONFIG.STORAGE_KEY_LOCATION, JSON.stringify({
+                    activeLocation: inventaireLocalisation,
+                    localisation: localisation,
+                    biens: AppState.biensAttendus
+                }));
+                console.log('[Scanner] Données sauvegardées dans localStorage');
+            } catch (error) {
+                console.error('[Scanner] Erreur sauvegarde localStorage:', error);
+                // Ne pas bloquer le workflow si localStorage échoue
+            }
 
             // Changer le mode en 'bien'
             this.currentMode = 'bien';
+            console.log('[Scanner] Mode changé en "bien"');
 
             // Mettre à jour l'UI
             updateActiveLocationUI();
             showToast(`Bureau activé : ${localisation.code}`, 'success');
 
             // Redémarrer le scanner pour les biens
-            setTimeout(() => this.start(), 1500);
+            setTimeout(() => {
+                try {
+                    this.start();
+                } catch (error) {
+                    console.error('[Scanner] Erreur redémarrage scanner:', error);
+                }
+            }, 1500);
 
         } catch (error) {
-            console.error('[Scanner] Erreur scan localisation:', error);
-            showToast(error.message || 'Erreur lors du scan', 'error');
-            setTimeout(() => this.start(), 2000);
+            console.error('[Scanner] Erreur critique scan localisation:', error);
+            console.error('[Scanner] Stack trace:', error.stack);
+            showToast(error.message || 'Erreur lors du scan de la localisation', 'error');
+            setTimeout(() => {
+                try {
+                    this.start();
+                } catch (restartError) {
+                    console.error('[Scanner] Erreur redémarrage après erreur:', restartError);
+                }
+            }, 2000);
         }
     }
 
@@ -1132,49 +1259,136 @@ class ScannerManager {
      */
     async handleBienScan(qrData) {
         try {
+            console.log('[Scanner] Scan bien détecté:', qrData);
+            
+            // Validation des données d'entrée
+            if (!qrData || !qrData.id) {
+                console.error('[Scanner] Données QR code invalides:', qrData);
+                showToast('QR code invalide', 'error');
+                setTimeout(() => this.start(), 2000);
+                return;
+            }
+
             // Vérifier qu'un bureau est actif
-            if (!AppState.activeLocation) {
+            if (!AppState.activeLocation || !AppState.activeLocation.id) {
+                console.warn('[Scanner] Aucun bureau actif');
                 showToast('Scannez d\'abord un bureau', 'warning');
                 this.currentMode = 'localisation';
-                setTimeout(() => this.start(), 2000);
+                setTimeout(() => {
+                    try {
+                        this.start();
+                    } catch (error) {
+                        console.error('[Scanner] Erreur redémarrage:', error);
+                    }
+                }, 2000);
+                return;
+            }
+
+            // Vérifier que l'inventaire est chargé
+            if (!AppState.inventaire || !AppState.inventaire.id) {
+                console.error('[Scanner] Aucun inventaire chargé');
+                showToast('Aucun inventaire en cours', 'error');
+                setTimeout(() => {
+                    try {
+                        this.start();
+                    } catch (error) {
+                        console.error('[Scanner] Erreur redémarrage:', error);
+                    }
+                }, 2000);
                 return;
             }
 
             showToast('Bien détecté, chargement...', 'info');
 
             // Récupérer les infos du bien
-            let bien = await API.getBien(qrData.id);
-
-            // Si offline, essayer depuis le cache
-            if (!bien && !navigator.onLine) {
-                bien = await dbManager.getCachedBien(qrData.id);
+            let bien = null;
+            try {
+                bien = await API.getBien(qrData.id);
+                console.log('[Scanner] Bien récupéré depuis API:', bien?.id);
+            } catch (error) {
+                console.warn('[Scanner] Erreur récupération bien depuis API:', error);
+                // Si offline, essayer depuis le cache
+                if (!navigator.onLine) {
+                    try {
+                        bien = await dbManager.getCachedBien(qrData.id);
+                        console.log('[Scanner] Bien récupéré depuis cache:', bien?.id);
+                    } catch (cacheError) {
+                        console.error('[Scanner] Erreur récupération depuis cache:', cacheError);
+                    }
+                }
             }
 
+            // Si toujours pas de bien, essayer le cache même en ligne (fallback)
             if (!bien) {
+                try {
+                    bien = await dbManager.getCachedBien(qrData.id);
+                    console.log('[Scanner] Bien récupéré depuis cache (fallback):', bien?.id);
+                } catch (cacheError) {
+                    console.error('[Scanner] Erreur récupération cache (fallback):', cacheError);
+                }
+            }
+
+            if (!bien || !bien.id) {
+                console.error('[Scanner] Bien non trouvé pour ID:', qrData.id);
                 showToast('Bien non trouvé', 'error');
-                setTimeout(() => this.start(), 2000);
+                setTimeout(() => {
+                    try {
+                        this.start();
+                    } catch (error) {
+                        console.error('[Scanner] Erreur redémarrage:', error);
+                    }
+                }, 2000);
                 return;
             }
+
+            console.log('[Scanner] Bien trouvé:', bien.code_inventaire || bien.id);
 
             // Vérifier si déjà scanné dans cette session
             const dejaScan = AppState.scansSession.some(s => s.bien_id === bien.id);
             if (dejaScan) {
+                console.warn('[Scanner] Bien déjà scanné dans cette session:', bien.id);
                 showToast('Ce bien a déjà été scanné dans ce bureau', 'warning');
                 playSound('warning');
                 if (navigator.vibrate) {
                     navigator.vibrate([100, 50, 100, 50, 100]);
                 }
-                setTimeout(() => this.start(), 2000);
+                setTimeout(() => {
+                    try {
+                        this.start();
+                    } catch (error) {
+                        console.error('[Scanner] Erreur redémarrage:', error);
+                    }
+                }, 2000);
                 return;
             }
 
             // Afficher la fiche du bien et les boutons d'action
-            displayBienResult(bien);
+            try {
+                displayBienResult(bien);
+                console.log('[Scanner] Fiche bien affichée');
+            } catch (error) {
+                console.error('[Scanner] Erreur affichage fiche bien:', error);
+                showToast('Erreur lors de l\'affichage du bien', 'error');
+                setTimeout(() => {
+                    try {
+                        this.start();
+                    } catch (restartError) {
+                        console.error('[Scanner] Erreur redémarrage:', restartError);
+                    }
+                }, 2000);
+            }
 
         } catch (error) {
-            console.error('[Scanner] Erreur scan bien:', error);
-            showToast(error.message || 'Erreur lors du scan', 'error');
-            setTimeout(() => this.start(), 2000);
+            console.error('[Scanner] Erreur critique scan bien:', error);
+            console.error('[Scanner] Stack trace:', error.stack);
+            showToast(error.message || 'Erreur lors du scan du bien', 'error');
+            setTimeout(() => {
+                try {
+                    this.start();
+                } catch (restartError) {
+                    console.error('[Scanner] Erreur redémarrage après erreur:', restartError);
+                }
+            }, 2000);
         }
     }
 
@@ -1397,6 +1611,46 @@ function displayBienResult(bien) {
  */
 async function enregistrerScan(bienId, statut) {
     try {
+        console.log('[Scan] Enregistrement scan - Bien ID:', bienId, 'Statut:', statut);
+        
+        // Validation des données d'entrée
+        if (!bienId) {
+            console.error('[Scan] ID bien manquant');
+            showToast('ID du bien manquant', 'error');
+            return;
+        }
+
+        if (!statut || !['present', 'deplace', 'absent', 'deteriore'].includes(statut)) {
+            console.error('[Scan] Statut invalide:', statut);
+            showToast('Statut de scan invalide', 'error');
+            return;
+        }
+
+        // Validation de l'état de l'application
+        if (!AppState.inventaire || !AppState.inventaire.id) {
+            console.error('[Scan] Aucun inventaire chargé');
+            showToast('Aucun inventaire en cours', 'error');
+            return;
+        }
+
+        if (!AppState.activeLocation || !AppState.activeLocation.id) {
+            console.error('[Scan] Aucun bureau actif');
+            showToast('Aucun bureau actif', 'error');
+            return;
+        }
+
+        if (!AppState.localisation || !AppState.localisation.id) {
+            console.error('[Scan] Aucune localisation chargée');
+            showToast('Localisation non chargée', 'error');
+            return;
+        }
+
+        if (!AppState.user || !AppState.user.id) {
+            console.error('[Scan] Utilisateur non authentifié');
+            showToast('Session expirée, veuillez vous reconnecter', 'error');
+            return;
+        }
+
         // Préparer les données du scan
         const scanData = {
             inventaire_id: AppState.inventaire.id,
@@ -1410,12 +1664,18 @@ async function enregistrerScan(bienId, statut) {
             user_id: AppState.user.id
         };
 
+        console.log('[Scan] Données du scan préparées:', scanData);
+
         let scanResult;
+        let scanEnregistre = false;
 
         if (navigator.onLine) {
             try {
+                console.log('[Scan] Mode online - Envoi à l\'API...');
                 // Mode online : envoyer directement à l'API
                 scanResult = await API.enregistrerScan(AppState.inventaire.id, scanData);
+                console.log('[Scan] Scan enregistré avec succès:', scanResult);
+                scanEnregistre = true;
                 showToast('Scan enregistré', 'success');
                 
                 // Vibration de succès
@@ -1425,54 +1685,110 @@ async function enregistrerScan(bienId, statut) {
             } catch (error) {
                 // Si erreur API, basculer en mode offline
                 console.warn('[Scan] Erreur API, basculement en mode offline:', error);
+                console.warn('[Scan] Détails erreur:', error.message, error.stack);
+                
+                try {
+                    await dbManager.addPendingScan({
+                        inventaire_id: AppState.inventaire.id,
+                        data: scanData
+                    });
+                    console.log('[Scan] Scan ajouté à la file d\'attente');
+                    showToast('Scan enregistré (hors ligne)', 'warning');
+                    scanEnregistre = true;
+                } catch (dbError) {
+                    console.error('[Scan] Erreur ajout file d\'attente:', dbError);
+                    showToast('Erreur lors de l\'enregistrement', 'error');
+                    return;
+                }
+            }
+        } else {
+            console.log('[Scan] Mode offline - Ajout à la file d\'attente...');
+            // Mode offline : ajouter à la file d'attente
+            try {
                 await dbManager.addPendingScan({
                     inventaire_id: AppState.inventaire.id,
                     data: scanData
                 });
+                console.log('[Scan] Scan ajouté à la file d\'attente');
                 showToast('Scan enregistré (hors ligne)', 'warning');
+                scanEnregistre = true;
+                
+                // Vibration différente pour offline
+                if (navigator.vibrate) {
+                    navigator.vibrate([50, 50, 50]);
+                }
+            } catch (dbError) {
+                console.error('[Scan] Erreur ajout file d\'attente:', dbError);
+                showToast('Erreur lors de l\'enregistrement', 'error');
+                return;
             }
-        } else {
-            // Mode offline : ajouter à la file d'attente
-            await dbManager.addPendingScan({
-                inventaire_id: AppState.inventaire.id,
-                data: scanData
-            });
-            showToast('Scan enregistré (hors ligne)', 'warning');
-            
-            // Vibration différente pour offline
-            if (navigator.vibrate) {
-                navigator.vibrate([50, 50, 50]);
-            }
+        }
+
+        // Si le scan n'a pas été enregistré, ne pas continuer
+        if (!scanEnregistre) {
+            console.error('[Scan] Scan non enregistré, arrêt du traitement');
+            return;
         }
 
         // Mettre à jour le state local
-        if (AppState.activeLocation) {
-            AppState.activeLocation.nombre_biens_scannes = (AppState.activeLocation.nombre_biens_scannes || 0) + 1;
+        try {
+            if (AppState.activeLocation) {
+                AppState.activeLocation.nombre_biens_scannes = (AppState.activeLocation.nombre_biens_scannes || 0) + 1;
+                console.log('[Scan] Nombre de biens scannés mis à jour:', AppState.activeLocation.nombre_biens_scannes);
+            }
+            AppState.scansSession.push(scanData);
+            console.log('[Scan] Scan ajouté à la session');
+        } catch (stateError) {
+            console.error('[Scan] Erreur mise à jour state:', stateError);
+            // Ne pas bloquer si la mise à jour du state échoue
         }
-        AppState.scansSession.push(scanData);
 
         // Ajouter à l'historique local
-        const bien = await dbManager.getCachedBien(bienId);
-        await dbManager.addToHistory({
-            ...scanData,
-            bien: bien
-        });
+        try {
+            const bien = await dbManager.getCachedBien(bienId);
+            await dbManager.addToHistory({
+                ...scanData,
+                bien: bien
+            });
+            console.log('[Scan] Scan ajouté à l\'historique');
+        } catch (historyError) {
+            console.error('[Scan] Erreur ajout historique:', historyError);
+            // Ne pas bloquer si l'historique échoue
+        }
 
         // Mettre à jour l'UI
-        updateActiveLocationUI();
-        updateHistoryUI();
-        await SyncManager.updatePendingScansBadge();
+        try {
+            updateActiveLocationUI();
+            updateHistoryUI();
+            await SyncManager.updatePendingScansBadge();
+            console.log('[Scan] UI mise à jour');
+        } catch (uiError) {
+            console.error('[Scan] Erreur mise à jour UI:', uiError);
+            // Ne pas bloquer si l'UI échoue
+        }
 
         // Cacher le résultat et redémarrer le scanner
-        const resultDiv = document.getElementById('scan-result');
-        if (resultDiv) {
-            resultDiv.classList.add('hidden');
+        try {
+            const resultDiv = document.getElementById('scan-result');
+            if (resultDiv) {
+                resultDiv.classList.add('hidden');
+            }
+            setTimeout(() => {
+                try {
+                    scannerManager.start();
+                    console.log('[Scan] Scanner redémarré');
+                } catch (startError) {
+                    console.error('[Scan] Erreur redémarrage scanner:', startError);
+                }
+            }, 500);
+        } catch (uiError) {
+            console.error('[Scan] Erreur masquage résultat:', uiError);
         }
-        setTimeout(() => scannerManager.start(), 500);
 
     } catch (error) {
-        console.error('[Scan] Erreur enregistrement scan:', error);
-        showToast(error.message || 'Erreur lors de l\'enregistrement', 'error');
+        console.error('[Scan] Erreur critique enregistrement scan:', error);
+        console.error('[Scan] Stack trace:', error.stack);
+        showToast(error.message || 'Erreur lors de l\'enregistrement du scan', 'error');
     }
 }
 
@@ -1627,16 +1943,36 @@ function closeTerminerBureauModal() {
  * Confirme et exécute la terminaison du bureau
  */
 async function confirmTerminerBureau() {
-    if (!AppState.activeLocation) {
-        return;
-    }
-
-    const markNonScannedAbsent = document.getElementById('mark-non-scanned-absent')?.checked || false;
-    const scanned = AppState.activeLocation.nombre_biens_scannes || 0;
-    const total = AppState.activeLocation.nombre_biens_attendus || 0;
-    const nonScannes = total - scanned;
-
     try {
+        console.log('[Scan] Confirmation terminer bureau...');
+        
+        // Validation de l'état
+        if (!AppState.activeLocation || !AppState.activeLocation.id) {
+            console.warn('[Scan] Aucun bureau actif');
+            showToast('Aucun bureau actif', 'warning');
+            return;
+        }
+
+        if (!AppState.inventaire || !AppState.inventaire.id) {
+            console.error('[Scan] Aucun inventaire chargé');
+            showToast('Aucun inventaire en cours', 'error');
+            return;
+        }
+
+        if (!AppState.localisation || !AppState.localisation.id) {
+            console.error('[Scan] Aucune localisation chargée');
+            showToast('Localisation non chargée', 'error');
+            return;
+        }
+
+        const markNonScannedAbsent = document.getElementById('mark-non-scanned-absent')?.checked || false;
+        const scanned = AppState.activeLocation.nombre_biens_scannes || 0;
+        const total = AppState.activeLocation.nombre_biens_attendus || 0;
+        const nonScannes = total - scanned;
+
+        console.log('[Scan] Statistiques - Scannés:', scanned, 'Total:', total, 'Non scannés:', nonScannes);
+        console.log('[Scan] Marquer non-scannés comme absents:', markNonScannedAbsent);
+
         // Désactiver le bouton pendant le traitement
         const confirmBtn = document.querySelector('#modal-terminer-bureau .btn-primary');
         if (confirmBtn) {
@@ -1646,43 +1982,81 @@ async function confirmTerminerBureau() {
 
         // Si demandé, marquer les non-scannés comme absents
         if (markNonScannedAbsent && nonScannes > 0) {
+            console.log('[Scan] Marquage des biens non-scannés comme absents...');
             const biensNonScannes = AppState.biensAttendus.filter(bien => {
                 return !AppState.scansSession.some(scan => scan.bien_id === bien.id);
             });
 
-            for (const bien of biensNonScannes) {
-                const scanData = {
-                    inventaire_id: AppState.inventaire.id,
-                    inventaire_localisation_id: AppState.activeLocation.id,
-                    bien_id: bien.id,
-                    statut_scan: 'absent',
-                    localisation_reelle_id: AppState.localisation.id,
-                    etat_constate: 'bon',
-                    commentaire: 'Marqué absent automatiquement lors de la fermeture du bureau',
-                    user_id: AppState.user.id
-                };
+            console.log('[Scan] Nombre de biens à marquer absents:', biensNonScannes.length);
 
-                if (navigator.onLine) {
-                    try {
-                        await API.enregistrerScan(AppState.inventaire.id, scanData);
-                    } catch (error) {
-                        console.error('[Scan] Erreur marquage absent:', error);
-                        // Continuer même en cas d'erreur
-                    }
-                } else {
-                    await dbManager.addPendingScan({
+            for (const bien of biensNonScannes) {
+                try {
+                    const scanData = {
                         inventaire_id: AppState.inventaire.id,
-                        data: scanData
-                    });
+                        inventaire_localisation_id: AppState.activeLocation.id,
+                        bien_id: bien.id,
+                        statut_scan: 'absent',
+                        localisation_reelle_id: AppState.localisation.id,
+                        etat_constate: 'bon',
+                        commentaire: 'Marqué absent automatiquement lors de la fermeture du bureau',
+                        user_id: AppState.user.id
+                    };
+
+                    if (navigator.onLine) {
+                        try {
+                            await API.enregistrerScan(AppState.inventaire.id, scanData);
+                            console.log('[Scan] Bien marqué absent:', bien.id);
+                        } catch (error) {
+                            console.error('[Scan] Erreur marquage absent pour bien', bien.id, ':', error);
+                            // En cas d'erreur, ajouter à la file d'attente
+                            try {
+                                await dbManager.addPendingScan({
+                                    inventaire_id: AppState.inventaire.id,
+                                    data: scanData
+                                });
+                                console.log('[Scan] Bien ajouté à la file d\'attente:', bien.id);
+                            } catch (dbError) {
+                                console.error('[Scan] Erreur ajout file d\'attente:', dbError);
+                                // Continuer avec les autres biens même en cas d'erreur
+                            }
+                        }
+                    } else {
+                        try {
+                            await dbManager.addPendingScan({
+                                inventaire_id: AppState.inventaire.id,
+                                data: scanData
+                            });
+                            console.log('[Scan] Bien ajouté à la file d\'attente (offline):', bien.id);
+                        } catch (dbError) {
+                            console.error('[Scan] Erreur ajout file d\'attente (offline):', dbError);
+                            // Continuer avec les autres biens même en cas d'erreur
+                        }
+                    }
+                } catch (bienError) {
+                    console.error('[Scan] Erreur traitement bien', bien.id, ':', bienError);
+                    // Continuer avec les autres biens même en cas d'erreur
                 }
             }
         }
 
         // Terminer la localisation
-        await API.terminerLocalisation(
-            AppState.inventaire.id,
-            AppState.activeLocation.id
-        );
+        console.log('[Scan] Terminaison de la localisation...');
+        try {
+            await API.terminerLocalisation(
+                AppState.inventaire.id,
+                AppState.activeLocation.id
+            );
+            console.log('[Scan] Localisation terminée avec succès');
+        } catch (error) {
+            console.error('[Scan] Erreur terminaison localisation:', error);
+            // Si offline, on peut quand même continuer (la sync se fera plus tard)
+            if (!navigator.onLine) {
+                console.warn('[Scan] Mode offline, terminaison reportée');
+                showToast('Terminaison reportée (hors ligne)', 'warning');
+            } else {
+                throw error; // Relancer l'erreur si on est en ligne
+            }
+        }
 
         // Fermer la modal
         closeTerminerBureauModal();
@@ -1695,27 +2069,52 @@ async function confirmTerminerBureau() {
         showToast(`✓ ${AppState.localisation.code} terminé ! Passez au bureau suivant`, 'success');
 
         // Réinitialiser le state
+        const localisationCode = AppState.localisation?.code || 'Bureau';
         AppState.activeLocation = null;
         AppState.localisation = null;
         AppState.biensAttendus = [];
         AppState.scansSession = [];
-        localStorage.removeItem(CONFIG.STORAGE_KEY_LOCATION);
+        
+        try {
+            localStorage.removeItem(CONFIG.STORAGE_KEY_LOCATION);
+            console.log('[Scan] Données localisation supprimées de localStorage');
+        } catch (storageError) {
+            console.error('[Scan] Erreur suppression localStorage:', storageError);
+        }
 
         // Changer le mode
         scannerManager.currentMode = 'localisation';
+        console.log('[Scan] Mode changé en "localisation"');
 
         // Mettre à jour l'UI
-        updateActiveLocationUI();
-        updateHistoryUI();
-        await SyncManager.updatePendingScansBadge();
+        try {
+            updateActiveLocationUI();
+            updateHistoryUI();
+            await SyncManager.updatePendingScansBadge();
+            console.log('[Scan] UI mise à jour');
+        } catch (uiError) {
+            console.error('[Scan] Erreur mise à jour UI:', uiError);
+        }
 
         // Redémarrer le scanner
-        await scannerManager.stop();
-        setTimeout(() => scannerManager.start(), 1000);
+        try {
+            await scannerManager.stop();
+            setTimeout(() => {
+                try {
+                    scannerManager.start();
+                    console.log('[Scan] Scanner redémarré');
+                } catch (startError) {
+                    console.error('[Scan] Erreur redémarrage scanner:', startError);
+                }
+            }, 1000);
+        } catch (stopError) {
+            console.error('[Scan] Erreur arrêt scanner:', stopError);
+        }
 
     } catch (error) {
-        console.error('[Scan] Erreur terminer bureau:', error);
-        showToast(error.message || 'Erreur lors de la fermeture', 'error');
+        console.error('[Scan] Erreur critique terminer bureau:', error);
+        console.error('[Scan] Stack trace:', error.stack);
+        showToast(error.message || 'Erreur lors de la fermeture du bureau', 'error');
         
         // Réactiver le bouton
         const confirmBtn = document.querySelector('#modal-terminer-bureau .btn-primary');
@@ -1921,10 +2320,13 @@ function attachEventListeners() {
     if (navMesLocalisations) {
         navMesLocalisations.addEventListener('click', (e) => {
             e.preventDefault();
+            console.log('[App] Navigation vers Mes Localisations (depuis le menu)');
             showView('mes-localisations');
             loadMesLocalisations();
             if (menuDrawer) menuDrawer.classList.add('hidden');
         });
+    } else {
+        console.warn('[App] Élément nav-mes-localisations introuvable');
     }
 
     const navHistorique = document.getElementById('nav-historique');
@@ -1995,10 +2397,21 @@ function attachEventListeners() {
         });
     }
 
-    // Quick access to localisations
+    // Quick access to localisations (bouton dans la vue scanner)
     const quickAccessLocalisations = document.getElementById('quick-access-localisations');
     if (quickAccessLocalisations) {
         quickAccessLocalisations.addEventListener('click', () => {
+            console.log('[App] Bouton quick-access-localisations cliqué');
+            showView('mes-localisations');
+            loadMesLocalisations();
+        });
+    }
+
+    // Bouton "Voir mes localisations" dans state-no-location
+    const btnVoirLocalisations = document.getElementById('btn-voir-localisations');
+    if (btnVoirLocalisations) {
+        btnVoirLocalisations.addEventListener('click', () => {
+            console.log('[App] Bouton "Voir mes localisations" cliqué');
             showView('mes-localisations');
             loadMesLocalisations();
         });
@@ -2029,53 +2442,110 @@ function attachEventListeners() {
  */
 async function loadInventaire() {
     try {
-        const response = await API.getCurrentInventaire();
+        console.log('[App] Chargement de l\'inventaire...');
+        
+        // Vérifier l'authentification
+        if (!AuthManager.isAuthenticated()) {
+            console.error('[App] Utilisateur non authentifié');
+            showToast('Session expirée, veuillez vous reconnecter', 'error');
+            showView('login');
+            return;
+        }
+
+        let response;
+        try {
+            response = await API.getCurrentInventaire();
+            console.log('[App] Réponse API inventaire:', response);
+        } catch (error) {
+            console.error('[App] Erreur API getCurrentInventaire:', error);
+            showToast('Erreur lors de la récupération de l\'inventaire', 'error');
+            return;
+        }
         
         // Le contrôleur retourne { inventaire: {...}, statistiques: {...} }
         const inventaire = response?.inventaire || response;
+        console.log('[App] Inventaire extrait:', inventaire);
         
         if (!inventaire || !inventaire.id) {
+            console.warn('[App] Aucun inventaire en cours');
             showToast('Aucun inventaire en cours', 'warning');
             return;
         }
 
+        // Validation des données de l'inventaire
+        if (!inventaire.id || !inventaire.annee) {
+            console.error('[App] Données inventaire invalides:', inventaire);
+            showToast('Données d\'inventaire invalides', 'error');
+            return;
+        }
+
         AppState.inventaire = inventaire;
-        localStorage.setItem(CONFIG.STORAGE_KEY_INVENTAIRE, JSON.stringify(inventaire));
         
-        console.log('[App] Inventaire chargé:', inventaire);
+        try {
+            localStorage.setItem(CONFIG.STORAGE_KEY_INVENTAIRE, JSON.stringify(inventaire));
+            console.log('[App] Inventaire sauvegardé dans localStorage');
+        } catch (storageError) {
+            console.error('[App] Erreur sauvegarde localStorage:', storageError);
+            // Ne pas bloquer si localStorage échoue
+        }
+        
+        console.log('[App] Inventaire chargé avec succès:', inventaire.id, inventaire.annee);
 
         // Charger la localisation active si elle existe
-        const savedLocation = localStorage.getItem(CONFIG.STORAGE_KEY_LOCATION);
-        if (savedLocation) {
-            try {
-                const locationData = JSON.parse(savedLocation);
-                AppState.activeLocation = locationData.activeLocation;
-                AppState.localisation = locationData.localisation;
-                AppState.biensAttendus = locationData.biens || [];
-                scannerManager.currentMode = 'bien';
-                updateActiveLocationUI();
-            } catch (error) {
-                console.error('[App] Erreur chargement localisation:', error);
+        try {
+            const savedLocation = localStorage.getItem(CONFIG.STORAGE_KEY_LOCATION);
+            if (savedLocation) {
+                console.log('[App] Localisation sauvegardée trouvée, chargement...');
+                try {
+                    const locationData = JSON.parse(savedLocation);
+                    
+                    // Validation des données
+                    if (locationData.activeLocation && locationData.localisation) {
+                        AppState.activeLocation = locationData.activeLocation;
+                        AppState.localisation = locationData.localisation;
+                        AppState.biensAttendus = Array.isArray(locationData.biens) ? locationData.biens : [];
+                        scannerManager.currentMode = 'bien';
+                        updateActiveLocationUI();
+                        console.log('[App] Localisation active restaurée:', locationData.localisation?.code);
+                    } else {
+                        console.warn('[App] Données localisation invalides, suppression...');
+                        localStorage.removeItem(CONFIG.STORAGE_KEY_LOCATION);
+                    }
+                } catch (parseError) {
+                    console.error('[App] Erreur parsing localisation sauvegardée:', parseError);
+                    // Supprimer les données corrompues
+                    localStorage.removeItem(CONFIG.STORAGE_KEY_LOCATION);
+                }
             }
+        } catch (locationError) {
+            console.error('[App] Erreur chargement localisation sauvegardée:', locationError);
+            // Ne pas bloquer si le chargement de la localisation échoue
         }
 
         // Mettre à jour l'UI
-        const userName = document.getElementById('user-name');
-        const menuUserName = document.getElementById('menu-user-name');
-        const menuUserRole = document.getElementById('menu-user-role');
+        try {
+            const userName = document.getElementById('user-name');
+            const menuUserName = document.getElementById('menu-user-name');
+            const menuUserRole = document.getElementById('menu-user-role');
 
-        if (userName && AppState.user) {
-            userName.textContent = AppState.user.name || AppState.user.email;
-        }
-        if (menuUserName && AppState.user) {
-            menuUserName.textContent = AppState.user.name || AppState.user.email;
-        }
-        if (menuUserRole && AppState.user) {
-            menuUserRole.textContent = AppState.user.role === 'admin' ? 'Administrateur' : 'Agent';
+            if (userName && AppState.user) {
+                userName.textContent = AppState.user.name || AppState.user.email;
+            }
+            if (menuUserName && AppState.user) {
+                menuUserName.textContent = AppState.user.name || AppState.user.email;
+            }
+            if (menuUserRole && AppState.user) {
+                menuUserRole.textContent = AppState.user.role === 'admin' ? 'Administrateur' : 'Agent';
+            }
+            console.log('[App] UI utilisateur mise à jour');
+        } catch (uiError) {
+            console.error('[App] Erreur mise à jour UI utilisateur:', uiError);
+            // Ne pas bloquer si l'UI échoue
         }
 
     } catch (error) {
-        console.error('[App] Erreur chargement inventaire:', error);
+        console.error('[App] Erreur critique chargement inventaire:', error);
+        console.error('[App] Stack trace:', error.stack);
         showToast('Erreur lors du chargement de l\'inventaire', 'error');
     }
 }
@@ -2084,15 +2554,19 @@ async function loadInventaire() {
  * Charge et affiche les localisations assignées à l'utilisateur
  */
 async function loadMesLocalisations() {
+    console.log('[App] loadMesLocalisations() appelée');
     const listDiv = document.getElementById('localisations-list');
     
     if (!listDiv) {
+        console.error('[App] Élément localisations-list introuvable');
         return;
     }
 
     try {
+        console.log('[App] Vérification de l\'inventaire...');
         // Vérifier qu'un inventaire est chargé
         if (!AppState.inventaire || !AppState.inventaire.id) {
+            console.warn('[App] Aucun inventaire chargé');
             listDiv.innerHTML = `
                 <div class="text-center py-12 text-red-500">
                     <svg class="w-16 h-16 mx-auto mb-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2105,12 +2579,20 @@ async function loadMesLocalisations() {
             return;
         }
 
-        listDiv.innerHTML = '<div class="text-center py-8"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div></div>';
+        console.log('[App] Affichage du loader...');
+        listDiv.innerHTML = `
+            <div class="text-center py-8">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                <p class="mt-4 text-gray-600">Chargement de vos localisations...</p>
+            </div>
+        `;
 
+        console.log('[App] Appel API getMesLocalisations pour inventaire:', AppState.inventaire.id);
         const localisations = await API.getMesLocalisations(AppState.inventaire.id);
         
         console.log('[App] Localisations reçues:', localisations);
         console.log('[App] Type:', Array.isArray(localisations) ? 'Array' : typeof localisations);
+        console.log('[App] Nombre de localisations:', localisations?.length || 0);
         console.log('[App] Inventaire ID:', AppState.inventaire?.id);
 
         if (!Array.isArray(localisations)) {
@@ -2122,12 +2604,16 @@ async function loadMesLocalisations() {
                     </svg>
                     <p class="font-semibold">Erreur lors du chargement</p>
                     <p class="text-sm mt-2">Format de réponse inattendu</p>
+                    <button onclick="loadMesLocalisations()" class="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
+                        Réessayer
+                    </button>
                 </div>
             `;
             return;
         }
 
         if (localisations.length === 0) {
+            console.warn('[App] Aucune localisation assignée');
             listDiv.innerHTML = `
                 <div class="text-center py-12 text-gray-500">
                     <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2139,6 +2625,8 @@ async function loadMesLocalisations() {
             `;
             return;
         }
+
+        console.log('[App] Génération des cards pour', localisations.length, 'localisations');
 
         const statusColors = {
             en_attente: 'bg-gray-100 text-gray-700',
@@ -2195,11 +2683,21 @@ async function loadMesLocalisations() {
             `;
         }).join('');
 
+        console.log('[App] Cards générées avec succès');
+
     } catch (error) {
-        console.error('[App] Erreur chargement localisations:', error);
+        console.error('[App] Erreur critique chargement localisations:', error);
+        console.error('[App] Stack trace:', error.stack);
         listDiv.innerHTML = `
             <div class="text-center py-12 text-red-500">
-                <p>Erreur lors du chargement</p>
+                <svg class="w-16 h-16 mx-auto mb-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p class="text-red-600 text-lg mb-2">Erreur de chargement</p>
+                <p class="text-gray-600 text-sm mb-4">${error.message || 'Une erreur est survenue'}</p>
+                <button onclick="loadMesLocalisations()" class="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
+                    Réessayer
+                </button>
             </div>
         `;
     }
@@ -2210,11 +2708,49 @@ async function loadMesLocalisations() {
  * @param {string} code - Code de la localisation
  */
 function activerLocalisation(code) {
+    console.log('[App] Activation localisation:', code);
+    
+    if (!code) {
+        console.error('[App] Code localisation manquant');
+        showToast('Code localisation manquant', 'error');
+        return;
+    }
+    
+    // Retourner à la vue scanner
     showView('scanner');
+    console.log('[App] Vue scanner affichée');
+    
+    // Afficher message à l'utilisateur
     showToast(`Scannez le QR code du bureau ${code}`, 'info');
-    scannerManager.currentMode = 'localisation';
-    if (!scannerManager.isScanning) {
-        scannerManager.start();
+    
+    // Forcer le mode localisation
+    if (scannerManager) {
+        scannerManager.currentMode = 'localisation';
+        console.log('[App] Mode scanner changé en "localisation"');
+        
+        // Redémarrer le scanner si nécessaire
+        if (!scannerManager.isScanning) {
+            console.log('[App] Redémarrage du scanner...');
+            setTimeout(() => {
+                try {
+                    scannerManager.start();
+                    console.log('[App] Scanner redémarré');
+                } catch (error) {
+                    console.error('[App] Erreur redémarrage scanner:', error);
+                }
+            }, 500);
+        } else {
+            console.log('[App] Scanner déjà actif');
+        }
+    } else {
+        console.warn('[App] ScannerManager non initialisé');
+    }
+    
+    // Fermer le menu si ouvert
+    const menuDrawer = document.getElementById('menu-drawer');
+    if (menuDrawer && !menuDrawer.classList.contains('hidden')) {
+        menuDrawer.classList.add('hidden');
+        console.log('[App] Menu fermé');
     }
 }
 
@@ -2225,6 +2761,7 @@ window.activerLocalisation = activerLocalisation;
 window.showTerminerBureauModal = showTerminerBureauModal;
 window.closeTerminerBureauModal = closeTerminerBureauModal;
 window.confirmTerminerBureau = confirmTerminerBureau;
+window.loadMesLocalisations = loadMesLocalisations; // Pour le bouton "Réessayer" dans les erreurs
 
 // ============================================
 // INITIALIZATION

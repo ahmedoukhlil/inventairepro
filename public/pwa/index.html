@@ -217,7 +217,15 @@
                                 </svg>
                             </div>
                             <h3 class="text-lg font-semibold text-gray-800 mb-2">Scannez un bureau pour commencer</h3>
-                            <p class="text-gray-600 text-sm">Pointez votre caméra vers le QR code d'un bureau</p>
+                            <p class="text-gray-600 text-sm mb-4">Pointez votre caméra vers le QR code d'un bureau</p>
+                            
+                            <!-- Bouton pour voir les localisations assignées -->
+                            <button id="btn-voir-localisations" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition inline-flex items-center space-x-2 mt-4">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                                </svg>
+                                <span>Voir mes localisations</span>
+                            </button>
                         </div>
                     </div>
                     
@@ -284,19 +292,35 @@
 
             <!-- Vue: Mes localisations (cachée initialement) -->
             <div id="view-mes-localisations" class="hidden">
-                <div class="mb-4">
-                    <button id="back-to-scanner" class="text-indigo-600 font-semibold flex items-center space-x-1 hover:text-indigo-700">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                        </svg>
-                        <span>Retour au scanner</span>
-                    </button>
+                <!-- Header avec retour -->
+                <div class="bg-white border-b border-gray-200 sticky top-0 z-10 mb-4">
+                    <div class="flex items-center justify-between p-4">
+                        <button id="back-to-scanner" class="flex items-center space-x-2 text-indigo-600 font-semibold hover:text-indigo-700 transition">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                            </svg>
+                            <span>Retour</span>
+                        </button>
+                        <h2 class="text-xl font-bold text-gray-800">Mes Localisations</h2>
+                        <div class="w-16"></div> <!-- Spacer pour centrer le titre -->
+                    </div>
                 </div>
                 
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Mes localisations assignées</h2>
+                <!-- Description -->
+                <div class="p-4 bg-blue-50 border-l-4 border-blue-500 mb-4 mx-4 rounded">
+                    <p class="text-sm text-blue-800">
+                        📍 Voici les bureaux qui vous sont assignés pour cet inventaire.
+                        Scannez le QR code sur la porte de chaque bureau pour commencer.
+                    </p>
+                </div>
                 
-                <div id="localisations-list" class="space-y-4">
-                    <!-- Contenu dynamique -->
+                <!-- Liste des localisations -->
+                <div id="localisations-list" class="space-y-4 p-4">
+                    <!-- Les cards seront générées dynamiquement ici -->
+                    <div class="text-center py-8">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                        <p class="mt-4 text-gray-600">Chargement...</p>
+                    </div>
                 </div>
             </div>
 
