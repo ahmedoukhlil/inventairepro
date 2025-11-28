@@ -1645,10 +1645,10 @@ function showModeBien(localisation, biensAttendus, biensScannés) {
         modeBienDiv.classList.remove('hidden');
     }
     
-    // Mettre à jour le nom du bureau
+    // Mettre à jour le nom du bureau (format simplifié)
     const bureauName = document.getElementById('bureau-actif-name');
     if (bureauName && localisation) {
-        bureauName.textContent = `📦 Bureau : ${localisation.code} - ${localisation.designation}`;
+        bureauName.textContent = `📦 Scannez les biens de ${localisation.code}`;
     }
     
     // Mettre à jour la progression
@@ -1666,7 +1666,7 @@ function updateProgressIndicator(total, scanned) {
     const percent = total > 0 ? Math.round((scanned / total) * 100) : 0;
     
     if (progressText) {
-        progressText.textContent = `${scanned}/${total} biens scannés`;
+        progressText.textContent = `${scanned}/${total} biens`;
     }
     
     if (progressPercent) {
@@ -1726,8 +1726,17 @@ function updateActiveLocationUI() {
     const total = AppState.activeLocation.nombre_biens_attendus || 0;
     const percentage = total > 0 ? Math.round((scanned / total) * 100) : 0;
 
-    if (locationProgress) {
-        locationProgress.textContent = `✓ ${scanned}/${total} biens scannés`;
+    // Mettre à jour la progression dans la carte du bureau actif
+    if (progressText) {
+        progressText.textContent = `${scanned}/${total} biens`;
+    }
+    if (progressPercent) {
+        const percent = total > 0 ? Math.round((scanned / total) * 100) : 0;
+        progressPercent.textContent = `${percent}%`;
+    }
+    if (progressBar) {
+        const percent = total > 0 ? Math.round((scanned / total) * 100) : 0;
+        progressBar.style.width = `${percent}%`;
     }
     if (progressText) {
         progressText.textContent = `${scanned}/${total}`;

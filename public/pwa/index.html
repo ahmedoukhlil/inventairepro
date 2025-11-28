@@ -32,38 +32,24 @@
     <!-- Container principal -->
     <div id="app" class="min-h-screen flex flex-col">
         
-        <!-- Header fixe -->
-        <header class="bg-indigo-600 text-white shadow-lg fixed top-0 left-0 right-0 z-50">
-            <div class="px-4 py-3">
+        <!-- Header simplifié -->
+        <header class="bg-indigo-600 text-white shadow-md fixed top-0 left-0 right-0 z-50">
+            <div class="px-4 py-2.5">
                 <div class="flex items-center justify-between">
-                    <!-- Logo et titre -->
                     <div class="flex items-center space-x-2">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                         </svg>
                         <div>
-                            <h1 class="text-lg font-bold">Inventaire Scanner</h1>
-                            <p class="text-xs text-indigo-200" id="user-name">Chargement...</p>
+                            <h1 class="text-base font-bold">Inventaire Pro</h1>
+                            <p class="text-xs text-indigo-200" id="user-name">Agent</p>
                         </div>
                     </div>
-                    
-                    <!-- Menu dropdown -->
-                    <button id="menu-btn" class="p-2 rounded-lg hover:bg-indigo-700 transition" aria-label="Ouvrir le menu">
+                    <button id="menu-btn" class="p-1.5 rounded-lg hover:bg-indigo-700 transition" aria-label="Menu">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-                </div>
-                
-                <!-- Compteur de progression -->
-                <div id="progress-bar" class="mt-3 hidden">
-                    <div class="flex items-center justify-between text-sm mb-1">
-                        <span id="current-location-name">Aucun bureau actif</span>
-                        <span id="progress-text">0/0</span>
-                    </div>
-                    <div class="w-full bg-indigo-800 rounded-full h-2">
-                        <div id="progress-fill" class="bg-green-400 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-                    </div>
                 </div>
             </div>
         </header>
@@ -188,150 +174,86 @@
             <!-- Vue: Scanner (cachée initialement) -->
             <div id="view-scanner" class="hidden">
                 
-                <!-- Indicateur de mode actif -->
-                <div id="mode-indicator" class="mb-4 p-4 rounded-lg border-2 bg-white">
-                    <div id="mode-localisation">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                                </svg>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="font-bold text-blue-800 text-lg">Mode : Scanner un Bureau</h3>
-                                <p class="text-blue-600 text-sm">📍 Scannez le QR code sur la PORTE d'un bureau</p>
-                            </div>
+                <!-- État simplifié -->
+                <div id="current-state" class="mb-4">
+                    <!-- État: Aucun bureau (Mode Localisation) -->
+                    <div id="state-no-location" class="bg-white rounded-xl shadow-sm p-6 text-center">
+                        <div class="inline-block p-3 bg-blue-100 rounded-full mb-3">
+                            <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                            </svg>
                         </div>
-                    </div>
-                    
-                    <div id="mode-bien" class="hidden">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                </svg>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="font-bold text-green-800 text-lg">Mode : Scanner les Biens</h3>
-                                <p class="text-green-600 text-sm" id="bureau-actif-name">📦 Scannez les biens dans ce bureau</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Progress -->
-                        <div class="mt-3">
-                            <div class="flex justify-between text-sm text-gray-600 mb-1">
-                                <span id="progress-text">0/0 biens scannés</span>
-                                <span id="progress-percent">0%</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-3">
-                                <div id="progress-bar" class="bg-green-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        
-                        <!-- Bouton terminer -->
-                        <button id="btn-terminer-bureau-top" class="w-full mt-3 bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition">
-                            ✓ Terminer ce bureau
+                        <h3 class="text-lg font-semibold text-gray-800 mb-1">Scanner un bureau</h3>
+                        <p class="text-gray-500 text-sm mb-4">Scannez le QR code sur la porte</p>
+                        <button id="btn-voir-localisations" class="text-indigo-600 text-sm font-medium hover:text-indigo-700">
+                            Voir mes localisations →
                         </button>
                     </div>
-                </div>
-                
-                <!-- Bouton d'accès rapide aux localisations -->
-                <div class="mb-4">
-                    <button id="quick-access-localisations" class="w-full bg-indigo-50 border-2 border-indigo-200 text-indigo-700 rounded-xl p-4 flex items-center justify-between hover:bg-indigo-100 transition">
-                        <div class="flex items-center space-x-3">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <div class="text-left">
-                                <p class="font-semibold">Mes localisations assignées</p>
-                                <p class="text-sm text-indigo-600">Voir toutes mes localisations</p>
-                            </div>
-                        </div>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                    </button>
-                </div>
-                
-                <!-- État actuel / Bureau actif -->
-                <div id="current-state" class="mb-4">
-                    <!-- État: Aucun bureau -->
-                    <div id="state-no-location" class="bg-white rounded-xl shadow-lg p-6">
-                        <div class="text-center">
-                            <div class="inline-block p-4 bg-blue-100 rounded-full mb-4">
-                                <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                </svg>
-                            </div>
-                            <h3 class="text-lg font-semibold text-gray-800 mb-2">Scannez un bureau pour commencer</h3>
-                            <p class="text-gray-600 text-sm mb-4">Pointez votre caméra vers le QR code d'un bureau</p>
-                            
-                            <!-- Bouton pour voir les localisations assignées -->
-                            <button id="btn-voir-localisations" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition inline-flex items-center space-x-2 mt-4">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                                </svg>
-                                <span>Voir mes localisations</span>
-                            </button>
-                        </div>
-                    </div>
                     
-                    <!-- État: Bureau actif -->
-                    <div id="state-active-location" class="hidden bg-indigo-600 text-white rounded-xl shadow-lg p-6">
-                        <div class="flex items-start justify-between">
+                    <!-- État: Bureau actif (Mode Bien) -->
+                    <div id="state-active-location" class="hidden bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl shadow-lg p-5">
+                        <div class="flex items-center justify-between mb-3">
                             <div class="flex-1">
-                                <div class="flex items-center space-x-2 mb-2">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                    </svg>
-                                    <span class="text-sm font-medium">Bureau actif</span>
-                                </div>
-                                <h3 id="active-location-name" class="text-xl font-bold mb-1">-</h3>
-                                <p id="active-location-details" class="text-indigo-200 text-sm">-</p>
-                                <div class="mt-3 flex items-center space-x-4 text-sm">
-                                    <span id="active-location-progress">✓ 0/0 biens scannés</span>
-                                </div>
+                                <p class="text-xs text-indigo-200 mb-1">Bureau actif</p>
+                                <h3 id="active-location-name" class="text-lg font-bold">-</h3>
+                                <p id="active-location-details" class="text-xs text-indigo-200 mt-1">-</p>
                             </div>
-                            <button id="btn-terminer-bureau" class="bg-white text-indigo-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-50 transition">
+                            <button id="btn-terminer-bureau" class="bg-white text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-50">
                                 Terminer
                             </button>
+                        </div>
+                        
+                        <!-- Progression simplifiée -->
+                        <div class="mt-3">
+                            <div class="flex justify-between text-xs mb-1.5">
+                                <span id="progress-text" class="text-indigo-100">0/0 biens</span>
+                                <span id="progress-percent" class="text-indigo-100 font-semibold">0%</span>
+                            </div>
+                            <div class="w-full bg-indigo-800 rounded-full h-2">
+                                <div id="progress-bar" class="bg-white h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Indicateur de mode simplifié (pour le mode bien uniquement) -->
+                <div id="mode-indicator" class="mb-4">
+                    <div id="mode-localisation" class="hidden"></div>
+                    <div id="mode-bien" class="hidden">
+                        <div class="bg-green-50 border-l-4 border-green-500 p-3 rounded">
+                            <p class="text-sm text-green-800 font-medium" id="bureau-actif-name">📦 Scannez les biens de ce bureau</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Zone Scanner -->
-                <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-4">
-                    <div id="qr-reader" class="w-full" style="min-height: 300px;"></div>
-                    <div id="scanner-status" class="p-4 text-center">
-                        <button id="start-scanner-btn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition">
-                            📷 Activer la caméra
+                <!-- Zone Scanner simplifiée -->
+                <div class="bg-black rounded-xl overflow-hidden mb-4">
+                    <div id="qr-reader" class="w-full" style="min-height: 280px;"></div>
+                    <div id="scanner-status" class="p-3 text-center bg-gray-900">
+                        <button id="start-scanner-btn" class="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition">
+                            Activer la caméra
                         </button>
-                        <p id="scanner-message" class="text-gray-600 text-sm mt-2">Prêt à scanner</p>
                     </div>
                 </div>
 
                 <!-- Zone résultat scan (cachée par défaut) -->
-                <div id="scan-result" class="hidden bg-white rounded-xl shadow-lg p-6 mb-4">
+                <div id="scan-result" class="hidden bg-white rounded-lg shadow-sm p-4 mb-4">
                     <!-- Contenu dynamique inséré par JS -->
                 </div>
 
-                <!-- Historique des scans (collapsible) -->
-                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                    <button id="toggle-history" class="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition">
+                <!-- Historique simplifié -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <button id="toggle-history" class="w-full p-3 flex items-center justify-between hover:bg-gray-50 transition text-sm">
+                        <span class="text-gray-700 font-medium">Historique</span>
                         <div class="flex items-center space-x-2">
-                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <span id="history-count" class="bg-indigo-100 text-indigo-600 text-xs font-semibold px-2 py-0.5 rounded-full">0</span>
+                            <svg id="history-chevron" class="w-4 h-4 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
-                            <span class="font-semibold text-gray-800">Derniers scans</span>
-                            <span id="history-count" class="bg-gray-200 text-gray-700 text-xs font-bold px-2 py-1 rounded-full">0</span>
                         </div>
-                        <svg id="history-chevron" class="w-5 h-5 text-gray-600 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
                     </button>
-                    <div id="history-content" class="hidden border-t border-gray-200">
-                        <div id="history-list" class="divide-y divide-gray-200 max-h-96 overflow-y-auto">
+                    <div id="history-content" class="hidden border-t border-gray-100">
+                        <div id="history-list" class="divide-y divide-gray-100 max-h-64 overflow-y-auto">
                             <!-- Contenu dynamique -->
                         </div>
                     </div>
