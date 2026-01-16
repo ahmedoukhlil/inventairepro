@@ -18,170 +18,183 @@
         .page {
             width: 100%;
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(4, 1fr);
-            gap: 5mm;
+            grid-template-columns: repeat(4, 50mm); /* 4 colonnes de 50mm */
+            grid-template-rows: repeat(10, 20mm);   /* 10 lignes de 20mm */
+            gap: 2mm;
             page-break-after: always;
         }
         .etiquette {
-            width: 70mm;
-            height: 37mm;
-            padding: 2mm;
-            border: 2px solid #000;
+            width: 50mm;
+            height: 20mm;
+            padding: 0;
+            border: 0;
             page-break-inside: avoid;
             box-sizing: border-box;
             margin: 0;
-        }
-        .content-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 1mm;
-        }
-        .content-table td {
-            vertical-align: top;
-            padding: 0;
-        }
-        .qr-container {
-            width: 25mm;
-            height: 25mm;
-            border: 1px solid #ddd;
-            padding: 0.5mm;
-            background: #fff;
-            text-align: center;
-        }
-        .qr-container img {
-            width: 24mm;
-            height: 24mm;
-            object-fit: contain;
-            display: block;
-            margin: 0 auto;
-        }
-        .info-section {
-            padding-left: 2mm;
-            width: auto;
-        }
-        .code-inventaire {
-            font-size: 12pt;
-            font-weight: bold;
-            text-align: left;
-            color: #000;
-            letter-spacing: 0.5pt;
-            line-height: 1.2;
-            margin-bottom: 1mm;
-            word-break: break-all;
-        }
-        .designation {
-            font-size: 8pt;
-            text-align: left;
-            margin-bottom: 1mm;
-            line-height: 1.2;
-            max-height: 10mm;
-            overflow: hidden;
-            font-weight: 500;
-        }
-        .info-row {
             display: flex;
-            justify-content: space-between;
-            font-size: 6pt;
-            margin-bottom: 0.3mm;
-            line-height: 1.1;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
         }
-        .info-label {
-            color: #666;
-            font-weight: normal;
-            margin-right: 2mm;
-        }
-        .info-value {
-            color: #000;
-            font-weight: 500;
-            text-align: right;
-            flex: 1;
-        }
-        .footer {
-            border-top: 1px solid #ddd;
-            padding-top: 0.5mm;
-            margin-top: 1mm;
-            font-size: 6pt;
-            color: #666;
-            text-align: center;
+        .barcode-wrapper {
             width: 100%;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1mm 2mm;
+            overflow: hidden;
+            min-height: 12.7mm; /* Hauteur minimale Code 128 */
+        }
+        .barcode-container {
+            width: 100%;
+            min-width: 37.3mm; /* Largeur minimale Code 128 */
+            max-width: 100%;
+            text-align: center;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .code-text {
+            width: 100%;
+            text-align: center;
+            font-size: 6pt;
+            font-weight: normal;
+            font-family: 'Courier New', monospace;
+            color: #000;
+            padding: 0.5mm 0;
+            letter-spacing: 0.2pt;
+            line-height: 1.2;
+        }
+        svg {
+            width: 100% !important;
+            min-width: 37.3mm !important; /* Largeur minimale Code 128 */
+            height: auto !important;
+            min-height: 12.7mm !important; /* Hauteur minimale Code 128 */
+            max-width: 100% !important;
+            max-height: 100% !important;
+            display: block;
+        }
+        /* Styles pour le code-barres HTML */
+        table {
+            margin: 0 auto !important;
+            width: auto !important;
+            max-width: 100% !important;
+            border-collapse: collapse !important;
+        }
+        table td {
+            padding: 0 !important;
+            border: 0 !important;
+            margin: 0 !important;
+        }
+        div[style*="display: inline-block"] {
+            display: inline-block !important;
         }
     </style>
 </head>
 <body>
     @php
-        $biensChunked = $biens->chunk(12);
+        $biensChunked = $biens->chunk(10);
     @endphp
     
     @foreach($biensChunked as $chunk)
         <div class="page">
             @foreach($chunk as $bien)
                 <div class="etiquette">
-                    <table class="content-table">
-                        <tr>
-                            <td style="width: 25mm;">
-                                <div class="qr-container">
-                                    @if($bien->qr_code_path && Storage::disk('public')->exists($bien->qr_code_path))
-                                        @if(str_ends_with($bien->qr_code_path, '.svg'))
-                                            @php
-                                                $svgPath = storage_path('app/public/' . $bien->qr_code_path);
-                                                $svgContent = file_get_contents($svgPath);
-                                                // Nettoyer et ajuster le SVG pour DomPDF
-                                                $svgContent = preg_replace('/width="[^"]*"/', '', $svgContent);
-                                                $svgContent = preg_replace('/height="[^"]*"/', '', $svgContent);
-                                                // Convertir en base64 pour une meilleure compatibilité avec DomPDF
-                                                $base64Svg = base64_encode($svgContent);
-                                            @endphp
-                                            <img src="data:image/svg+xml;base64,{{ $base64Svg }}" alt="QR Code" style="width: 24mm; height: 24mm; object-fit: contain; display: block;">
-                                        @else
-                                            <img src="{{ public_path('storage/' . $bien->qr_code_path) }}" alt="QR Code" style="width: 24mm; height: 24mm; object-fit: contain;">
-                                        @endif
-                                    @else
-                                        <div style="width: 100%; height: 100%; background: #f0f0f0; padding: 5mm 0; text-align: center;">
-                                            <span style="color: #999; font-size: 6pt;">QR Code<br>non disponible</span>
-                                        </div>
-                                    @endif
-                                </div>
-                            </td>
-                            <td>
-                                <div class="info-section">
-                                    <div class="code-inventaire">{{ $bien->code_inventaire }}</div>
-                                    <div class="designation">{{ Str::limit($bien->designation, 50) }}</div>
+                    @if($bien->code && $bien->code->barcode)
+                        {{-- Code-barres centré --}}
+                        <div class="barcode-wrapper">
+                            <div class="barcode-container">
+                                @php
+                                    $barcodeData = $bien->code->barcode;
                                     
-                                    <div>
-                                        @if($bien->localisation)
-                                            <div class="info-row">
-                                                <span class="info-label">Localisation:</span>
-                                                <span class="info-value">{{ $bien->localisation->code }}</span>
-                                            </div>
-                                        @endif
-                                        
-                                        @if($bien->nature)
-                                            <div class="info-row">
-                                                <span class="info-label">Nature:</span>
-                                                <span class="info-value">{{ $bien->nature }}</span>
-                                            </div>
-                                        @endif
-                                        
-                                        @if($bien->date_acquisition)
-                                            <div class="info-row">
-                                                <span class="info-label">Date:</span>
-                                                <span class="info-value">{{ $bien->date_acquisition->format('d/m/Y') }}</span>
-                                            </div>
-                                        @endif
+                                    // Vérifier le format : HTML (divs/table), SVG, chemin de fichier, ou base64 PNG
+                                    if (str_starts_with($barcodeData, '<div') || str_starts_with($barcodeData, '<table')) {
+                                        // HTML généré par BarcodeGeneratorHTML (format principal)
+                                        $htmlContent = $barcodeData;
+                                    } elseif (str_starts_with($barcodeData, '<svg') || str_starts_with($barcodeData, '<?xml')) {
+                                        // SVG
+                                        $svgContent = $barcodeData;
+                                        $svgContent = preg_replace('/width="[^"]*"/', '', $svgContent);
+                                        $svgContent = preg_replace('/height="[^"]*"/', '', $svgContent);
+                                        if (!str_contains($svgContent, 'style=')) {
+                                            $svgContent = preg_replace('/<svg/', '<svg style="width: 100%; height: auto; max-width: 100%; display: block;"', $svgContent, 1);
+                                        }
+                                    } elseif (str_contains($barcodeData, '/') && !str_starts_with($barcodeData, '/9j/') && !str_starts_with($barcodeData, 'iVBORw0KGgo')) {
+                                        // Probablement un chemin de fichier
+                                        $imagePath = public_path('storage/' . $barcodeData);
+                                    } else {
+                                        // Base64 PNG
+                                        $base64Image = $barcodeData;
+                                    }
+                                @endphp
+                                
+                                @if(isset($htmlContent))
+                                    <div style="width: 100%; text-align: center; overflow: hidden;">
+                                        {!! $htmlContent !!}
                                     </div>
-                                </div>
-                            </td>
-                        </tr>
-                    </table>
-                    
-                    <div class="footer">
-                        {{ config('app.name', 'Inventaire Pro') }} - {{ now()->format('Y') }}
-                    </div>
+                                @elseif(isset($svgContent))
+                                    @php
+                                        // Nettoyer et optimiser le SVG pour DomPDF
+                                        $svgContent = preg_replace('/width="[^"]*"/', '', $svgContent);
+                                        $svgContent = preg_replace('/height="[^"]*"/', '', $svgContent);
+                                        
+                                        // Ajouter viewBox si absent
+                                        if (!preg_match('/viewBox=/', $svgContent)) {
+                                            if (preg_match('/width="([^"]*)"/', $barcodeData, $widthMatch) && 
+                                                preg_match('/height="([^"]*)"/', $barcodeData, $heightMatch)) {
+                                                $width = floatval($widthMatch[1]);
+                                                $height = floatval($heightMatch[1]);
+                                                $svgContent = preg_replace('/<svg/', '<svg viewBox="0 0 ' . $width . ' ' . $height . '"', $svgContent, 1);
+                                            } else {
+                                                $svgContent = preg_replace('/<svg/', '<svg viewBox="0 0 200 40"', $svgContent, 1);
+                                            }
+                                        }
+                                        
+                                        // Ajouter preserveAspectRatio
+                                        if (!preg_match('/preserveAspectRatio=/', $svgContent)) {
+                                            $svgContent = preg_replace('/<svg/', ' preserveAspectRatio="xMidYMid meet"', $svgContent, 1);
+                                        }
+                                        
+                                        // Ajouter les styles
+                                        if (!str_contains($svgContent, 'style=')) {
+                                            $svgContent = preg_replace('/<svg/', '<svg style="width: 100%; height: auto; max-width: 100%; display: block; margin: 0 auto;"', $svgContent, 1);
+                                        } else {
+                                            $svgContent = preg_replace('/style="([^"]*)"/', 'style="$1 width: 100%; height: auto; max-width: 100%; display: block; margin: 0 auto;"', $svgContent, 1);
+                                        }
+                                    @endphp
+                                    <div style="width: 100%; display: flex; align-items: center; justify-content: center;">
+                                        {!! $svgContent !!}
+                                    </div>
+                                @elseif(isset($imagePath) && file_exists($imagePath))
+                                    <img src="{{ $imagePath }}" alt="Code-barres Code 128" style="width: 100%; height: auto; max-height: 100%; object-fit: contain; display: block;">
+                                @elseif(isset($base64Image))
+                                    <img src="data:image/png;base64,{{ $base64Image }}" alt="Code-barres Code 128" style="width: 100%; height: auto; max-height: 100%; object-fit: contain; display: block;">
+                                @else
+                                    <div style="text-align: center; color: #999; font-size: 10pt;">
+                                        Code-barres non disponible
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                        
+                        {{-- Code en texte clair en bas --}}
+                        <div class="code-text">
+                            {{ $bien->code_formate ?? '' }}
+                        </div>
+                    @else
+                        <div style="text-align: center; color: #999; font-size: 10pt; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <div>Code-barres non disponible</div>
+                            <div class="code-text" style="margin-top: 2mm;">
+                                {{ $bien->code_formate ?? $bien->NumOrdre }}
+                            </div>
+                        </div>
+                    @endif
                 </div>
             @endforeach
         </div>
     @endforeach
 </body>
 </html>
-

@@ -2,170 +2,89 @@
 
 namespace App\Livewire\Biens;
 
-use App\Models\Bien;
+use App\Models\Gesimmo;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class DetailBien extends Component
 {
     /**
-     * Instance du bien
+     * Instance de l'immobilisation
      */
-    public Bien $bien;
+    public Gesimmo $bien;
 
     /**
      * Initialisation du composant
      * 
-     * @param Bien $bien
+     * @param Gesimmo $bien
      */
-    public function mount(Bien $bien): void
+    public function mount(Gesimmo $bien): void
     {
-        // Eager load des relations nécessaires
+        // Eager load des relations nécessaires (sans 'code' car généré côté client)
         $this->bien = $bien->load([
-            'localisation',
-            'user',
-            'inventaireScans.inventaire',
-            'inventaireScans.agent',
-            'inventaireScans.localisationReelle',
+            'designation.categorie',
+            'categorie',
+            'etat',
+            'emplacement.localisation',
+            'emplacement.affectation',
+            'natureJuridique',
+            'sourceFinancement',
         ]);
     }
 
     /**
-     * Propriété calculée : Retourne l'historique des scans
+     * Propriété calculée : Calcule l'âge de l'immobilisation en années
      * 
-     * @return \Illuminate\Database\Eloquent\Collection
+     * @return int|null
      */
-    public function getHistoriqueScansProperty()
+    public function getAgeProperty(): ?int
     {
-        return $this->bien->inventaireScans()
-            ->with(['inventaire', 'agent', 'localisationReelle'])
-            ->orderBy('date_scan', 'desc')
-            ->limit(10)
-            ->get();
-    }
-
-    /**
-     * Propriété calculée : Calcule l'âge du bien en années
-     * 
-     * @return int
-     */
-    public function getAgeProperty(): int
-    {
-        return $this->bien->age;
-    }
-
-    /**
-     * Propriété calculée : Retourne le nombre total de scans
-     * 
-     * @return int
-     */
-    public function getNombreScansProperty(): int
-    {
-        return $this->bien->inventaireScans()->count();
-    }
-
-    /**
-     * Propriété calculée : Retourne le dernier scan
-     * 
-     * @return \App\Models\InventaireScan|null
-     */
-    public function getDernierScanProperty()
-    {
-        return $this->bien->inventaireScans()
-            ->with(['inventaire', 'agent'])
-            ->orderBy('date_scan', 'desc')
-            ->first();
-    }
-
-    /**
-     * Propriété calculée : Calcule le taux de présence (% fois trouvé)
-     * 
-     * @return float
-     */
-    public function getTauxPresenceProperty(): float
-    {
-        $totalScans = $this->bien->inventaireScans()->count();
+        // DateAcquisition contient l'année (ex: 2019)
+        if (!$this->bien->DateAcquisition || $this->bien->DateAcquisition <= 1970) {
+            return null;
+        }
         
-        if ($totalScans === 0) {
-            return 0;
-        }
-
-        $scansPresents = $this->bien->inventaireScans()
-            ->where('statut_scan', 'present')
-            ->count();
-
-        return round(($scansPresents / $totalScans) * 100, 1);
+        $age = now()->year - $this->bien->DateAcquisition;
+        
+        // Ne retourner que si l'âge est positif et raisonnable (< 100 ans)
+        return ($age > 0 && $age < 100) ? $age : null;
     }
 
     /**
-     * Propriété calculée : Retourne les mouvements (changements de localisation)
+     * Propriété calculée : Retourne le code d'immobilisation formaté
      * 
-     * @return \Illuminate\Support\Collection
+     * @return string
      */
-    public function getMouvementsProperty()
+    public function getCodeFormateProperty(): string
     {
-        $scans = $this->bien->inventaireScans()
-            ->with(['localisationReelle'])
-            ->whereNotNull('localisation_reelle_id')
-            ->orderBy('date_scan', 'desc')
-            ->get();
-
-        $mouvements = collect();
-        $derniereLocalisation = $this->bien->localisation_id;
-
-        foreach ($scans as $scan) {
-            if ($scan->localisation_reelle_id !== $derniereLocalisation) {
-                $mouvements->push([
-                    'date' => $scan->date_scan,
-                    'ancienne_localisation_id' => $derniereLocalisation,
-                    'nouvelle_localisation_id' => $scan->localisation_reelle_id,
-                    'localisation' => $scan->localisationReelle,
-                    'commentaire' => $scan->commentaire,
-                    'inventaire' => $scan->inventaire,
-                ]);
-                $derniereLocalisation = $scan->localisation_reelle_id;
-            }
-        }
-
-        return $mouvements;
+        return $this->bien->code_formate ?? '';
     }
 
-    /**
-     * Génère le QR code du bien
-     */
-    public function genererQRCode(): void
-    {
-        try {
-            $this->bien->generateQRCode();
-            $this->bien->refresh();
-            session()->flash('success', 'QR code généré avec succès');
-        } catch (\Exception $e) {
-            session()->flash('error', 'Erreur lors de la génération du QR code: ' . $e->getMessage());
-        }
-    }
 
     /**
-     * Télécharge l'étiquette
+     * Lance l'impression de l'étiquette
      */
     public function telechargerEtiquette()
     {
-        return redirect()->route('biens.etiquette', $this->bien);
+        // L'URL sera ouverte dans une nouvelle fenêtre avec JavaScript
+        // et l'impression sera lancée automatiquement
+        $this->dispatch('print-etiquette', url: route('biens.etiquette', $this->bien));
     }
 
     /**
-     * Supprime le bien
+     * Supprime l'immobilisation
      */
     public function supprimer()
     {
         // Vérifier que l'utilisateur est admin
         if (!Auth::user()->isAdmin()) {
-            session()->flash('error', 'Vous n\'avez pas les permissions nécessaires pour supprimer un bien.');
+            session()->flash('error', 'Vous n\'avez pas les permissions nécessaires pour supprimer une immobilisation.');
             return;
         }
 
         try {
             $this->bien->delete();
-            session()->flash('success', 'Le bien a été supprimé avec succès.');
+            session()->flash('success', 'L\'immobilisation a été supprimée avec succès.');
             return $this->redirect(route('biens.index'));
         } catch (\Exception $e) {
             session()->flash('error', 'Erreur lors de la suppression: ' . $e->getMessage());

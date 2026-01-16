@@ -1,25 +1,6 @@
 <div>
     @php
         $isAdmin = auth()->user()->isAdmin();
-        $natures = [
-            'mobilier' => ['label' => 'Mobilier', 'color' => 'bg-blue-100 text-blue-800'],
-            'informatique' => ['label' => 'Informatique', 'color' => 'bg-purple-100 text-purple-800'],
-            'vehicule' => ['label' => 'Véhicule', 'color' => 'bg-yellow-100 text-yellow-800'],
-            'materiel' => ['label' => 'Matériel', 'color' => 'bg-green-100 text-green-800'],
-        ];
-        $etats = [
-            'neuf' => ['label' => 'Neuf', 'color' => 'bg-green-100 text-green-800'],
-            'bon' => ['label' => 'Bon', 'color' => 'bg-green-100 text-green-800'],
-            'moyen' => ['label' => 'Moyen', 'color' => 'bg-yellow-100 text-yellow-800'],
-            'mauvais' => ['label' => 'Mauvais', 'color' => 'bg-red-100 text-red-800'],
-            'reforme' => ['label' => 'Réformé', 'color' => 'bg-gray-100 text-gray-800'],
-        ];
-        $statutsScan = [
-            'present' => ['label' => 'Présent', 'color' => 'bg-green-100 text-green-800', 'icon' => 'check-circle'],
-            'deplace' => ['label' => 'Déplacé', 'color' => 'bg-yellow-100 text-yellow-800', 'icon' => 'arrow-right-circle'],
-            'absent' => ['label' => 'Absent', 'color' => 'bg-red-100 text-red-800', 'icon' => 'x-circle'],
-            'deteriore' => ['label' => 'Détérioré', 'color' => 'bg-orange-100 text-orange-800', 'icon' => 'exclamation-circle'],
-        ];
     @endphp
 
     {{-- Header avec breadcrumb et actions --}}
@@ -47,7 +28,7 @@
                         <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                         </svg>
-                        <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">{{ $bien->code_inventaire }}</span>
+                        <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">{{ $bien->NumOrdre }}</span>
                     </div>
                 </li>
             </ol>
@@ -56,14 +37,16 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                    {{ $bien->code_inventaire }}
-                    @if(isset($natures[$bien->nature]))
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ $natures[$bien->nature]['color'] }}">
-                            {{ $natures[$bien->nature]['label'] }}
+                    {{ $bien->code_formate ?? 'NumOrdre: ' . $bien->NumOrdre }}
+                    @if($bien->categorie)
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                            {{ $bien->categorie->Categorie }}
                         </span>
                     @endif
                 </h1>
-                <p class="mt-1 text-sm text-gray-500">{{ $bien->designation }}</p>
+                <p class="mt-1 text-sm text-gray-500">
+                    {{ $bien->designation ? $bien->designation->designation : 'N/A' }}
+                </p>
             </div>
             
             <div class="flex flex-wrap items-center gap-2">
@@ -88,12 +71,14 @@
                 @endif
 
                 <button 
-                    wire:click="telechargerEtiquette"
+                    id="btn-print-etiquette-{{ $bien->NumOrdre }}"
+                    data-bien-id="{{ $bien->NumOrdre }}"
+                    data-code-value="{{ $bien->code_formate ?? '' }}"
                     class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
-                    Télécharger étiquette
+                    Imprimer étiquette
                 </button>
 
                 @if($isAdmin)
@@ -121,228 +106,194 @@
                 
                 <div class="space-y-4">
                     <div>
-                        <h3 class="text-lg font-medium text-gray-900 mb-2">{{ $bien->designation }}</h3>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">
+                            {{ $bien->designation ? $bien->designation->designation : 'N/A' }}
+                        </h3>
                     </div>
 
                     <div class="flex flex-wrap gap-2">
-                        @if(isset($natures[$bien->nature]))
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ $natures[$bien->nature]['color'] }}">
-                                {{ $natures[$bien->nature]['label'] }}
+                        @if($bien->categorie)
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                {{ $bien->categorie->Categorie }}
                             </span>
                         @endif
-                        @if(isset($etats[$bien->etat]))
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ $etats[$bien->etat]['color'] }}">
-                                {{ $etats[$bien->etat]['label'] }}
+                        @if($bien->etat)
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                {{ $bien->etat->Etat }}
+                            </span>
+                        @endif
+                        @if($bien->natureJuridique)
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                                {{ $bien->natureJuridique->NatJur }}
                             </span>
                         @endif
                     </div>
 
                     <div class="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
                         <div>
-                            <p class="text-sm text-gray-500">Date d'acquisition</p>
+                            <p class="text-sm text-gray-500">Année d'acquisition</p>
                             <p class="text-sm font-medium text-gray-900">
-                                {{ $bien->date_acquisition->format('d/m/Y') }}
-                                <span class="text-gray-500">(Il y a {{ $this->age }} an{{ $this->age > 1 ? 's' : '' }})</span>
+                                @if($bien->DateAcquisition && $bien->DateAcquisition > 1970)
+                                    {{ $bien->DateAcquisition }}
+                                    @if($this->age && $this->age > 0)
+                                        <span class="text-gray-500">({{ $this->age }} an{{ $this->age > 1 ? 's' : '' }})</span>
+                                    @endif
+                                @else
+                                    <span class="text-gray-400">Non renseignée</span>
+                                @endif
                             </p>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500">Valeur d'acquisition</p>
+                            <p class="text-sm text-gray-500">Numéro d'ordre</p>
                             <p class="text-2xl font-bold text-indigo-600">
-                                {{ number_format($bien->valeur_acquisition, 0, ',', ' ') }} MRU
+                                {{ $bien->NumOrdre }}
                             </p>
                         </div>
                     </div>
 
                     <div class="pt-4 border-t border-gray-200">
-                        <p class="text-sm text-gray-500 mb-2">Code inventaire</p>
+                        <p class="text-sm text-gray-500 mb-2">Code d'immobilisation</p>
                         <div class="flex items-center gap-2">
-                            <code class="px-3 py-2 bg-gray-100 rounded-lg text-sm font-mono">{{ $bien->code_inventaire }}</code>
-                            <button 
-                                onclick="navigator.clipboard.writeText('{{ $bien->code_inventaire }}'); alert('Code copié !');"
-                                class="p-2 text-gray-500 hover:text-gray-700 transition-colors"
-                                title="Copier">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                </svg>
-                            </button>
+                            <code class="px-3 py-2 bg-gray-100 rounded-lg text-sm font-mono">{{ $bien->code_formate ?? 'N/A' }}</code>
+                            @if($bien->code_formate)
+                                <button 
+                                    onclick="navigator.clipboard.writeText('{{ $bien->code_formate }}'); alert('Code copié !');"
+                                    class="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+                                    title="Copier">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                </button>
+                            @endif
                         </div>
                     </div>
                 </div>
             </div>
 
-            {{-- Card 2 : Localisation --}}
+            {{-- Card 2 : Emplacement et Localisation --}}
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Localisation</h2>
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Emplacement</h2>
                 
-                @if($bien->localisation)
+                @if($bien->emplacement)
                     <div class="space-y-3">
                         <div>
-                            <p class="text-sm text-gray-500">Code et désignation</p>
+                            <p class="text-sm text-gray-500">Emplacement</p>
                             <p class="text-lg font-medium text-gray-900">
-                                {{ $bien->localisation->code }} - {{ $bien->localisation->designation }}
+                                {{ $bien->emplacement->Emplacement }}
                             </p>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            @if($bien->localisation->batiment)
-                                <div>
-                                    <p class="text-sm text-gray-500">Bâtiment</p>
-                                    <p class="text-sm font-medium text-gray-900">{{ $bien->localisation->batiment }}</p>
-                                </div>
-                            @endif
-                            @if($bien->localisation->etage)
-                                <div>
-                                    <p class="text-sm text-gray-500">Étage</p>
-                                    <p class="text-sm font-medium text-gray-900">{{ $bien->localisation->etage }}</p>
-                                </div>
+                            @if($bien->emplacement->CodeEmplacement)
+                                <p class="text-sm text-gray-500 mt-1">Code: {{ $bien->emplacement->CodeEmplacement }}</p>
                             @endif
                         </div>
 
-                        <div>
-                            <p class="text-sm text-gray-500">Service usager</p>
-                            <p class="text-sm font-medium text-gray-900">{{ $bien->service_usager }}</p>
-                        </div>
-
-                        @if($bien->localisation->responsable)
-                            <div>
-                                <p class="text-sm text-gray-500">Responsable</p>
-                                <p class="text-sm font-medium text-gray-900">{{ $bien->localisation->responsable }}</p>
+                        @if($bien->emplacement->localisation)
+                            <div class="pt-3 border-t border-gray-200">
+                                <p class="text-sm text-gray-500 mb-1">Localisation</p>
+                                <p class="text-sm font-medium text-gray-900">
+                                    {{ $bien->emplacement->localisation->Localisation }}
+                                </p>
+                                @if($bien->emplacement->localisation->CodeLocalisation)
+                                    <p class="text-xs text-gray-500 mt-1">Code: {{ $bien->emplacement->localisation->CodeLocalisation }}</p>
+                                @endif
                             </div>
                         @endif
 
-                        <div class="pt-4 border-t border-gray-200">
-                            <a 
-                                href="{{ route('localisations.show', $bien->localisation) }}"
-                                class="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-800">
-                                Voir la fiche localisation
-                                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                            </a>
-                        </div>
+                        @if($bien->emplacement->affectation)
+                            <div class="pt-3 border-t border-gray-200">
+                                <p class="text-sm text-gray-500 mb-1">Affectation</p>
+                                <p class="text-sm font-medium text-gray-900">
+                                    {{ $bien->emplacement->affectation->Affectation }}
+                                </p>
+                                @if($bien->emplacement->affectation->CodeAffectation)
+                                    <p class="text-xs text-gray-500 mt-1">Code: {{ $bien->emplacement->affectation->CodeAffectation }}</p>
+                                @endif
+                            </div>
+                        @endif
                     </div>
                 @else
-                    <p class="text-sm text-gray-500">Localisation non définie</p>
+                    <p class="text-sm text-gray-500 italic">Aucun emplacement assigné</p>
                 @endif
             </div>
 
-            {{-- Card 3 : Observation --}}
+            {{-- Card 3 : Observations --}}
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Observation</h2>
-                @if($bien->observation)
-                    <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ $bien->observation }}</p>
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Observations</h2>
+                @if($bien->Observations)
+                    <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ $bien->Observations }}</p>
                 @else
                     <p class="text-sm text-gray-500 italic">Aucune observation</p>
                 @endif
-            </div>
-
-            {{-- Card 4 : Informations système --}}
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Informations système</h2>
-                
-                <div class="space-y-3">
-                    <div>
-                        <p class="text-sm text-gray-500">Enregistré par</p>
-                        <p class="text-sm font-medium text-gray-900">
-                            {{ $bien->user->name ?? 'N/A' }}
-                            <span class="text-gray-500">le {{ $bien->created_at->format('d/m/Y à H:i') }}</span>
-                        </p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500">Dernière modification</p>
-                        <p class="text-sm font-medium text-gray-900">{{ $bien->updated_at->format('d/m/Y à H:i') }}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500">Statut</p>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $bien->deleted_at ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
-                            {{ $bien->deleted_at ? 'Réformé' : 'Actif' }}
-                        </span>
-                    </div>
-                </div>
             </div>
         </div>
 
         {{-- Colonne droite (40%) --}}
         <div class="lg:col-span-2 space-y-6">
-            {{-- Card 1 : QR Code --}}
+            {{-- Card 1 : Code-barres --}}
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">QR Code</h2>
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Code-barres Code 128</h2>
                 
-                @if($bien->qr_code_path && Storage::disk('public')->exists($bien->qr_code_path))
-                    <div class="text-center mb-4">
-                        @if(str_ends_with($bien->qr_code_path, '.svg'))
-                            <div 
-                                class="w-48 h-48 mx-auto cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center overflow-hidden"
-                                onclick="document.getElementById('qr-modal').classList.remove('hidden')">
-                                @php
-                                    $svgContent = file_get_contents(storage_path('app/public/' . $bien->qr_code_path));
-                                    // Remplacer les attributs width et height du SVG pour qu'il s'adapte au conteneur
-                                    $svgContent = preg_replace('/width="[^"]*"/', 'width="100%"', $svgContent);
-                                    $svgContent = preg_replace('/height="[^"]*"/', 'height="100%"', $svgContent);
-                                    $svgContent = str_replace('<svg', '<svg style="width: 100%; height: 100%; object-fit: contain; max-width: 100%; max-height: 100%;"', $svgContent);
-                                @endphp
-                                {!! $svgContent !!}
-                            </div>
-                        @else
-                            <img 
-                                src="{{ asset('storage/' . $bien->qr_code_path) }}" 
-                                alt="QR Code"
-                                class="w-48 h-48 mx-auto cursor-pointer hover:opacity-80 transition-opacity object-contain"
-                                onclick="document.getElementById('qr-modal').classList.remove('hidden')">
-                        @endif
-                        <p class="text-xs text-gray-500 mt-2">Scannez ce code lors des inventaires</p>
+                {{-- Code-barres généré automatiquement côté client --}}
+                <div class="text-center mb-4">
+                    <div 
+                        id="barcode-container-{{ $bien->NumOrdre }}"
+                        class="w-full mx-auto cursor-pointer hover:opacity-80 transition-opacity bg-white p-2 rounded border border-gray-200"
+                        onclick="document.getElementById('barcode-modal').classList.remove('hidden')"
+                        title="Cliquez pour agrandir">
+                        <svg id="barcode-svg-{{ $bien->NumOrdre }}" width="100%" height="40" style="max-width: 100%; display: block;"></svg>
                     </div>
-
-                    <div class="space-y-2">
-                        <a 
-                            href="{{ asset('storage/' . $bien->qr_code_path) }}"
-                            download
-                            class="block w-full text-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-                            Télécharger QR
-                        </a>
-                        <button 
-                            wire:click="telechargerEtiquette"
-                            class="w-full px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
-                            Télécharger étiquette
-                        </button>
-                    </div>
-                @else
-                    <div class="text-center py-8">
-                        <svg class="w-24 h-24 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                        </svg>
-                        <p class="text-sm text-gray-500 mb-4">Aucun QR code généré</p>
-                        <button 
-                            wire:click="genererQRCode"
-                            class="px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
-                            Générer QR Code
-                        </button>
-                    </div>
-                @endif
+                    <p class="text-xs text-gray-500 mt-1.5">Code 128 - 89mm × 36mm</p>
+                    <p class="text-xs text-gray-700 mt-1 font-mono font-semibold">{{ $bien->code_formate ?? '' }}</p>
+                </div>
+                
+                <div class="space-y-2">
+                    <button 
+                        id="btn-regenerate-barcode-{{ $bien->NumOrdre }}"
+                        data-bien-id="{{ $bien->NumOrdre }}"
+                        data-code-value="{{ $bien->code_formate ?? '' }}"
+                        class="w-full px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 transition-colors mb-2">
+                        🔄 Régénérer Code-barres
+                    </button>
+                    <button 
+                        id="btn-print-label-{{ $bien->NumOrdre }}"
+                        data-bien-id="{{ $bien->NumOrdre }}"
+                        data-code-value="{{ $bien->code_formate ?? '' }}"
+                        class="w-full px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
+                        Imprimer étiquette
+                    </button>
+                </div>
             </div>
 
-            {{-- Card 2 : Statistiques --}}
+            {{-- Card 2 : Informations complémentaires --}}
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Statistiques</h2>
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Informations complémentaires</h2>
                 
                 <div class="space-y-4">
-                    <div>
-                        <p class="text-sm text-gray-500">Nombre de fois scanné</p>
-                        <p class="text-2xl font-bold text-gray-900">{{ $this->nombreScans }}</p>
-                    </div>
-                    @if($this->dernierScan)
+                    @if($bien->natureJuridique)
                         <div>
-                            <p class="text-sm text-gray-500">Dernier inventaire</p>
+                            <p class="text-sm text-gray-500">Nature Juridique</p>
+                            <p class="text-sm font-medium text-gray-900">{{ $bien->natureJuridique->NatJur }}</p>
+                            @if($bien->natureJuridique->CodeNatJur)
+                                <p class="text-xs text-gray-500">Code: {{ $bien->natureJuridique->CodeNatJur }}</p>
+                            @endif
+                        </div>
+                    @endif
+                    @if($bien->sourceFinancement)
+                        <div>
+                            <p class="text-sm text-gray-500">Source de Financement</p>
+                            <p class="text-sm font-medium text-gray-900">{{ $bien->sourceFinancement->SourceFin }}</p>
+                            @if($bien->sourceFinancement->CodeSourceFin)
+                                <p class="text-xs text-gray-500">Code: {{ $bien->sourceFinancement->CodeSourceFin }}</p>
+                            @endif
+                        </div>
+                    @endif
+                    @if($this->age)
+                        <div>
+                            <p class="text-sm text-gray-500">Âge</p>
                             <p class="text-sm font-medium text-gray-900">
-                                {{ $this->dernierScan->inventaire->annee ?? 'N/A' }}
-                                <span class="text-gray-500">({{ $this->dernierScan->date_scan->format('d/m/Y') }})</span>
+                                {{ $this->age }} an{{ $this->age > 1 ? 's' : '' }}
                             </p>
                         </div>
                     @endif
-                    <div>
-                        <p class="text-sm text-gray-500">Taux de présence</p>
-                        <p class="text-2xl font-bold text-indigo-600">{{ $this->tauxPresence }}%</p>
-                    </div>
                 </div>
             </div>
 
@@ -351,186 +302,91 @@
                 <h2 class="text-xl font-semibold text-gray-900 mb-4">Actions rapides</h2>
                 
                 <div class="space-y-2">
-                    @if($bien->localisation)
+                    @if($bien->emplacement)
                         <a 
-                            href="{{ route('biens.index', ['filterLocalisation' => $bien->localisation_id]) }}"
+                            href="{{ route('biens.index', ['filterEmplacement' => $bien->idEmplacement]) }}"
                             class="block w-full text-left px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-                            Voir toutes les immobilisations de cette localisation
+                            Voir toutes les immobilisations de cet emplacement
                         </a>
                     @endif
-                    <a 
-                        href="{{ route('biens.index', ['filterService' => $bien->service_usager]) }}"
-                        class="block w-full text-left px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-                        Voir toutes les immobilisations de ce service
-                    </a>
-                    <a 
-                        href="{{ route('biens.index', ['filterNature' => $bien->nature]) }}"
-                        class="block w-full text-left px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-                        Voir toutes les immobilisations de cette nature
-                    </a>
+                    @if($bien->categorie)
+                        <a 
+                            href="{{ route('biens.index', ['filterCategorie' => $bien->idCategorie]) }}"
+                            class="block w-full text-left px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                            Voir toutes les immobilisations de cette catégorie
+                        </a>
+                    @endif
+                    @if($bien->designation)
+                        <a 
+                            href="{{ route('biens.index', ['filterDesignation' => $bien->idDesignation]) }}"
+                            class="block w-full text-left px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                            Voir toutes les immobilisations de cette désignation
+                        </a>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Section historique (pleine largeur) --}}
+    {{-- Section informations détaillées (pleine largeur) --}}
     <div class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div x-data="{ activeTab: 'historique' }">
-            {{-- Onglets --}}
-            <div class="border-b border-gray-200 mb-6">
-                <nav class="-mb-px flex space-x-8">
-                    <button 
-                        @click="activeTab = 'historique'"
-                        :class="activeTab === 'historique' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                        class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                        Historique inventaires
-                    </button>
-                    <button 
-                        @click="activeTab = 'mouvements'"
-                        :class="activeTab === 'mouvements' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                        class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                        Mouvements
-                    </button>
-                    <button 
-                        @click="activeTab = 'documents'"
-                        :class="activeTab === 'documents' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                        class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                        Documents
-                    </button>
-                </nav>
-            </div>
-
-            {{-- Contenu onglet Historique --}}
-            <div x-show="activeTab === 'historique'" x-transition>
-                @if($this->historiqueScans->count() > 0)
-                    <div class="relative">
-                        <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-                        <div class="space-y-6">
-                            @foreach($this->historiqueScans as $scan)
-                                <div class="relative flex items-start">
-                                    <div class="absolute left-3 w-3 h-3 rounded-full border-2 border-white {{ isset($statutsScan[$scan->statut_scan]) ? $statutsScan[$scan->statut_scan]['color'] : 'bg-gray-200' }}" style="margin-top: 0.25rem;"></div>
-                                    <div class="ml-8 flex-1">
-                                        <div class="flex items-center justify-between">
-                                            <div>
-                                                <p class="text-sm font-medium text-gray-900">
-                                                    {{ $scan->date_scan->format('d/m/Y à H:i') }}
-                                                </p>
-                                                <p class="text-sm text-gray-500">
-                                                    Inventaire {{ $scan->inventaire->annee ?? 'N/A' }}
-                                                </p>
-                                            </div>
-                                            @if(isset($statutsScan[$scan->statut_scan]))
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statutsScan[$scan->statut_scan]['color'] }}">
-                                                    {{ $statutsScan[$scan->statut_scan]['label'] }}
-                                                </span>
-                                            @endif
-                                        </div>
-                                        <div class="mt-2 text-sm text-gray-600">
-                                            @if($scan->localisationReelle)
-                                                <p>Localisation scannée : {{ $scan->localisationReelle->code }} - {{ $scan->localisationReelle->designation }}</p>
-                                            @endif
-                                            @if($scan->agent)
-                                                <p>Agent : {{ $scan->agent->name }}</p>
-                                            @endif
-                                            @if($scan->commentaire)
-                                                <p class="mt-1 italic">{{ $scan->commentaire }}</p>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @else
-                    <div class="text-center py-12">
-                        <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        <p class="text-sm text-gray-500">Aucun scan d'inventaire enregistré</p>
-                    </div>
-                @endif
-            </div>
-
-            {{-- Contenu onglet Mouvements --}}
-            <div x-show="activeTab === 'mouvements'" x-transition style="display: none;">
-                @if($this->mouvements->count() > 0)
-                    <div class="space-y-4">
-                        @foreach($this->mouvements as $mouvement)
-                            <div class="border border-gray-200 rounded-lg p-4">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-900">
-                                            {{ $mouvement['date']->format('d/m/Y à H:i') }}
-                                        </p>
-                                        <p class="text-sm text-gray-600 mt-1">
-                                            @if($mouvement['localisation'])
-                                                {{ $mouvement['localisation']->code }} - {{ $mouvement['localisation']->designation }}
-                                            @else
-                                                Localisation inconnue
-                                            @endif
-                                        </p>
-                                        @if($mouvement['commentaire'])
-                                            <p class="text-sm text-gray-500 italic mt-1">{{ $mouvement['commentaire'] }}</p>
-                                        @endif
-                                    </div>
-                                    @if($mouvement['inventaire'])
-                                        <span class="text-xs text-gray-500">Inventaire {{ $mouvement['inventaire']->annee }}</span>
-                                    @endif
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="text-center py-12">
-                        <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                        </svg>
-                        <p class="text-sm text-gray-500">Aucun mouvement enregistré</p>
-                    </div>
-                @endif
-            </div>
-
-            {{-- Contenu onglet Documents --}}
-            <div x-show="activeTab === 'documents'" x-transition style="display: none;">
-                <div class="text-center py-12">
-                    <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p class="text-sm text-gray-500 mb-2">Fonctionnalité à venir</p>
-                    <p class="text-xs text-gray-400">Gestion des documents (factures, garanties, manuels, photos)</p>
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Informations détaillées</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            @if($bien->designation)
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">Désignation</p>
+                    <p class="text-sm font-medium text-gray-900">{{ $bien->designation->designation }}</p>
+                    @if($bien->designation->CodeDesignation)
+                        <p class="text-xs text-gray-500 mt-1">Code: {{ $bien->designation->CodeDesignation }}</p>
+                    @endif
+                    @if($bien->designation->categorie)
+                        <p class="text-xs text-gray-500 mt-1">Catégorie: {{ $bien->designation->categorie->Categorie }}</p>
+                    @endif
                 </div>
-            </div>
+            @endif
+            
+            @if($bien->categorie)
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">Catégorie</p>
+                    <p class="text-sm font-medium text-gray-900">{{ $bien->categorie->Categorie }}</p>
+                    @if($bien->categorie->CodeCategorie)
+                        <p class="text-xs text-gray-500 mt-1">Code: {{ $bien->categorie->CodeCategorie }}</p>
+                    @endif
+                </div>
+            @endif
+            
+            @if($bien->etat)
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">État</p>
+                    <p class="text-sm font-medium text-gray-900">{{ $bien->etat->Etat }}</p>
+                    @if($bien->etat->CodeEtat)
+                        <p class="text-xs text-gray-500 mt-1">Code: {{ $bien->etat->CodeEtat }}</p>
+                    @endif
+                </div>
+            @endif
         </div>
     </div>
 
-    {{-- Modal QR Code agrandi --}}
-    <div id="qr-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" onclick="this.classList.add('hidden')">
+    {{-- Modal Code-barres agrandi --}}
+    <div id="barcode-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" onclick="this.classList.add('hidden')">
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="fixed inset-0 bg-black bg-opacity-50" onclick="document.getElementById('qr-modal').classList.add('hidden')"></div>
-            <div class="relative bg-white rounded-lg p-8 max-w-md" onclick="event.stopPropagation()">
+            <div class="fixed inset-0 bg-black bg-opacity-50" onclick="document.getElementById('barcode-modal').classList.add('hidden')"></div>
+            <div class="relative bg-white rounded-lg p-8 max-w-2xl" onclick="event.stopPropagation()">
                 <button 
-                    onclick="document.getElementById('qr-modal').classList.add('hidden')"
+                    onclick="document.getElementById('barcode-modal').classList.add('hidden')"
                     class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
-                @if($bien->qr_code_path && Storage::disk('public')->exists($bien->qr_code_path))
-                    @if(str_ends_with($bien->qr_code_path, '.svg'))
-                        <div class="w-full flex items-center justify-center">
-                            @php
-                                $svgContent = file_get_contents(storage_path('app/public/' . $bien->qr_code_path));
-                                $svgContent = str_replace('<svg', '<svg style="max-width: 100%; height: auto;"', $svgContent);
-                            @endphp
-                            {!! $svgContent !!}
-                        </div>
-                    @else
-                        <img 
-                            src="{{ asset('storage/' . $bien->qr_code_path) }}" 
-                            alt="QR Code"
-                            class="w-full h-auto">
-                    @endif
-                @endif
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Code-barres Code 128</h3>
+                <div class="w-full flex items-center justify-center bg-white p-6 rounded-lg border border-gray-200">
+                    <div id="barcode-modal-placeholder-{{ $bien->NumOrdre }}" style="min-height: 120px; display: flex; align-items: center; justify-content: center; width: 100%; max-width: 600px;">
+                        <svg id="barcode-svg-modal-{{ $bien->NumOrdre }}" width="100%" height="140" style="max-width: 100%; display: block;"></svg>
+                    </div>
+                </div>
+                <p class="text-center text-sm text-gray-400 mt-4">Format d'étiquette : 89mm × 36mm (Landscape)</p>
             </div>
         </div>
     </div>
@@ -557,5 +413,270 @@
             {{ session('error') }}
         </div>
     @endif
-</div>
 
+    @if(isset($bien) && $bien->code_formate)
+    {{-- Script jsbarcode via CDN (avec support PNG) --}}
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    {{-- Script jsPDF pour générer le PDF côté client --}}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    {{-- Script pour lancer l'impression et générer le code-barres avec jsbarcode --}}
+    <script>
+        console.log('🔍 Initialisation du script de code-barres...');
+        
+        // Variables globales pour le bien
+        const BIEN_ID = {{ $bien->NumOrdre }};
+        const CODE_VALUE = @json($bien->code_formate);
+        console.log('Bien:', { id: BIEN_ID, code: CODE_VALUE });
+        // Fonction simplifiée pour générer le code-barres
+        function generateBarcode(bienId, codeValue) {
+            console.log('📊 generateBarcode appelé:', { bienId, codeValue });
+            
+            // Validation
+            if (!codeValue || String(codeValue).trim() === '') {
+                console.error('❌ Code vide');
+                return false;
+            }
+            
+            if (typeof JsBarcode === 'undefined') {
+                console.error('❌ JsBarcode non chargé');
+                return false;
+            }
+            
+            const code = String(codeValue).trim();
+            console.log('✅ Code à générer:', code);
+            
+            // Générer dans l'élément principal (version compacte)
+            const svgMain = document.getElementById('barcode-svg-' + bienId);
+            if (svgMain) {
+                try {
+                    JsBarcode(svgMain, code, {
+                        format: "CODE128",
+                        width: 1.5,
+                        height: 35,
+                        displayValue: false, // On affiche le texte séparément
+                        background: "#ffffff",
+                        lineColor: "#000000",
+                        margin: 4
+                    });
+                    console.log('✅ Code-barres principal généré');
+                } catch (e) {
+                    console.error('❌ Erreur génération principale:', e);
+                    return false;
+                }
+            } else {
+                console.error('❌ Élément SVG principal non trouvé');
+            }
+            
+            // Générer dans le modal (plus grand, format landscape)
+            const svgModal = document.getElementById('barcode-svg-modal-' + bienId);
+            if (svgModal) {
+                try {
+                    JsBarcode(svgModal, code, {
+                        format: "CODE128",
+                        width: 3,
+                        height: 100,
+                        displayValue: true,
+                        fontSize: 18,
+                        textAlign: "center",
+                        textPosition: "bottom",
+                        textMargin: 8,
+                        background: "#ffffff",
+                        lineColor: "#000000",
+                        margin: 15
+                    });
+                    console.log('✅ Code-barres modal généré');
+                } catch (e) {
+                    console.error('❌ Erreur génération modal:', e);
+                }
+            }
+            
+            return true;
+        }
+        
+        // Initialiser les event listeners pour les boutons
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 DOM chargé');
+            
+            // Attacher les événements
+            const btnRegenerate = document.getElementById('btn-regenerate-barcode-' + BIEN_ID);
+            if (btnRegenerate) {
+                console.log('✅ Bouton régénérer trouvé');
+                btnRegenerate.addEventListener('click', function() {
+                    console.log('🔄 Clic sur régénérer');
+                    generateBarcode(BIEN_ID, CODE_VALUE);
+                });
+            } else {
+                console.error('❌ Bouton régénérer non trouvé');
+            }
+            
+            const btnPrintLabel = document.getElementById('btn-print-label-' + BIEN_ID);
+            if (btnPrintLabel) {
+                console.log('✅ Bouton imprimer étiquette trouvé');
+                btnPrintLabel.addEventListener('click', function() {
+                    console.log('🖨️ Clic sur imprimer étiquette');
+                    if (typeof window.imprimerEtiquette === 'function') {
+                        window.imprimerEtiquette(BIEN_ID, CODE_VALUE);
+                    }
+                });
+            } else {
+                console.error('❌ Bouton imprimer étiquette non trouvé');
+            }
+            
+            const btnPrintEtiquette = document.getElementById('btn-print-etiquette-' + BIEN_ID);
+            if (btnPrintEtiquette) {
+                console.log('✅ Bouton imprimer (haut) trouvé');
+                btnPrintEtiquette.addEventListener('click', function() {
+                    console.log('🖨️ Clic sur imprimer (haut)');
+                    if (typeof window.imprimerEtiquette === 'function') {
+                        window.imprimerEtiquette(BIEN_ID, CODE_VALUE);
+                    }
+                });
+            }
+        });
+        
+        // Attendre que JsBarcode soit chargé, puis générer
+        window.addEventListener('load', function() {
+            console.log('🚀 Fenêtre chargée');
+            
+            // Attendre un peu pour que tout soit prêt
+            setTimeout(function() {
+                if (typeof JsBarcode !== 'undefined') {
+                    console.log('✅ JsBarcode chargé, génération du code-barres...');
+                    generateBarcode(BIEN_ID, CODE_VALUE);
+                } else {
+                    console.error('❌ JsBarcode non chargé');
+                }
+            }, 300);
+        });
+
+        // Fonction pour imprimer l'étiquette avec le code-barres généré côté client
+        window.imprimerEtiquette = async function(bienId, codeValue) {
+            console.log('🖨️ Impression de l\'étiquette...', { bienId, codeValue });
+            try {
+                // Vérifier que jsbarcode et jsPDF sont chargés
+                if (typeof JsBarcode === 'undefined') {
+                    alert('Erreur: jsbarcode n\'est pas chargé. Veuillez recharger la page.');
+                    return;
+                }
+                
+                if (typeof window.jspdf === 'undefined') {
+                    alert('Erreur: jsPDF n\'est pas chargé. Veuillez recharger la page.');
+                    return;
+                }
+
+                const { jsPDF } = window.jspdf;
+
+                // S'assurer que codeValue est une chaîne
+                const codeStr = String(codeValue).trim();
+                if (!codeStr) {
+                    throw new Error('Code vide');
+                }
+                
+                // Dimensions étiquettes Dymo Large Address Labels : 89mm × 36mm (Landscape)
+                const labelWidthMm = 89; // Largeur de l'étiquette Dymo (Landscape)
+                const labelHeightMm = 36; // Hauteur de l'étiquette Dymo (Landscape)
+                
+                // Créer un canvas pour générer le code-barres en PNG
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.style.position = 'absolute';
+                tempCanvas.style.left = '-9999px';
+                document.body.appendChild(tempCanvas);
+                
+                // Générer le code-barres directement sur le canvas (PNG)
+                // Pour Code 128 sur étiquette Dymo 89mm de large (Landscape), paramètres optimaux
+                JsBarcode(tempCanvas, codeStr, {
+                    format: "CODE128",
+                    width: 2, // Largeur normale pour 89mm
+                    height: 50, // Hauteur optimale pour 36mm de haut
+                    displayValue: false,
+                    background: "#ffffff",
+                    lineColor: "#000000",
+                    margin: 0,
+                    valid: function(valid) {
+                        if (!valid) {
+                            console.error('Code invalide pour Code 128:', codeStr);
+                            throw new Error('Code invalide pour Code 128');
+                        }
+                    }
+                });
+                
+                // Calculer les dimensions réelles du code-barres généré
+                const barcodeAspectRatio = tempCanvas.width / tempCanvas.height;
+                
+                // Créer un canvas pour le PDF (dimensions de l'étiquette)
+                const mmToPx = 3.779527559; // 1mm = 3.779527559 pixels à 96 DPI
+                const pdfCanvas = document.createElement('canvas');
+                pdfCanvas.width = labelWidthMm * mmToPx;
+                pdfCanvas.height = labelHeightMm * mmToPx;
+                const pdfCtx = pdfCanvas.getContext('2d');
+                
+                // Fond blanc
+                pdfCtx.fillStyle = '#ffffff';
+                pdfCtx.fillRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+                
+                // Calculer les dimensions du code-barres
+                const barcodeWidthMm = Math.min(labelWidthMm - 10, (tempCanvas.width / mmToPx)); // 5mm de marge de chaque côté
+                const barcodeHeightMm = (tempCanvas.height / mmToPx);
+                
+                // Centrer le code-barres horizontalement et verticalement
+                const barcodeX = (labelWidthMm - barcodeWidthMm) / 2;
+                const barcodeY = (labelHeightMm - barcodeHeightMm - 6) / 2; // Centré verticalement avec espace pour le texte en bas
+                
+                // Convertir en pixels
+                const barcodeWidthPx = barcodeWidthMm * mmToPx;
+                const barcodeHeightPx = barcodeHeightMm * mmToPx;
+                const barcodeXPx = barcodeX * mmToPx;
+                const barcodeYPx = barcodeY * mmToPx;
+                
+                // Dessiner le code-barres sur le canvas PDF
+                pdfCtx.drawImage(tempCanvas, barcodeXPx, barcodeYPx, barcodeWidthPx, barcodeHeightPx);
+                
+                // Nettoyer le canvas temporaire
+                document.body.removeChild(tempCanvas);
+                
+                // Créer le PDF avec jsPDF (dimensions de l'étiquette en Landscape)
+                const pdf = new jsPDF({
+                    orientation: 'landscape',
+                    unit: 'mm',
+                    format: [labelHeightMm, labelWidthMm] // [hauteur, largeur] pour landscape
+                });
+                
+                // Ajouter le code-barres (image PNG du canvas)
+                const imgData = pdfCanvas.toDataURL('image/png', 1.0);
+                pdf.addImage(imgData, 'PNG', 0, 0, labelWidthMm, labelHeightMm);
+                
+                // Ajouter le texte du code en dessous du code-barres (centré)
+                pdf.setFontSize(9); // Taille lisible pour landscape
+                pdf.setFont('courier', 'bold');
+                const textY = labelHeightMm - 3; // 3mm du bas
+                pdf.text(codeStr, labelWidthMm / 2, textY, { align: 'center' });
+                
+                // Ouvrir le PDF dans une nouvelle fenêtre et lancer l'impression
+                const pdfBlob = pdf.output('blob');
+                const pdfUrl = URL.createObjectURL(pdfBlob);
+                const printWindow = window.open(pdfUrl, '_blank');
+                
+                if (printWindow) {
+                    printWindow.onload = function() {
+                        setTimeout(() => {
+                            printWindow.print();
+                            // Nettoyer l'URL après l'impression
+                            setTimeout(() => {
+                                URL.revokeObjectURL(pdfUrl);
+                            }, 1000);
+                        }, 250);
+                    };
+                } else {
+                    // Si la fenêtre n'a pas pu s'ouvrir, télécharger le PDF
+                    pdf.save('etiquette_' + codeValue.replace(/\//g, '_') + '.pdf');
+                }
+            } catch (error) {
+                console.error('Erreur lors de la génération de l\'étiquette:', error);
+                alert('Erreur lors de la génération de l\'étiquette: ' + error.message);
+            }
+        };
+    </script>
+    @endif
+    
+</div>

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Localisation;
+use App\Models\LocalisationImmo;
 use App\Http\Requests\StoreLocalisationRequest;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -73,41 +73,28 @@ class LocalisationController extends Controller
      * @param Localisation $localisation
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function generateQRCode(Localisation $localisation)
+    public function generateQRCode(LocalisationImmo $localisation)
     {
-        try {
-            $path = $localisation->generateQRCode();
-            
-            return redirect()->back()->with('success', 'QR code généré avec succès');
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Erreur lors de la génération du QR code: ' . $e->getMessage());
-        }
+        // Note: La génération de QR code pour les localisations n'est pas implémentée dans le nouveau modèle
+        // Cette fonctionnalité peut être ajoutée si nécessaire
+        return redirect()->back()->with('info', 'La génération de QR code pour les localisations n\'est pas encore implémentée.');
     }
 
     /**
      * Télécharge l'étiquette PDF d'une localisation
      * 
-     * Format : 10x8 cm (plus grande pour affichage sur porte/mur)
-     * Contenu : QR code (6x6 cm), code, désignation, bâtiment, étage
-     * 
-     * @param Localisation $localisation
+     * @param LocalisationImmo $localisation
      * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
      */
-    public function downloadEtiquette(Localisation $localisation)
+    public function downloadEtiquette(LocalisationImmo $localisation)
     {
         try {
-            // Vérifier que la localisation a un QR code, sinon le générer
-            if (!$localisation->qr_code_path || !Storage::disk('public')->exists($localisation->qr_code_path)) {
-                $localisation->generateQRCode();
-                $localisation->refresh();
-            }
-
             // Générer le PDF
             $pdf = Pdf::loadView('pdf.etiquette-localisation', [
                 'localisation' => $localisation,
             ])->setPaper([0, 0, 283.46, 226.77], 'portrait'); // 10x8 cm en points
 
-            $filename = 'etiquette_' . Str::slug($localisation->code) . '.pdf';
+            $filename = 'etiquette_' . Str::slug($localisation->CodeLocalisation ?? $localisation->idLocalisation) . '.pdf';
 
             return $pdf->download($filename);
         } catch (\Exception $e) {
@@ -129,25 +116,19 @@ class LocalisationController extends Controller
         try {
             $request->validate([
                 'localisations' => 'required|array|min:1',
-                'localisations.*' => 'exists:localisations,id',
+                'localisations.*' => 'exists:localisation,idLocalisation',
             ]);
 
             $localisationIds = $request->input('localisations', []);
             
             // Récupérer les localisations
-            $localisations = Localisation::whereIn('id', $localisationIds)->get();
+            $localisations = LocalisationImmo::whereIn('idLocalisation', $localisationIds)->get();
 
             if ($localisations->isEmpty()) {
                 return redirect()->back()->with('error', 'Aucune localisation sélectionnée.');
             }
 
-            // Générer les QR codes manquants
-            foreach ($localisations as $localisation) {
-                if (!$localisation->qr_code_path || !Storage::disk('public')->exists($localisation->qr_code_path)) {
-                    $localisation->generateQRCode();
-                    $localisation->refresh();
-                }
-            }
+            // Note: La génération de QR code pour les localisations n'est pas implémentée dans le nouveau modèle
 
             // Générer le PDF multi-pages
             $pdf = Pdf::loadView('pdf.etiquettes-localisations', [
@@ -177,10 +158,10 @@ class LocalisationController extends Controller
             if ($ids) {
                 // Convertir la chaîne d'IDs séparés par des virgules en tableau
                 $idsArray = explode(',', $ids);
-                $localisations = Localisation::whereIn('id', $idsArray)->get();
+                $localisations = LocalisationImmo::whereIn('idLocalisation', $idsArray)->get();
             } else {
                 // Exporter toutes les localisations
-                $localisations = Localisation::all();
+                $localisations = LocalisationImmo::all();
             }
 
             if ($localisations->isEmpty()) {
@@ -205,29 +186,20 @@ class LocalisationController extends Controller
                 
                 // En-têtes de colonnes
                 fputcsv($file, [
-                    'Code',
-                    'Désignation',
-                    'Bâtiment',
-                    'Étage',
-                    'Service rattaché',
-                    'Responsable',
-                    'Actif',
-                    'Nombre de biens',
-                    'Date de création',
+                    'ID Localisation',
+                    'Localisation',
+                    'Code Localisation',
+                    'Nombre d\'emplacements',
                 ], ';');
 
                 // Données
                 foreach ($localisations as $localisation) {
+                    $localisation->loadCount('emplacements');
                     fputcsv($file, [
-                        $localisation->code,
-                        $localisation->designation,
-                        $localisation->batiment ?? '',
-                        $localisation->etage ?? '',
-                        $localisation->service_rattache ?? '',
-                        $localisation->responsable ?? '',
-                        $localisation->actif ? 'Oui' : 'Non',
-                        $localisation->biens()->count(),
-                        $localisation->created_at->format('d/m/Y H:i'),
+                        $localisation->idLocalisation,
+                        $localisation->Localisation,
+                        $localisation->CodeLocalisation ?? '',
+                        $localisation->emplacements_count,
                     ], ';');
                 }
 

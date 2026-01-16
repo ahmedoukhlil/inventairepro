@@ -2,7 +2,8 @@
 
 namespace App\Livewire\Localisations;
 
-use App\Models\Localisation;
+use App\Models\LocalisationImmo;
+use App\Models\Emplacement;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
@@ -16,11 +17,7 @@ class ListeLocalisations extends Component
      * Propriétés publiques pour les filtres et la recherche
      */
     public $search = '';
-    public $filterBatiment = '';
-    public $filterEtage = '';
-    public $filterService = '';
-    public $filterActif = 'all'; // all, actif, inactif
-    public $sortField = 'code';
+    public $sortField = 'idLocalisation';
     public $sortDirection = 'asc';
     public $perPage = 20;
     public $selectedLocalisations = [];
@@ -35,54 +32,13 @@ class ListeLocalisations extends Component
     }
 
     /**
-     * Propriété calculée : Retourne la liste unique des bâtiments (avec cache)
+     * Propriété calculée : Retourne tous les emplacements associés aux localisations
      */
-    public function getBatimentsProperty()
+    public function getEmplacementsProperty()
     {
-        return Cache::remember('localisations_batiments', 300, function () {
-            return Localisation::query()
-                ->distinct()
-                ->whereNotNull('batiment')
-                ->where('batiment', '!=', '')
-                ->orderBy('batiment')
-                ->pluck('batiment')
-                ->unique()
-                ->values();
-        });
-    }
-
-    /**
-     * Propriété calculée : Retourne la liste unique des étages (avec cache)
-     */
-    public function getEtagesProperty()
-    {
-        return Cache::remember('localisations_etages', 300, function () {
-            return Localisation::query()
-                ->distinct()
-                ->whereNotNull('etage')
-                ->orderBy('etage')
-                ->pluck('etage')
-                ->unique()
-                ->sort()
-                ->values();
-        });
-    }
-
-    /**
-     * Propriété calculée : Retourne la liste unique des services (avec cache)
-     */
-    public function getServicesProperty()
-    {
-        return Cache::remember('localisations_services', 300, function () {
-            return Localisation::query()
-                ->distinct()
-                ->whereNotNull('service_rattache')
-                ->where('service_rattache', '!=', '')
-                ->orderBy('service_rattache')
-                ->pluck('service_rattache')
-                ->unique()
-                ->values();
-        });
+        return Emplacement::with('localisation', 'affectation')
+            ->orderBy('Emplacement')
+            ->get();
     }
 
     /**
@@ -109,7 +65,7 @@ class ListeLocalisations extends Component
         }
 
         // Vérifier que tous les IDs sélectionnés correspondent aux filtres
-        $allLocalisationsIds = $this->getLocalisationsQuery()->pluck('id')->toArray();
+        $allLocalisationsIds = $this->getLocalisationsQuery()->pluck('idLocalisation')->toArray();
         return empty(array_diff($allLocalisationsIds, $this->selectedLocalisations));
     }
 
@@ -137,10 +93,6 @@ class ListeLocalisations extends Component
     public function resetFilters(): void
     {
         $this->search = '';
-        $this->filterBatiment = '';
-        $this->filterEtage = '';
-        $this->filterService = '';
-        $this->filterActif = 'all';
         $this->selectedLocalisations = [];
         $this->resetPage();
     }
@@ -151,7 +103,7 @@ class ListeLocalisations extends Component
     public function toggleSelectAll(): void
     {
         // Récupérer tous les IDs des localisations correspondant aux filtres (sans pagination)
-        $allLocalisationsIds = $this->getLocalisationsQuery()->pluck('id')->toArray();
+        $allLocalisationsIds = $this->getLocalisationsQuery()->pluck('idLocalisation')->toArray();
         
         // Vérifier si toutes les localisations sont déjà sélectionnées
         $allSelected = !empty($allLocalisationsIds) && 
@@ -168,24 +120,6 @@ class ListeLocalisations extends Component
     }
 
     /**
-     * Active ou désactive une localisation
-     */
-    public function toggleActif($localisationId): void
-    {
-        $localisation = Localisation::find($localisationId);
-
-        if ($localisation) {
-            $localisation->update(['actif' => !$localisation->actif]);
-            // Invalider le cache des statistiques
-            Cache::forget('localisations_total_count');
-            Cache::forget('localisations_batiments_count');
-            session()->flash('success', 'Statut de la localisation mis à jour avec succès.');
-        } else {
-            session()->flash('error', 'Localisation introuvable.');
-        }
-    }
-
-    /**
      * Supprime une localisation
      */
     public function deleteLocalisation($localisationId): void
@@ -196,29 +130,25 @@ class ListeLocalisations extends Component
             return;
         }
 
-        $localisation = Localisation::find($localisationId);
+        $localisation = LocalisationImmo::find($localisationId);
 
         if (!$localisation) {
             session()->flash('error', 'Localisation introuvable.');
             return;
         }
 
-        // Vérifier qu'aucun bien n'est affecté à cette localisation
-        $nombreBiens = $localisation->biens()->count();
+        // Vérifier qu'aucun emplacement n'est associé à cette localisation
+        $nombreEmplacements = $localisation->emplacements()->count();
         
-        if ($nombreBiens > 0) {
-            session()->flash('error', "Impossible de supprimer cette localisation : {$nombreBiens} bien(s) y sont affecté(s). Veuillez d'abord réaffecter ces biens à une autre localisation.");
+        if ($nombreEmplacements > 0) {
+            session()->flash('error', "Impossible de supprimer cette localisation : {$nombreEmplacements} emplacement(s) y sont associé(s).");
             return;
         }
 
         try {
             $localisation->delete();
-            // Invalider le cache des statistiques et des filtres
+            // Invalider le cache des statistiques
             Cache::forget('localisations_total_count');
-            Cache::forget('localisations_batiments_count');
-            Cache::forget('localisations_batiments');
-            Cache::forget('localisations_etages');
-            Cache::forget('localisations_services');
             session()->flash('success', 'La localisation a été supprimée avec succès.');
             
             // Retirer de la sélection si présent
@@ -248,37 +178,14 @@ class ListeLocalisations extends Component
      */
     protected function getLocalisationsQuery()
     {
-        $query = Localisation::withCount('biens');
+        $query = LocalisationImmo::withCount('emplacements');
 
         // Recherche globale
         if (!empty($this->search)) {
             $query->where(function ($q) {
-                $q->where('code', 'like', '%' . $this->search . '%')
-                    ->orWhere('designation', 'like', '%' . $this->search . '%')
-                    ->orWhere('responsable', 'like', '%' . $this->search . '%');
+                $q->where('Localisation', 'like', '%' . $this->search . '%')
+                    ->orWhere('CodeLocalisation', 'like', '%' . $this->search . '%');
             });
-        }
-
-        // Filtre par bâtiment
-        if (!empty($this->filterBatiment)) {
-            $query->where('batiment', $this->filterBatiment);
-        }
-
-        // Filtre par étage
-        if (!empty($this->filterEtage)) {
-            $query->where('etage', $this->filterEtage);
-        }
-
-        // Filtre par service
-        if (!empty($this->filterService)) {
-            $query->where('service_rattache', $this->filterService);
-        }
-
-        // Filtre par statut actif/inactif
-        if ($this->filterActif === 'actif') {
-            $query->where('actif', true);
-        } elseif ($this->filterActif === 'inactif') {
-            $query->where('actif', false);
         }
 
         // Tri
@@ -296,16 +203,16 @@ class ListeLocalisations extends Component
 
         // Statistiques pour le header (avec cache)
         $totalLocalisations = Cache::remember('localisations_total_count', 300, function () {
-            return Localisation::count();
+            return LocalisationImmo::count();
         });
-        $totalBatiments = Cache::remember('localisations_batiments_count', 300, function () {
-            return $this->batiments->count();
+        $totalEmplacements = Cache::remember('emplacements_total_count', 300, function () {
+            return Emplacement::count();
         });
 
         return view('livewire.localisations.liste-localisations', [
             'localisations' => $localisations,
             'totalLocalisations' => $totalLocalisations,
-            'totalBatiments' => $totalBatiments,
+            'totalEmplacements' => $totalEmplacements,
         ]);
     }
 }

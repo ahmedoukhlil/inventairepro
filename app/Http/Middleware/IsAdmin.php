@@ -27,8 +27,8 @@ class IsAdmin
 
         $user = Auth::user();
 
-        // Vérifier que l'utilisateur a le rôle administrateur
-        if ($user->role !== 'admin') {
+        // Vérifier que l'utilisateur a le rôle administrateur (admin ou superuser)
+        if (!in_array($user->role, ['admin', 'superuser'])) {
             return redirect()->route('dashboard')
                 ->with('error', 'Accès réservé aux administrateurs');
         }

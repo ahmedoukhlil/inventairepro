@@ -16,19 +16,56 @@ class User extends Authenticatable
     use HasFactory, Notifiable, HasApiTokens;
 
     /**
+     * Nom de la table
+     */
+    protected $table = 'users';
+
+    /**
+     * Clé primaire personnalisée
+     */
+    protected $primaryKey = 'idUser';
+
+    /**
+     * Désactiver les timestamps
+     */
+    public $timestamps = false;
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
      */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
+        'users',  // Nom d'utilisateur (selon immos.md)
+        'mdp',    // Mot de passe (selon immos.md)
         'role',
-        'telephone',
-        'service',
-        'actif',
     ];
+
+    /**
+     * Nom de la colonne pour l'authentification (utilisé par Laravel)
+     * Note: getAuthIdentifierName() doit retourner le nom de la colonne utilisée pour identifier l'utilisateur
+     * mais Auth::id() retourne toujours la valeur de la clé primaire
+     */
+    public function getAuthIdentifierName()
+    {
+        return $this->primaryKey; // Retourner 'idUser' pour que Auth::id() fonctionne correctement
+    }
+
+    /**
+     * Récupérer l'identifiant pour l'authentification (retourne la clé primaire)
+     */
+    public function getAuthIdentifier()
+    {
+        return $this->getAttribute($this->primaryKey); // Retourner idUser
+    }
+
+    /**
+     * Récupérer le mot de passe pour l'authentification
+     */
+    public function getAuthPassword()
+    {
+        return $this->getAttribute('mdp');
+    }
 
     /**
      * The attributes that should be hidden for serialization.
@@ -36,7 +73,7 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $hidden = [
-        'password',
+        'mdp',  // Mot de passe (selon immos.md)
         'remember_token',
     ];
 
@@ -48,9 +85,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'actif' => 'boolean',
+            // Pas de cast 'hashed' car les mots de passe peuvent être en clair dans la base existante
         ];
     }
 
@@ -59,11 +94,12 @@ class User extends Authenticatable
      */
 
     /**
-     * Relation avec les biens créés par l'utilisateur
+     * Relation avec les immobilisations (Gesimmo) créées par l'utilisateur
+     * Note: Cette relation peut nécessiter une colonne user_id dans la table gesimmo
      */
-    public function biens(): HasMany
+    public function immobilisations(): HasMany
     {
-        return $this->hasMany(Bien::class, 'user_id');
+        return $this->hasMany(Gesimmo::class, 'user_id', 'idUser');
     }
 
     /**
@@ -119,11 +155,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Scope pour filtrer les utilisateurs actifs
+     * Scope pour filtrer par rôle
      */
-    public function scopeActifs(Builder $query): Builder
+    public function scopeByRole(Builder $query, string $role): Builder
     {
-        return $query->where('actif', true);
+        return $query->where('role', $role);
     }
 
     /**
@@ -136,8 +172,9 @@ class User extends Authenticatable
     public function getRoleNameAttribute(): string
     {
         return match($this->role) {
-            'admin' => 'Administrateur',
-            'agent' => 'Agent',
+            'admin', 'superuser' => 'Administrateur',
+            'agent', 'immobilisation' => 'Agent',
+            'stock' => 'Stock',
             default => 'Non défini',
         };
     }
@@ -148,18 +185,20 @@ class User extends Authenticatable
 
     /**
      * Vérifie si l'utilisateur est administrateur
+     * Accepte 'admin' et 'superuser' comme administrateurs
      */
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return in_array($this->role, ['admin', 'superuser']);
     }
 
     /**
      * Vérifie si l'utilisateur est agent
+     * Accepte 'agent' et 'immobilisation' comme agents
      */
     public function isAgent(): bool
     {
-        return $this->role === 'agent';
+        return in_array($this->role, ['agent', 'immobilisation']);
     }
 
     /**
@@ -167,6 +206,6 @@ class User extends Authenticatable
      */
     public function canManageInventaire(): bool
     {
-        return $this->role === 'admin' || $this->role === 'agent';
+        return in_array($this->role, ['admin', 'superuser', 'agent', 'immobilisation']);
     }
 }

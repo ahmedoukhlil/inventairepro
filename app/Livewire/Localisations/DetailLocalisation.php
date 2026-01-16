@@ -2,8 +2,9 @@
 
 namespace App\Livewire\Localisations;
 
-use App\Models\Localisation;
-use App\Models\Bien;
+use App\Models\LocalisationImmo;
+use App\Models\Emplacement;
+use App\Models\Gesimmo;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -15,179 +16,75 @@ class DetailLocalisation extends Component
     /**
      * Instance de la localisation
      */
-    public Localisation $localisation;
+    public LocalisationImmo $localisation;
 
     /**
-     * Toggle pour afficher/masquer la liste des biens
+     * Toggle pour afficher/masquer la liste des emplacements
      */
-    public $afficherBiens = true;
+    public $afficherEmplacements = true;
 
     /**
-     * Recherche dans les biens
+     * Recherche dans les emplacements
      */
-    public $searchBien = '';
-
-    /**
-     * Filtre par nature pour les biens
-     */
-    public $filterNature = '';
+    public $searchEmplacement = '';
 
     /**
      * Initialisation du composant
      * 
-     * @param Localisation $localisation
+     * @param LocalisationImmo $localisation
      */
-    public function mount(Localisation $localisation): void
+    public function mount(LocalisationImmo $localisation): void
     {
-        // Eager load des relations nécessaires (sans charger tous les biens en mémoire)
+        // Eager load des relations nécessaires
         $this->localisation = $localisation->load([
-            'inventaireLocalisations.inventaire',
-            'inventaireLocalisations.agent',
+            'emplacements.affectation',
+            'emplacements.immobilisations',
         ]);
-        // Ne pas charger tous les biens ici, ils seront paginés dans getBiensProperty()
     }
 
     /**
-     * Propriété calculée : Retourne les biens de cette localisation, filtrés
+     * Propriété calculée : Retourne les emplacements de cette localisation, filtrés
      */
-    public function getBiensProperty()
+    public function getEmplacementsProperty()
     {
-        $query = $this->localisation->biens();
+        $query = $this->localisation->emplacements()->with(['affectation', 'immobilisations']);
 
         // Recherche
-        if (!empty($this->searchBien)) {
+        if (!empty($this->searchEmplacement)) {
             $query->where(function ($q) {
-                $q->where('code_inventaire', 'like', '%' . $this->searchBien . '%')
-                    ->orWhere('designation', 'like', '%' . $this->searchBien . '%');
+                $q->where('Emplacement', 'like', '%' . $this->searchEmplacement . '%')
+                    ->orWhere('CodeEmplacement', 'like', '%' . $this->searchEmplacement . '%');
             });
         }
 
-        // Filtre par nature
-        if (!empty($this->filterNature)) {
-            $query->where('nature', $this->filterNature);
-        }
-
-        return $query->orderBy('code_inventaire')->paginate(10, ['*'], 'biensPage');
+        return $query->orderBy('Emplacement')->paginate(10, ['*'], 'emplacementsPage');
     }
 
     /**
      * Propriété calculée : Retourne les statistiques de la localisation
-     * Optimisé : utilise des requêtes directes au lieu de charger tous les biens
      */
     public function getStatistiquesProperty(): array
     {
-        // Utiliser des requêtes directes au lieu de charger tous les biens en mémoire
-        $totalBiens = $this->localisation->biens()->count();
-        $valeurTotale = $this->localisation->biens()->sum('valeur_acquisition');
-
-        // Répartition par nature (requête directe)
-        $parNature = $this->localisation->biens()
-            ->selectRaw('nature, COUNT(*) as count')
-            ->groupBy('nature')
-            ->pluck('count', 'nature')
-            ->toArray();
-
-        // Répartition par état (requête directe)
-        $parEtat = $this->localisation->biens()
-            ->selectRaw('etat, COUNT(*) as count')
-            ->groupBy('etat')
-            ->pluck('count', 'etat')
-            ->toArray();
+        $totalEmplacements = $this->localisation->emplacements()->count();
+        
+        // Compter les immobilisations via les emplacements
+        $totalImmobilisations = Gesimmo::whereHas('emplacement', function ($q) {
+            $q->where('idLocalisation', $this->localisation->idLocalisation);
+        })->count();
 
         return [
-            'total_biens' => $totalBiens,
-            'valeur_totale' => $valeurTotale,
-            'par_nature' => $parNature,
-            'par_etat' => $parEtat,
+            'total_emplacements' => $totalEmplacements,
+            'total_immobilisations' => $totalImmobilisations,
         ];
     }
 
     /**
-     * Propriété calculée : Retourne les 3 derniers inventaires concernant cette localisation
+     * Toggle l'affichage de la liste des emplacements
      */
-    public function getDerniersInventairesProperty()
+    public function toggleAfficherEmplacements(): void
     {
-        return $this->localisation->inventaireLocalisations()
-            ->with(['inventaire', 'agent'])
-            ->orderBy('date_debut_scan', 'desc')
-            ->limit(3)
-            ->get();
-    }
-
-    /**
-     * Propriété calculée : Retourne tous les inventaires pour l'onglet détaillé
-     */
-    public function getTousInventairesProperty()
-    {
-        return $this->localisation->inventaireLocalisations()
-            ->with(['inventaire', 'agent'])
-            ->orderBy('date_debut_scan', 'desc')
-            ->get();
-    }
-
-    /**
-     * Propriété calculée : Retourne les mouvements récents (biens entrés/sortis)
-     */
-    public function getMouvementsRecentsProperty()
-    {
-        // Biens entrés : scans où localisation_reelle_id = cette localisation mais bien.localisation_id était différent avant
-        $biensEntres = \App\Models\InventaireScan::query()
-            ->where('localisation_reelle_id', $this->localisation->id)
-            ->with(['bien', 'inventaire', 'agent'])
-            ->whereHas('bien', function ($q) {
-                $q->where('localisation_id', '!=', $this->localisation->id);
-            })
-            ->orderBy('date_scan', 'desc')
-            ->limit(10)
-            ->get();
-
-        // Biens sortis : scans où localisation_reelle_id != cette localisation mais bien.localisation_id = cette localisation
-        $biensSortis = \App\Models\InventaireScan::query()
-            ->where('localisation_reelle_id', '!=', $this->localisation->id)
-            ->whereNotNull('localisation_reelle_id')
-            ->with(['bien', 'localisationReelle', 'inventaire', 'agent'])
-            ->whereHas('bien', function ($q) {
-                $q->where('localisation_id', $this->localisation->id);
-            })
-            ->orderBy('date_scan', 'desc')
-            ->limit(10)
-            ->get();
-
-        return [
-            'entres' => $biensEntres,
-            'sortis' => $biensSortis,
-        ];
-    }
-
-    /**
-     * Toggle l'affichage de la liste des biens
-     */
-    public function toggleAfficherBiens(): void
-    {
-        $this->afficherBiens = !$this->afficherBiens;
+        $this->afficherEmplacements = !$this->afficherEmplacements;
         $this->resetPage(); // Réinitialiser la pagination
-    }
-
-    /**
-     * Génère le QR code de la localisation
-     */
-    public function genererQRCode(): void
-    {
-        try {
-            $this->localisation->generateQRCode();
-            $this->localisation->refresh();
-            session()->flash('success', 'QR code généré avec succès');
-        } catch (\Exception $e) {
-            session()->flash('error', 'Erreur lors de la génération du QR code: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Télécharge l'étiquette
-     */
-    public function telechargerEtiquette()
-    {
-        return redirect()->route('localisations.etiquette', $this->localisation);
     }
 
     /**
@@ -201,11 +98,11 @@ class DetailLocalisation extends Component
             return;
         }
 
-        // Vérifier qu'aucun bien n'est affecté
-        $nombreBiens = $this->localisation->biens()->count();
+        // Vérifier qu'aucun emplacement n'est associé
+        $nombreEmplacements = $this->localisation->emplacements()->count();
         
-        if ($nombreBiens > 0) {
-            session()->flash('error', "Impossible de supprimer cette localisation : {$nombreBiens} bien(s) y sont affecté(s). Veuillez d'abord réaffecter ces biens à une autre localisation.");
+        if ($nombreEmplacements > 0) {
+            session()->flash('error', "Impossible de supprimer cette localisation : {$nombreEmplacements} emplacement(s) y sont associé(s).");
             return;
         }
 

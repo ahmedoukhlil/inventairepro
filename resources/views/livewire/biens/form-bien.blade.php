@@ -54,196 +54,183 @@
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {{-- Désignation --}}
-                    <div class="md:col-span-2">
-                        <label for="designation" class="block text-sm font-medium text-gray-700 mb-1">
+                    <div>
+                        <label for="idDesignation" class="block text-sm font-medium text-gray-700 mb-1">
                             Désignation <span class="text-red-500">*</span>
                         </label>
-                        <input 
-                            type="text"
-                            id="designation"
-                            wire:model.defer="designation"
-                            placeholder="Ex: Bureau direction en bois massif"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('designation') border-red-300 @enderror"
-                            wire:loading.attr="disabled">
-                        @error('designation')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    {{-- Nature --}}
-                    <div>
-                        <label for="nature" class="block text-sm font-medium text-gray-700 mb-1">
-                            Nature du bien <span class="text-red-500">*</span>
-                        </label>
                         <select 
-                            id="nature"
-                            wire:model.defer="nature"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('nature') border-red-300 @enderror"
+                            id="idDesignation"
+                            wire:model.defer="idDesignation"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idDesignation') border-red-300 @enderror"
                             wire:loading.attr="disabled">
-                            <option value="">Sélectionnez une nature</option>
-                            @foreach($this->natures as $key => $label)
-                                <option value="{{ $key }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                        @error('nature')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    {{-- Date d'acquisition --}}
-                    <div>
-                        <label for="date_acquisition" class="block text-sm font-medium text-gray-700 mb-1">
-                            Date d'acquisition <span class="text-red-500">*</span>
-                        </label>
-                        <input 
-                            type="date"
-                            id="date_acquisition"
-                            wire:model.defer="date_acquisition"
-                            max="{{ now()->format('Y-m-d') }}"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('date_acquisition') border-red-300 @enderror"
-                            wire:loading.attr="disabled">
-                        @error('date_acquisition')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-                </div>
-            </div>
-
-            {{-- Section 2 : Localisation --}}
-            <div class="mb-8">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                    Localisation
-                </h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {{-- Localisation --}}
-                    <div>
-                        <label for="localisation_id" class="block text-sm font-medium text-gray-700 mb-1">
-                            Localisation <span class="text-red-500">*</span>
-                        </label>
-                        <select 
-                            id="localisation_id"
-                            wire:model.defer="localisation_id"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('localisation_id') border-red-300 @enderror"
-                            wire:loading.attr="disabled">
-                            <option value="">Sélectionnez une localisation</option>
-                            @foreach($this->localisations as $localisation)
-                                <option value="{{ $localisation->id }}">
-                                    {{ $localisation->code }} - {{ $localisation->designation }}
+                            <option value="">Sélectionnez une désignation</option>
+                            @foreach($this->designations as $designation)
+                                <option value="{{ $designation->id }}">
+                                    {{ $designation->designation }}
+                                    @if($designation->categorie)
+                                        ({{ $designation->categorie->Categorie }})
+                                    @endif
                                 </option>
                             @endforeach
                         </select>
-                        @error('localisation_id')
+                        @error('idDesignation')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
-                    {{-- Service usager --}}
+                    {{-- Catégorie --}}
                     <div>
-                        <label for="service_usager" class="block text-sm font-medium text-gray-700 mb-1">
-                            Service usager <span class="text-red-500">*</span>
+                        <label for="idCategorie" class="block text-sm font-medium text-gray-700 mb-1">
+                            Catégorie <span class="text-red-500">*</span>
                         </label>
-                        <input 
-                            type="text"
-                            id="service_usager"
-                            wire:model.defer="service_usager"
-                            list="services-list"
-                            placeholder="Ex: Direction, Comptabilité"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('service_usager') border-red-300 @enderror"
+                        <select 
+                            id="idCategorie"
+                            wire:model.defer="idCategorie"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idCategorie') border-red-300 @enderror"
                             wire:loading.attr="disabled">
-                        <datalist id="services-list">
-                            @foreach($this->services as $service)
-                                <option value="{{ $service }}">
+                            <option value="">Sélectionnez une catégorie</option>
+                            @foreach($this->categories as $categorie)
+                                <option value="{{ $categorie->idCategorie }}">{{ $categorie->Categorie }}</option>
                             @endforeach
-                        </datalist>
-                        @error('service_usager')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-                </div>
-            </div>
-
-            {{-- Section 3 : Caractéristiques --}}
-            <div class="mb-8">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                    Caractéristiques
-                </h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {{-- Valeur d'acquisition --}}
-                    <div>
-                        <label for="valeur_acquisition" class="block text-sm font-medium text-gray-700 mb-1">
-                            Valeur d'acquisition (MRU) <span class="text-red-500">*</span>
-                        </label>
-                        <div class="relative">
-                            <input 
-                                type="number"
-                                id="valeur_acquisition"
-                                wire:model.defer="valeur_acquisition"
-                                min="0"
-                                step="0.01"
-                                placeholder="0.00"
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('valeur_acquisition') border-red-300 @enderror"
-                                wire:loading.attr="disabled">
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                <span class="text-gray-500 sm:text-sm">MRU</span>
-                            </div>
-                        </div>
-                        @error('valeur_acquisition')
+                        </select>
+                        @error('idCategorie')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
                     {{-- État --}}
                     <div>
-                        <label for="etat" class="block text-sm font-medium text-gray-700 mb-1">
-                            État du bien <span class="text-red-500">*</span>
+                        <label for="idEtat" class="block text-sm font-medium text-gray-700 mb-1">
+                            État <span class="text-red-500">*</span>
                         </label>
                         <select 
-                            id="etat"
-                            wire:model.defer="etat"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('etat') border-red-300 @enderror"
+                            id="idEtat"
+                            wire:model.defer="idEtat"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idEtat') border-red-300 @enderror"
                             wire:loading.attr="disabled">
                             <option value="">Sélectionnez un état</option>
-                            @foreach($this->etats as $key => $label)
-                                <option value="{{ $key }}">
-                                    @php
-                                        $badgeColors = [
-                                            'neuf' => '🟢',
-                                            'bon' => '🟢',
-                                            'moyen' => '🟡',
-                                            'mauvais' => '🔴',
-                                            'reforme' => '⚫',
-                                        ];
-                                    @endphp
-                                    {{ $badgeColors[$key] ?? '' }} {{ $label }}
-                                </option>
+                            @foreach($this->etats as $etat)
+                                <option value="{{ $etat->idEtat }}">{{ $etat->Etat }}</option>
                             @endforeach
                         </select>
-                        @error('etat')
+                        @error('idEtat')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
-                    {{-- Observation --}}
-                    <div class="md:col-span-2">
-                        <label for="observation" class="block text-sm font-medium text-gray-700 mb-1">
-                            Observation
+                    {{-- Emplacement --}}
+                    <div>
+                        <label for="idEmplacement" class="block text-sm font-medium text-gray-700 mb-1">
+                            Emplacement <span class="text-red-500">*</span>
+                        </label>
+                        <select 
+                            id="idEmplacement"
+                            wire:model.defer="idEmplacement"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idEmplacement') border-red-300 @enderror"
+                            wire:loading.attr="disabled">
+                            <option value="">Sélectionnez un emplacement</option>
+                            @foreach($this->emplacements as $emplacement)
+                                <option value="{{ $emplacement->idEmplacement }}">
+                                    {{ $emplacement->Emplacement }}
+                                    @if($emplacement->localisation)
+                                        - {{ $emplacement->localisation->Localisation }}
+                                    @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('idEmplacement')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Nature Juridique --}}
+                    <div>
+                        <label for="idNatJur" class="block text-sm font-medium text-gray-700 mb-1">
+                            Nature Juridique <span class="text-red-500">*</span>
+                        </label>
+                        <select 
+                            id="idNatJur"
+                            wire:model.defer="idNatJur"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idNatJur') border-red-300 @enderror"
+                            wire:loading.attr="disabled">
+                            <option value="">Sélectionnez une nature juridique</option>
+                            @foreach($this->natureJuridiques as $natJur)
+                                <option value="{{ $natJur->idNatJur }}">{{ $natJur->NatJur }}</option>
+                            @endforeach
+                        </select>
+                        @error('idNatJur')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Source de Financement --}}
+                    <div>
+                        <label for="idSF" class="block text-sm font-medium text-gray-700 mb-1">
+                            Source de Financement <span class="text-red-500">*</span>
+                        </label>
+                        <select 
+                            id="idSF"
+                            wire:model.defer="idSF"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idSF') border-red-300 @enderror"
+                            wire:loading.attr="disabled">
+                            <option value="">Sélectionnez une source de financement</option>
+                            @foreach($this->sourceFinancements as $sf)
+                                <option value="{{ $sf->idSF }}">{{ $sf->SourceFin }}</option>
+                            @endforeach
+                        </select>
+                        @error('idSF')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Année d'acquisition --}}
+                    <div>
+                        <label for="DateAcquisition" class="block text-sm font-medium text-gray-700 mb-1">
+                            Année d'acquisition
+                        </label>
+                        <input 
+                            type="number"
+                            id="DateAcquisition"
+                            wire:model.defer="DateAcquisition"
+                            min="1900"
+                            max="{{ now()->year + 1 }}"
+                            placeholder="Ex: {{ now()->year }}"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('DateAcquisition') border-red-300 @enderror"
+                            wire:loading.attr="disabled">
+                        @error('DateAcquisition')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                        <p class="mt-1 text-xs text-gray-500">Saisissez uniquement l'année (ex: 2024)</p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Section 2 : Observations --}}
+            <div class="mb-8">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                    Observations
+                </h2>
+                
+                <div class="grid grid-cols-1 gap-6">
+                    {{-- Observations --}}
+                    <div>
+                        <label for="Observations" class="block text-sm font-medium text-gray-700 mb-1">
+                            Observations
                         </label>
                         <div class="relative">
                             <textarea 
-                                id="observation"
-                                wire:model.live="observation"
-                                rows="3"
+                                id="Observations"
+                                wire:model.live="Observations"
+                                rows="4"
                                 maxlength="1000"
                                 placeholder="Remarques particulières..."
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('observation') border-red-300 @enderror"
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('Observations') border-red-300 @enderror"
                                 wire:loading.attr="disabled"></textarea>
                             <div class="absolute bottom-2 right-2 text-xs text-gray-500 bg-white px-1 rounded">
-                                {{ strlen($observation ?? '') }}/1000
+                                {{ strlen($Observations ?? '') }}/1000
                             </div>
                         </div>
-                        @error('observation')
+                        @error('Observations')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>

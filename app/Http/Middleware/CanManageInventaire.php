@@ -27,8 +27,9 @@ class CanManageInventaire
 
         $user = Auth::user();
 
-        // Vérifier que l'utilisateur a le rôle admin ou agent
-        if ($user->role !== 'admin' && $user->role !== 'agent') {
+        // Vérifier que l'utilisateur a le rôle admin ou agent (ou superuser/immobilisation)
+        $allowedRoles = ['admin', 'agent', 'superuser', 'immobilisation'];
+        if (!in_array($user->role, $allowedRoles)) {
             return redirect()->route('dashboard')
                 ->with('error', 'Accès non autorisé');
         }

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Bien;
+use App\Models\Gesimmo;
 use App\Http\Requests\StoreBienRequest;
 use App\Http\Requests\UpdateBienRequest;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -69,19 +69,61 @@ class BienController extends Controller
     }
 
     /**
-     * Génère le QR code d'un bien
+     * Génère le code-barres Code 128 d'une immobilisation
      * 
-     * @param Bien $bien
+     * @param Gesimmo $bien
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function generateQRCode(Bien $bien)
+    public function generateQRCode(Gesimmo $bien)
     {
         try {
-            $path = $bien->generateQRCode();
+            $barcode = $bien->generateBarcode();
             
-            return redirect()->back()->with('success', 'QR code généré avec succès');
+            return redirect()->back()->with('success', 'Code-barres généré avec succès');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Erreur lors de la génération du QR code: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de la génération du code-barres: ' . $e->getMessage());
+        }
+    }
+
+
+    /**
+     * Génère l'étiquette PDF avec un code-barres SVG fourni côté client
+     * 
+     * @param Gesimmo $bien
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function downloadEtiquetteWithBarcode(Gesimmo $bien, \Illuminate\Http\Request $request)
+    {
+        try {
+            $request->validate([
+                'svg' => 'required|string',
+            ]);
+
+            // Charger les relations nécessaires
+            $bien->load(['emplacement.localisation', 'designation', 'categorie', 'etat', 'code']);
+
+            // Générer le PDF avec le SVG fourni
+            // Dimensions Code 128 standard : 50mm × 20mm (minimum 37.3mm × 12.7mm)
+            // 50mm = 141.73 points, 20mm = 56.69 points (1 mm = 2.83465 points)
+            $pdf = Pdf::loadView('pdf.etiquette-bien', [
+                'bien' => $bien,
+                'barcodeSvg' => $request->input('svg'), // SVG généré côté client
+            ])->setPaper([0, 0, 141.73, 56.69], 'portrait')
+              ->setOption('isHtml5ParserEnabled', true)
+              ->setOption('isRemoteEnabled', true)
+              ->setOption('isPhpEnabled', true)
+              ->setOption('defaultFont', 'DejaVu Sans')
+              ->setOption('enableFontSubsetting', true)
+              ->setOption('isFontSubsettingEnabled', true);
+
+            $filename = 'etiquette_' . \Illuminate\Support\Str::slug($bien->code_formate ?? $bien->NumOrdre) . '.pdf';
+
+            return $pdf->stream($filename);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Erreur lors de la génération de l\'étiquette: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -94,31 +136,29 @@ class BienController extends Controller
      * @param Bien $bien
      * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
      */
-    public function downloadEtiquette(Bien $bien)
+    public function downloadEtiquette(Gesimmo $bien)
     {
         try {
-            // Vérifier que le bien a un QR code, sinon le générer
-            if (!$bien->qr_code_path || !Storage::disk('public')->exists($bien->qr_code_path)) {
-                try {
-                    $bien->generateQRCode();
-                    $bien->refresh();
-                } catch (\Exception $e) {
-                    return redirect()->back()->with('error', 'Impossible de générer le QR code: ' . $e->getMessage());
-                }
-            }
+            // Charger les relations nécessaires (sans 'code' car généré côté client)
+            $bien->load(['emplacement.localisation', 'designation', 'categorie', 'etat']);
 
-            // Charger les relations nécessaires
-            $bien->load('localisation');
-
-            // Générer le PDF avec les nouvelles dimensions 70x37mm
-            // 70mm = 198.43 points, 37mm = 104.88 points (1 mm = 2.83465 points)
+            // Générer le PDF avec les dimensions Code 128 standard
+            // Dimensions minimales : 37.3mm × 12.7mm, on utilise 50mm × 20mm pour l'étiquette
+            // 50mm = 141.73 points, 20mm = 56.69 points (1 mm = 2.83465 points)
             $pdf = Pdf::loadView('pdf.etiquette-bien', [
                 'bien' => $bien,
-            ])->setPaper([0, 0, 198.43, 104.88], 'portrait'); // 70x37mm en points
+            ])->setPaper([0, 0, 141.73, 56.69], 'portrait')
+              ->setOption('isHtml5ParserEnabled', true)
+              ->setOption('isRemoteEnabled', true)
+              ->setOption('isPhpEnabled', true)
+              ->setOption('defaultFont', 'DejaVu Sans')
+              ->setOption('enableFontSubsetting', true)
+              ->setOption('isFontSubsettingEnabled', true); // 8cm x 5cm en points
 
-            $filename = 'etiquette_' . Str::slug($bien->code_inventaire) . '.pdf';
+            $filename = 'etiquette_' . Str::slug($bien->code_formate ?? $bien->NumOrdre) . '.pdf';
 
-            return $pdf->download($filename);
+            // Retourner le PDF en stream pour l'impression (au lieu de download)
+            return $pdf->stream($filename);
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Erreur lors de la génération de l\'étiquette: ' . $e->getMessage());
         }
@@ -138,31 +178,18 @@ class BienController extends Controller
         try {
             $request->validate([
                 'biens' => 'required|array|min:1',
-                'biens.*' => 'exists:biens,id',
+                'biens.*' => 'exists:gesimmo,NumOrdre',
             ]);
 
             $bienIds = $request->input('biens', []);
             
-            // Récupérer les biens avec leurs relations
-            $biens = Bien::whereIn('id', $bienIds)
-                ->with('localisation')
+            // Récupérer les immobilisations avec leurs relations (sans 'code' car généré côté client)
+            $biens = Gesimmo::whereIn('NumOrdre', $bienIds)
+                ->with(['emplacement.localisation', 'designation', 'categorie', 'etat'])
                 ->get();
 
             if ($biens->isEmpty()) {
                 return redirect()->back()->with('error', 'Aucun bien sélectionné.');
-            }
-
-            // Générer les QR codes manquants
-            foreach ($biens as $bien) {
-                if (!$bien->qr_code_path || !Storage::disk('public')->exists($bien->qr_code_path)) {
-                    try {
-                        $bien->generateQRCode();
-                        $bien->refresh();
-                    } catch (\Exception $e) {
-                        // Logger l'erreur mais continuer avec les autres biens
-                        \Illuminate\Support\Facades\Log::warning("Impossible de générer le QR code pour le bien {$bien->code_inventaire}: " . $e->getMessage());
-                    }
-                }
             }
 
             // Générer le PDF multi-pages
@@ -192,12 +219,20 @@ class BienController extends Controller
             // Récupérer les IDs sélectionnés si fournis
             $ids = $request->input('ids');
             
-            // Récupérer tous les biens avec relations
-            $query = Bien::with(['localisation', 'user']);
+            // Récupérer toutes les immobilisations avec relations
+            $query = Gesimmo::with([
+                'designation.categorie',
+                'categorie',
+                'etat',
+                'emplacement.localisation',
+                'emplacement.affectation',
+                'natureJuridique',
+                'sourceFinancement',
+            ]);
             
             if ($ids) {
                 $idsArray = is_array($ids) ? $ids : explode(',', $ids);
-                $query->whereIn('id', $idsArray);
+                $query->whereIn('NumOrdre', $idsArray);
             }
             
             $biens = $query->get();
@@ -218,29 +253,33 @@ class BienController extends Controller
                 
                 // En-têtes
                 fputcsv($file, [
-                    'Code Inventaire',
+                    'NumOrdre',
+                    'Code',
                     'Désignation',
-                    'Nature',
-                    'Localisation',
-                    'Service Usager',
-                    'Valeur Acquisition (MRU)',
+                    'Catégorie',
                     'État',
+                    'Emplacement',
+                    'Localisation',
+                    'Nature Juridique',
+                    'Source Financement',
                     'Date Acquisition',
-                    'Date Création',
+                    'Observations',
                 ], ';');
 
                 // Données
                 foreach ($biens as $bien) {
                     fputcsv($file, [
-                        $bien->code_inventaire,
-                        $bien->designation,
-                        $bien->nature,
-                        $bien->localisation ? $bien->localisation->code . ' - ' . $bien->localisation->designation : 'N/A',
-                        $bien->service_usager,
-                        number_format($bien->valeur_acquisition, 2, ',', ' '),
-                        $bien->etat,
-                        $bien->date_acquisition->format('d/m/Y'),
-                        $bien->created_at->format('d/m/Y H:i'),
+                        $bien->NumOrdre,
+                        $bien->code_formate ?? '',
+                        $bien->designation ? $bien->designation->designation : 'N/A',
+                        $bien->categorie ? $bien->categorie->Categorie : 'N/A',
+                        $bien->etat ? $bien->etat->Etat : 'N/A',
+                        $bien->emplacement ? $bien->emplacement->Emplacement : 'N/A',
+                        $bien->emplacement && $bien->emplacement->localisation ? $bien->emplacement->localisation->Localisation : 'N/A',
+                        $bien->natureJuridique ? $bien->natureJuridique->NatJur : 'N/A',
+                        $bien->sourceFinancement ? $bien->sourceFinancement->SourceFin : 'N/A',
+                        $bien->DateAcquisition ? $bien->DateAcquisition->format('d/m/Y') : '',
+                        $bien->Observations ?? '',
                     ], ';');
                 }
 
@@ -264,9 +303,17 @@ class BienController extends Controller
     public function exportPDF(Request $request)
     {
         try {
-            // Récupérer tous les biens avec relations
-            $biens = Bien::with(['localisation', 'user'])
-                ->orderBy('code_inventaire')
+            // Récupérer toutes les immobilisations avec relations
+            $biens = Gesimmo::with([
+                'designation.categorie',
+                'categorie',
+                'etat',
+                'emplacement.localisation',
+                'emplacement.affectation',
+                'natureJuridique',
+                'sourceFinancement',
+            ])
+                ->orderBy('NumOrdre')
                 ->get();
 
             if ($biens->isEmpty()) {

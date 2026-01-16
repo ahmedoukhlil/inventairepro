@@ -213,11 +213,11 @@
                 <a href="{{ route('biens.create') }}" 
                    class="flex items-center justify-center px-4 py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors">
                     <span class="text-2xl mr-2">➕</span>
-                    <span class="font-medium">Ajouter un bien</span>
+                    <span class="font-medium">Ajouter une immobilisation</span>
                 </a>
                 <a href="{{ route('localisations.create') }}" 
                    class="flex items-center justify-center px-4 py-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors">
-                    <span class="text-2xl mr-2">➕</span>
+                    <span class="text-2xl mr-2">📍</span>
                     <span class="font-medium">Ajouter une localisation</span>
                 </a>
                 <a href="{{ route('inventaires.create') }}" 
@@ -230,12 +230,6 @@
                     <span class="text-2xl mr-2">👥</span>
                     <span class="font-medium">Gérer les utilisateurs</span>
                 </a>
-                {{-- Route rapports désactivée pour l'instant --}}
-                {{-- <a href="{{ route('rapports.index') }}" 
-                   class="flex items-center justify-center px-4 py-3 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors">
-                    <span class="text-2xl mr-2">📊</span>
-                    <span class="font-medium">Générer rapport</span>
-                </a> --}}
             </div>
         </div>
     @endif

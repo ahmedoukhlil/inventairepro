@@ -2,98 +2,117 @@
 
 namespace App\Livewire\Biens;
 
-use App\Models\Bien;
-use App\Models\Localisation;
+use App\Models\Gesimmo;
+use App\Models\Designation;
+use App\Models\Categorie;
+use App\Models\Etat;
+use App\Models\Emplacement;
+use App\Models\NatureJuridique;
+use App\Models\SourceFinancement;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class FormBien extends Component
 {
     /**
-     * Instance du bien (null si création)
+     * Instance de l'immobilisation (null si création)
      */
     public $bien = null;
 
     /**
-     * ID du bien pour l'édition
+     * ID de l'immobilisation pour l'édition
      */
     public $bienId = null;
 
     /**
      * Propriétés du formulaire
      */
-    public $designation = '';
-    public $nature = '';
-    public $date_acquisition = '';
-    public $service_usager = '';
-    public $localisation_id = '';
-    public $valeur_acquisition = '';
-    public $etat = '';
-    public $observation = '';
-    public $genererQRCode = true;
+    public $idDesignation = '';
+    public $idCategorie = '';
+    public $idEtat = '';
+    public $idEmplacement = '';
+    public $idNatJur = '';
+    public $idSF = '';
+    public $DateAcquisition = '';
+    public $Observations = '';
+    public $genererQRCode = false;
 
     /**
      * Initialisation du composant
      * 
-     * @param Bien|null $bien Instance du bien pour l'édition, null pour la création
+     * @param Gesimmo|null $bien Instance de l'immobilisation pour l'édition, null pour la création
      */
     public function mount($bien = null): void
     {
         if ($bien) {
-            // Mode édition : charger les valeurs du bien
+            // Mode édition : charger les valeurs
             $this->bien = $bien;
-            $this->bienId = $bien->id;
-            $this->designation = $bien->designation;
-            $this->nature = $bien->nature;
-            $this->date_acquisition = $bien->date_acquisition->format('Y-m-d');
-            $this->service_usager = $bien->service_usager;
-            $this->localisation_id = $bien->localisation_id;
-            $this->valeur_acquisition = $bien->valeur_acquisition;
-            $this->etat = $bien->etat;
-            $this->observation = $bien->observation ?? '';
-            $this->genererQRCode = false; // Par défaut, ne pas régénérer en édition
+            $this->bienId = $bien->NumOrdre;
+            $this->idDesignation = $bien->idDesignation;
+            $this->idCategorie = $bien->idCategorie;
+            $this->idEtat = $bien->idEtat;
+            $this->idEmplacement = $bien->idEmplacement;
+            $this->idNatJur = $bien->idNatJur;
+            $this->idSF = $bien->idSF;
+            // DateAcquisition est un entier (année), pas une date
+            $this->DateAcquisition = $bien->DateAcquisition ?? '';
+            $this->Observations = $bien->Observations ?? '';
         } else {
-            // Mode création : valeurs par défaut
-            $this->date_acquisition = now()->format('Y-m-d');
-            $this->genererQRCode = true;
+            // Mode création : valeurs par défaut (année actuelle)
+            $this->DateAcquisition = now()->year;
         }
     }
 
     /**
-     * Propriété calculée : Retourne toutes les localisations actives
+     * Propriété calculée : Retourne toutes les désignations
      */
-    public function getLocalisationsProperty()
+    public function getDesignationsProperty()
     {
-        return Localisation::actives()
-            ->orderBy('code')
+        return Designation::with('categorie')
+            ->orderBy('designation')
             ->get();
     }
 
     /**
-     * Propriété calculée : Retourne les valeurs enum de nature
+     * Propriété calculée : Retourne toutes les catégories
      */
-    public function getNaturesProperty()
+    public function getCategoriesProperty()
     {
-        return [
-            'mobilier' => 'Mobilier',
-            'informatique' => 'Informatique',
-            'vehicule' => 'Véhicule',
-            'materiel' => 'Matériel',
-        ];
+        return Categorie::orderBy('Categorie')->get();
     }
 
     /**
-     * Propriété calculée : Retourne les valeurs enum d'état
+     * Propriété calculée : Retourne tous les états
      */
     public function getEtatsProperty()
     {
-        return [
-            'neuf' => 'Neuf',
-            'bon' => 'Bon',
-            'moyen' => 'Moyen',
-            'mauvais' => 'Mauvais',
-            'reforme' => 'Réformé',
-        ];
+        return Etat::orderBy('Etat')->get();
+    }
+
+    /**
+     * Propriété calculée : Retourne tous les emplacements
+     */
+    public function getEmplacementsProperty()
+    {
+        return Emplacement::with('localisation', 'affectation')
+            ->orderBy('Emplacement')
+            ->get();
+    }
+
+    /**
+     * Propriété calculée : Retourne toutes les natures juridiques
+     */
+    public function getNatureJuridiquesProperty()
+    {
+        return NatureJuridique::orderBy('NatJur')->get();
+    }
+
+    /**
+     * Propriété calculée : Retourne toutes les sources de financement
+     */
+    public function getSourceFinancementsProperty()
+    {
+        return SourceFinancement::orderBy('SourceFin')->get();
     }
 
     /**
@@ -105,34 +124,19 @@ class FormBien extends Component
     }
 
     /**
-     * Propriété calculée : Retourne la liste unique des services pour le datalist
-     */
-    public function getServicesProperty()
-    {
-        return Bien::query()
-            ->distinct()
-            ->whereNotNull('service_usager')
-            ->where('service_usager', '!=', '')
-            ->orderBy('service_usager')
-            ->pluck('service_usager')
-            ->unique()
-            ->values();
-    }
-
-    /**
      * Règles de validation
      */
     protected function rules(): array
     {
         return [
-            'designation' => 'required|string|max:255',
-            'nature' => 'required|in:mobilier,informatique,vehicule,materiel',
-            'date_acquisition' => 'required|date|before_or_equal:today',
-            'service_usager' => 'required|string|max:255',
-            'localisation_id' => 'required|exists:localisations,id',
-            'valeur_acquisition' => 'required|numeric|min:0',
-            'etat' => 'required|in:neuf,bon,moyen,mauvais,reforme',
-            'observation' => 'nullable|string|max:1000',
+            'idDesignation' => 'required|exists:designation,id',
+            'idCategorie' => 'required|exists:categorie,idCategorie',
+            'idEtat' => 'required|exists:etat,idEtat',
+            'idEmplacement' => 'required|exists:emplacement,idEmplacement',
+            'idNatJur' => 'required|exists:naturejurdique,idNatJur',
+            'idSF' => 'required|exists:sourcefinancement,idSF',
+            'DateAcquisition' => 'nullable|integer|min:1900|max:' . (now()->year + 1),
+            'Observations' => 'nullable|string|max:1000',
         ];
     }
 
@@ -142,23 +146,27 @@ class FormBien extends Component
     protected function messages(): array
     {
         return [
-            'designation.required' => 'La désignation est obligatoire.',
-            'nature.required' => 'La nature du bien est obligatoire.',
-            'date_acquisition.required' => 'La date d\'acquisition est obligatoire.',
-            'date_acquisition.before_or_equal' => 'La date d\'acquisition ne peut pas être dans le futur.',
-            'service_usager.required' => 'Le service usager est obligatoire.',
-            'localisation_id.required' => 'La localisation est obligatoire.',
-            'localisation_id.exists' => 'La localisation sélectionnée n\'existe pas.',
-            'valeur_acquisition.required' => 'La valeur d\'acquisition est obligatoire.',
-            'valeur_acquisition.numeric' => 'La valeur d\'acquisition doit être un nombre.',
-            'valeur_acquisition.min' => 'La valeur d\'acquisition doit être positive.',
-            'etat.required' => 'L\'état du bien est obligatoire.',
-            'observation.max' => 'L\'observation ne peut pas dépasser 1000 caractères.',
+            'idDesignation.required' => 'La désignation est obligatoire.',
+            'idDesignation.exists' => 'La désignation sélectionnée n\'existe pas.',
+            'idCategorie.required' => 'La catégorie est obligatoire.',
+            'idCategorie.exists' => 'La catégorie sélectionnée n\'existe pas.',
+            'idEtat.required' => 'L\'état est obligatoire.',
+            'idEtat.exists' => 'L\'état sélectionné n\'existe pas.',
+            'idEmplacement.required' => 'L\'emplacement est obligatoire.',
+            'idEmplacement.exists' => 'L\'emplacement sélectionné n\'existe pas.',
+            'idNatJur.required' => 'La nature juridique est obligatoire.',
+            'idNatJur.exists' => 'La nature juridique sélectionnée n\'existe pas.',
+            'idSF.required' => 'La source de financement est obligatoire.',
+            'idSF.exists' => 'La source de financement sélectionnée n\'existe pas.',
+            'DateAcquisition.integer' => 'L\'année d\'acquisition doit être un nombre.',
+            'DateAcquisition.min' => 'L\'année d\'acquisition doit être supérieure ou égale à 1900.',
+            'DateAcquisition.max' => 'L\'année d\'acquisition ne peut pas être dans le futur.',
+            'Observations.max' => 'Les observations ne peuvent pas dépasser 1000 caractères.',
         ];
     }
 
     /**
-     * Sauvegarde le bien (création ou édition)
+     * Sauvegarde l'immobilisation (création ou édition)
      */
     public function save()
     {
@@ -167,53 +175,39 @@ class FormBien extends Component
 
         try {
             if ($this->isEdit) {
-                // Mode édition : mettre à jour le bien existant
+                // Mode édition : mettre à jour l'immobilisation existante
                 $this->bien->update([
-                    'designation' => $validated['designation'],
-                    'nature' => $validated['nature'],
-                    'date_acquisition' => $validated['date_acquisition'],
-                    'service_usager' => $validated['service_usager'],
-                    'localisation_id' => $validated['localisation_id'],
-                    'valeur_acquisition' => $validated['valeur_acquisition'],
-                    'etat' => $validated['etat'],
-                    'observation' => $validated['observation'] ?? null,
+                    'idDesignation' => $validated['idDesignation'],
+                    'idCategorie' => $validated['idCategorie'],
+                    'idEtat' => $validated['idEtat'],
+                    'idEmplacement' => $validated['idEmplacement'],
+                    'idNatJur' => $validated['idNatJur'],
+                    'idSF' => $validated['idSF'],
+                    'DateAcquisition' => !empty($validated['DateAcquisition']) ? (int)$validated['DateAcquisition'] : null,
+                    'Observations' => $validated['Observations'] ?? null,
                 ]);
 
                 $bien = $this->bien->fresh();
-                $message = 'Bien modifié avec succès';
+                $message = 'Immobilisation modifiée avec succès';
             } else {
-                // Mode création : créer un nouveau bien
-                $codeInventaire = Bien::generateCodeInventaire();
-
-                $bien = Bien::create([
-                    'code_inventaire' => $codeInventaire,
-                    'designation' => $validated['designation'],
-                    'nature' => $validated['nature'],
-                    'date_acquisition' => $validated['date_acquisition'],
-                    'service_usager' => $validated['service_usager'],
-                    'localisation_id' => $validated['localisation_id'],
-                    'valeur_acquisition' => $validated['valeur_acquisition'],
-                    'etat' => $validated['etat'],
-                    'observation' => $validated['observation'] ?? null,
-                    'user_id' => Auth::id(),
+                // Mode création : créer une nouvelle immobilisation
+                $bien = Gesimmo::create([
+                    'idDesignation' => $validated['idDesignation'],
+                    'idCategorie' => $validated['idCategorie'],
+                    'idEtat' => $validated['idEtat'],
+                    'idEmplacement' => $validated['idEmplacement'],
+                    'idNatJur' => $validated['idNatJur'],
+                    'idSF' => $validated['idSF'],
+                    'DateAcquisition' => !empty($validated['DateAcquisition']) ? (int)$validated['DateAcquisition'] : null,
+                    'Observations' => $validated['Observations'] ?? null,
                 ]);
 
-                $message = 'Bien créé avec succès';
-            }
-
-            // Générer le QR code si demandé ou s'il n'existe pas
-            if ($this->genererQRCode || !$bien->qr_code_path) {
-                try {
-                    $bien->generateQRCode();
-                } catch (\Exception $e) {
-                    // Logger l'erreur mais ne pas bloquer la sauvegarde
-                    \Illuminate\Support\Facades\Log::warning("Impossible de générer le QR code pour le bien {$bien->code_inventaire}: " . $e->getMessage());
-                }
+                $message = 'Immobilisation créée avec succès';
             }
 
             session()->flash('success', $message);
 
-            // Rediriger vers la page de détail du bien
+            // Rediriger vers la page de détail
             return redirect()->route('biens.show', $bien);
         } catch (\Exception $e) {
             session()->flash('error', 'Une erreur est survenue lors de la sauvegarde : ' . $e->getMessage());

@@ -57,14 +57,6 @@
                     PDF
                 </a>
 
-                <a 
-                    href="{{ route('biens.create') }}"
-                    class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Ajouter un bien
-                </a>
             </div>
         </div>
 
@@ -105,52 +97,61 @@
                             <input 
                                 type="text"
                                 wire:model.live.debounce.300ms="search"
-                                placeholder="Code, désignation, service..."
+                                placeholder="NumOrdre, code, désignation..."
                                 class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                         </div>
                     </div>
 
-                    {{-- Filtre Nature --}}
+                    {{-- Filtre Désignation --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Nature
+                            Désignation
                         </label>
                         <select 
-                            wire:model.live="filterNature"
+                            wire:model.live="filterDesignation"
                             class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option value="">Toutes</option>
-                            @foreach($this->natures as $key => $label)
-                                <option value="{{ $key }}">{{ $label }}</option>
+                            <option value="">Toutes les désignations</option>
+                            @foreach($this->designations as $designation)
+                                <option value="{{ $designation->id }}">{{ $designation->designation }}</option>
                             @endforeach
                         </select>
                     </div>
 
-                    {{-- Filtre Localisation --}}
+                    {{-- Filtre Catégorie --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Localisation
+                            Catégorie
                         </label>
                         <select 
-                            wire:model.live="filterLocalisation"
+                            wire:model.live="filterCategorie"
                             class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option value="">Toutes</option>
-                            @foreach($this->localisations as $localisation)
-                                <option value="{{ $localisation->id }}">{{ $localisation->code }} - {{ $localisation->designation }}</option>
+                            <option value="">Toutes les catégories</option>
+                            @foreach($this->categories as $categorie)
+                                <option value="{{ $categorie->idCategorie }}">{{ $categorie->Categorie }}</option>
                             @endforeach
                         </select>
                     </div>
 
-                    {{-- Filtre Service --}}
+                    {{-- Filtre Emplacement (niveau le plus bas) --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Service
+                            Emplacement
                         </label>
                         <select 
-                            wire:model.live="filterService"
+                            wire:model.live="filterEmplacement"
                             class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option value="">Tous</option>
-                            @foreach($this->services as $service)
-                                <option value="{{ $service }}">{{ $service }}</option>
+                            <option value="">Tous les emplacements</option>
+                            @foreach($this->emplacements as $localisation => $emplacementsGroupe)
+                                <optgroup label="{{ $localisation }}">
+                                    @foreach($emplacementsGroupe as $emplacement)
+                                        <option value="{{ $emplacement->idEmplacement }}">
+                                            └─ {{ $emplacement->Emplacement }}
+                                            @if($emplacement->CodeEmplacement)
+                                                ({{ $emplacement->CodeEmplacement }})
+                                            @endif
+                                        </option>
+                                    @endforeach
+                                </optgroup>
                             @endforeach
                         </select>
                     </div>
@@ -163,9 +164,9 @@
                         <select 
                             wire:model.live="filterEtat"
                             class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option value="">Tous</option>
-                            @foreach($this->etats as $key => $label)
-                                <option value="{{ $key }}">{{ $label }}</option>
+                            <option value="">Tous les états</option>
+                            @foreach($this->etats as $etat)
+                                <option value="{{ $etat->idEtat }}">{{ $etat->Etat }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -201,20 +202,10 @@
                                     class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                     @if($this->allSelected) checked @endif>
                             </th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" wire:click="sortBy('code_inventaire')">
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" wire:click="sortBy('NumOrdre')">
                                 <div class="flex items-center">
-                                    Code
-                                    @if($sortField === 'code_inventaire')
-                                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7' }}" />
-                                        </svg>
-                                    @endif
-                                </div>
-                            </th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" wire:click="sortBy('designation')">
-                                <div class="flex items-center">
-                                    Désignation
-                                    @if($sortField === 'designation')
+                                    NumOrdre
+                                    @if($sortField === 'NumOrdre')
                                         <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7' }}" />
                                         </svg>
@@ -222,36 +213,22 @@
                                 </div>
                             </th>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Nature
-                            </th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" wire:click="sortBy('localisation_id')">
-                                <div class="flex items-center">
-                                    Localisation
-                                    @if($sortField === 'localisation_id')
-                                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7' }}" />
-                                        </svg>
-                                    @endif
-                                </div>
-                            </th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" wire:click="sortBy('service_usager')">
-                                <div class="flex items-center">
-                                    Service
-                                    @if($sortField === 'service_usager')
-                                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7' }}" />
-                                        </svg>
-                                    @endif
-                                </div>
+                                Code
                             </th>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Valeur
+                                Désignation
+                            </th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Catégorie
                             </th>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 État
                             </th>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Date acquisition
+                                Emplacement
+                            </th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Année d'acquisition
                             </th>
                             <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Actions
@@ -265,64 +242,57 @@
                                     <input 
                                         type="checkbox"
                                         wire:model="selectedBiens"
-                                        value="{{ $bien->id }}"
+                                        value="{{ $bien->NumOrdre }}"
                                         class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-gray-900">{{ $bien->code_inventaire }}</div>
-                                </td>
-                                <td class="px-4 py-3">
-                                    <div class="text-sm text-gray-900">{{ Str::limit($bien->designation, 50) }}</div>
+                                    <div class="text-sm font-medium text-gray-900">{{ $bien->NumOrdre }}</div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    @php
-                                        $natureColors = [
-                                            'mobilier' => 'bg-blue-100 text-blue-800',
-                                            'informatique' => 'bg-purple-100 text-purple-800',
-                                            'vehicule' => 'bg-yellow-100 text-yellow-800',
-                                            'materiel' => 'bg-green-100 text-green-800',
-                                        ];
-                                        $color = $natureColors[$bien->nature] ?? 'bg-gray-100 text-gray-800';
-                                    @endphp
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $color }}">
-                                        {{ $this->natures[$bien->nature] ?? $bien->nature }}
-                                    </span>
+                                    <div class="text-sm font-mono text-gray-600">{{ $bien->code_formate ?? 'N/A' }}</div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="text-sm text-gray-900">
+                                        {{ $bien->designation ? Str::limit($bien->designation->designation, 50) : 'N/A' }}
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    @if($bien->categorie)
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            {{ $bien->categorie->Categorie }}
+                                        </span>
+                                    @else
+                                        <span class="text-gray-400 text-sm">N/A</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    @if($bien->etat)
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            {{ $bien->etat->Etat }}
+                                        </span>
+                                    @else
+                                        <span class="text-gray-400 text-sm">N/A</span>
+                                    @endif
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">
-                                        @if($bien->localisation)
-                                            {{ $bien->localisation->code }} - {{ Str::limit($bien->localisation->designation, 30) }}
+                                        @if($bien->emplacement)
+                                            {{ $bien->emplacement->Emplacement }}
+                                            @if($bien->emplacement->localisation)
+                                                <br><span class="text-xs text-gray-500">{{ $bien->emplacement->localisation->Localisation }}</span>
+                                            @endif
                                         @else
                                             <span class="text-gray-400">N/A</span>
                                         @endif
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">{{ $bien->service_usager }}</div>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-gray-900">
-                                        {{ number_format($bien->valeur_acquisition, 0, ',', ' ') }} MRU
-                                    </div>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    @php
-                                        $etatColors = [
-                                            'neuf' => 'bg-green-100 text-green-800',
-                                            'bon' => 'bg-green-100 text-green-800',
-                                            'moyen' => 'bg-yellow-100 text-yellow-800',
-                                            'mauvais' => 'bg-red-100 text-red-800',
-                                            'reforme' => 'bg-gray-100 text-gray-800',
-                                        ];
-                                        $etatColor = $etatColors[$bien->etat] ?? 'bg-gray-100 text-gray-800';
-                                    @endphp
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $etatColor }}">
-                                        {{ $this->etats[$bien->etat] ?? $bien->etat }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">
-                                        {{ $bien->date_acquisition->format('d/m/Y') }}
+                                        @if($bien->DateAcquisition && $bien->DateAcquisition > 1970)
+                                            {{ $bien->DateAcquisition }}
+                                        @else
+                                            <span class="text-gray-400">N/A</span>
+                                        @endif
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
@@ -351,7 +321,7 @@
                                         <a 
                                             href="{{ route('biens.qr-code', $bien) }}"
                                             class="text-blue-600 hover:text-blue-900 transition-colors"
-                                            title="QR Code">
+                                            title="Code-barres">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                                             </svg>
@@ -359,7 +329,7 @@
 
                                         @if($isAdmin)
                                             <button 
-                                                wire:click="deleteBien({{ $bien->id }})"
+                                                wire:click="deleteBien({{ $bien->NumOrdre }})"
                                                 wire:confirm="Êtes-vous sûr de vouloir supprimer ce bien ?"
                                                 class="text-red-600 hover:text-red-900 transition-colors"
                                                 title="Supprimer">
@@ -373,16 +343,16 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="10" class="px-4 py-12 text-center">
+                                <td colspan="9" class="px-4 py-12 text-center">
                                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                     </svg>
                                     <h3 class="mt-2 text-sm font-medium text-gray-900">Aucun bien trouvé</h3>
                                     <p class="mt-1 text-sm text-gray-500">
-                                        @if($search || $filterNature || $filterLocalisation || $filterService || $filterEtat)
+                                        @if($search || $filterDesignation || $filterCategorie || $filterEmplacement || $filterEtat)
                                             Essayez de modifier vos critères de recherche.
                                         @else
-                                            Commencez par créer un nouveau bien.
+                                            Commencez par créer une nouvelle immobilisation.
                                         @endif
                                     </p>
                                 </td>
@@ -449,5 +419,6 @@
             {{ session('warning') }}
         </div>
     @endif
+
 </div>
 

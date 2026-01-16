@@ -123,7 +123,9 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
             // Génération du QR code d'un bien
             Route::get('/{bien}/qr-code', [BienController::class, 'generateQRCode'])->name('qr-code');
             
-            // Téléchargement de l'étiquette d'un bien
+            // Téléchargement de l'étiquette d'un bien (avec code-barres côté client)
+            Route::post('/{bien}/etiquette', [BienController::class, 'downloadEtiquetteWithBarcode'])->name('etiquette.with-barcode');
+            // Téléchargement de l'étiquette d'un bien (avec code-barres de la base)
             Route::get('/{bien}/etiquette', [BienController::class, 'downloadEtiquette'])->name('etiquette');
             
             // Impression en masse d'étiquettes

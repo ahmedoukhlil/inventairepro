@@ -176,10 +176,10 @@ class RapportInventaire extends Component
     public function exportPDF()
     {
         try {
-            $service = app(InventaireService::class);
+            $service = app(\App\Services\RapportService::class);
             $filePath = $service->genererRapportPDF($this->inventaire);
             
-            return response()->download(storage_path('app/public/' . $filePath));
+            return response()->download(storage_path('app/' . $filePath));
         } catch (\Exception $e) {
             session()->flash('error', 'Erreur lors de la génération du PDF: ' . $e->getMessage());
         }

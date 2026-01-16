@@ -66,33 +66,33 @@
     <form method="POST" action="{{ route('login') }}" class="space-y-5" x-data="{ showPassword: false, isLoading: false }" @submit="isLoading = true">
         @csrf
 
-        <!-- Email Address -->
+        <!-- Nom d'utilisateur -->
         <div class="space-y-2">
-            <label for="email" class="block text-sm font-bold text-gray-800">
-                {{ __('Adresse email') }}
+            <label for="users" class="block text-sm font-bold text-gray-800">
+                {{ __('Nom d\'utilisateur') }}
             </label>
             <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg class="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                 </div>
                 <input 
-                    id="email" 
+                    id="users" 
                     class="block w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg shadow-sm bg-white placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all duration-200" 
-                    type="email" 
-                    name="email" 
-                    value="{{ old('email') }}" 
+                    type="text" 
+                    name="users" 
+                    value="{{ old('users') }}" 
                     required 
                     autofocus 
                     autocomplete="username"
-                    placeholder="votre@email.com">
+                    placeholder="Nom d'utilisateur">
             </div>
         </div>
 
         <!-- Password -->
         <div class="space-y-2">
-            <label for="password" class="block text-sm font-bold text-gray-800">
+            <label for="mdp" class="block text-sm font-bold text-gray-800">
                 {{ __('Mot de passe') }}
             </label>
             <div class="relative">
@@ -102,10 +102,10 @@
                     </svg>
                 </div>
                 <input 
-                    id="password" 
+                    id="mdp" 
                     class="block w-full pl-10 pr-12 py-3 border-2 border-gray-300 rounded-lg shadow-sm bg-white placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all duration-200" 
                     :type="showPassword ? 'text' : 'password'"
-                    name="password" 
+                    name="mdp" 
                     required 
                     autocomplete="current-password"
                     placeholder="••••••••">

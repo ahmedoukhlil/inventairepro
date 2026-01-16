@@ -3,99 +3,123 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Bien;
+use App\Models\Gesimmo;
 use Illuminate\Http\Request;
 
 /**
- * Controller API pour la gestion des biens depuis la PWA
- * Gère les opérations de bien via l'API
+ * Controller API pour la gestion des immobilisations depuis la PWA
+ * Gère les opérations d'immobilisation via l'API
  */
 class BienController extends Controller
 {
     /**
-     * Récupérer les détails d'un bien
-     * Utilisé lors du scan QR code d'un bien
+     * Récupérer les détails d'une immobilisation
+     * Utilisé lors du scan QR code d'une immobilisation
      * 
-     * @param Bien $bien
+     * @param Gesimmo $bien
      * @return \Illuminate\Http\JsonResponse
      */
-    public function show(Bien $bien)
+    public function show(Gesimmo $bien)
     {
-        // Vérifier que le bien n'est pas soft deleted
-        if ($bien->trashed()) {
-            return response()->json([
-                'message' => 'Ce bien a été supprimé'
-            ], 404);
-        }
-
-        // Charger les relations nécessaires
-        $bien->load(['localisation', 'user']);
+        // Charger les relations nécessaires (sans 'code' car généré côté client)
+        $bien->load([
+            'designation.categorie',
+            'categorie',
+            'etat',
+            'emplacement.localisation',
+            'emplacement.affectation',
+            'natureJuridique',
+            'sourceFinancement',
+        ]);
 
         return response()->json([
             'bien' => [
-            'id' => $bien->id,
-            'code_inventaire' => $bien->code_inventaire,
-            'designation' => $bien->designation,
-            'nature' => $bien->nature,
-                'date_acquisition' => $bien->date_acquisition?->format('Y-m-d'),
-                'service_usager' => $bien->service_usager,
-                'localisation_id' => $bien->localisation_id,
-                'valeur_acquisition' => $bien->valeur_acquisition,
-            'etat' => $bien->etat,
-                'qr_code_path' => $bien->qr_code_path,
-                'observation' => $bien->observation,
-                'user_id' => $bien->user_id,
-                'localisation' => $bien->localisation ? [
-                    'id' => $bien->localisation->id,
-                    'code' => $bien->localisation->code,
-                    'designation' => $bien->localisation->designation,
-                    'batiment' => $bien->localisation->batiment,
-                    'etage' => $bien->localisation->etage,
+                'NumOrdre' => $bien->NumOrdre,
+                'code' => $bien->code_formate,
+                'designation' => $bien->designation ? [
+                    'id' => $bien->designation->id,
+                    'designation' => $bien->designation->designation,
+                    'CodeDesignation' => $bien->designation->CodeDesignation,
                 ] : null,
-                'enregistre_par' => $bien->user ? $bien->user->name : null,
+                'categorie' => $bien->categorie ? [
+                    'idCategorie' => $bien->categorie->idCategorie,
+                    'Categorie' => $bien->categorie->Categorie,
+                    'CodeCategorie' => $bien->categorie->CodeCategorie,
+                ] : null,
+                'etat' => $bien->etat ? [
+                    'idEtat' => $bien->etat->idEtat,
+                    'Etat' => $bien->etat->Etat,
+                    'CodeEtat' => $bien->etat->CodeEtat,
+                ] : null,
+                'emplacement' => $bien->emplacement ? [
+                    'idEmplacement' => $bien->emplacement->idEmplacement,
+                    'Emplacement' => $bien->emplacement->Emplacement,
+                    'CodeEmplacement' => $bien->emplacement->CodeEmplacement,
+                    'localisation' => $bien->emplacement->localisation ? [
+                        'idLocalisation' => $bien->emplacement->localisation->idLocalisation,
+                        'Localisation' => $bien->emplacement->localisation->Localisation,
+                        'CodeLocalisation' => $bien->emplacement->localisation->CodeLocalisation,
+                    ] : null,
+                ] : null,
+                'natureJuridique' => $bien->natureJuridique ? [
+                    'idNatJur' => $bien->natureJuridique->idNatJur,
+                    'NatJur' => $bien->natureJuridique->NatJur,
+                    'CodeNatJur' => $bien->natureJuridique->CodeNatJur,
+                ] : null,
+                'sourceFinancement' => $bien->sourceFinancement ? [
+                    'idSF' => $bien->sourceFinancement->idSF,
+                    'SourceFin' => $bien->sourceFinancement->SourceFin,
+                    'CodeSourceFin' => $bien->sourceFinancement->CodeSourceFin,
+                ] : null,
+                'DateAcquisition' => $bien->DateAcquisition?->format('Y-m-d'),
+                'Observations' => $bien->Observations,
             ]
         ]);
     }
 
     /**
-     * Récupérer un bien par son code inventaire
-     * Utilisé lors du scan QR code d'un bien
+     * Récupérer une immobilisation par son code
+     * Utilisé lors du scan QR code d'une immobilisation
      * 
      * @param string $code
      * @return \Illuminate\Http\JsonResponse
      */
     public function byCode($code)
     {
-        $bien = Bien::where('code_inventaire', $code)
-            ->whereNull('deleted_at')
-            ->with(['localisation', 'user'])
-            ->first();
+        // Le code est au format: CodeNatJur/CodeDesignation/CodeCategorie/Année/CodeSourceFin/NumOrdre
+        $parts = explode('/', $code);
+        
+        if (count($parts) !== 6) {
+            return response()->json([
+                'message' => 'Format de code invalide'
+            ], 400);
+        }
+
+        $numOrdre = (int) end($parts);
+        $bien = Gesimmo::with([
+            'designation.categorie',
+            'categorie',
+            'etat',
+            'emplacement.localisation',
+            'emplacement.affectation',
+            'natureJuridique',
+            'sourceFinancement',
+        ])->find($numOrdre);
 
         if (!$bien) {
             return response()->json([
-                'message' => 'Bien non trouvé'
+                'message' => 'Immobilisation non trouvée'
             ], 404);
         }
 
-        return response()->json([
-            'bien' => [
-                'id' => $bien->id,
-                'code_inventaire' => $bien->code_inventaire,
-                'designation' => $bien->designation,
-                'nature' => $bien->nature,
-            'date_acquisition' => $bien->date_acquisition?->format('Y-m-d'),
-            'service_usager' => $bien->service_usager,
-                'localisation_id' => $bien->localisation_id,
-                'valeur_acquisition' => $bien->valeur_acquisition,
-                'etat' => $bien->etat,
-                'qr_code_path' => $bien->qr_code_path,
-            'observation' => $bien->observation,
-                'localisation' => $bien->localisation ? [
-                    'id' => $bien->localisation->id,
-                    'code' => $bien->localisation->code,
-                    'designation' => $bien->localisation->designation,
-                ] : null,
-            ]
-        ]);
+        // Vérifier que le code correspond
+        if ($bien->code_formate !== $code) {
+            return response()->json([
+                'message' => 'Code d\'immobilisation invalide'
+            ], 400);
+        }
+
+        return $this->show($bien);
     }
+
 }

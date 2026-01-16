@@ -449,10 +449,10 @@ class API {
      * @param {string} password - Mot de passe
      * @returns {Promise<Object>} Réponse avec token et user
      */
-    static async login(email, password) {
+    static async login(users, mdp) {
         return this.request('/login', {
             method: 'POST',
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ users, mdp })
         });
     }
 
@@ -641,7 +641,7 @@ class AuthManager {
             try {
                 AppState.token = token;
                 AppState.user = JSON.parse(userJson);
-                console.log('[Auth] Session restaurée pour:', AppState.user.email);
+                console.log('[Auth] Session restaurée pour:', AppState.user.users);
                 return true;
             } catch (error) {
                 console.error('[Auth] Erreur parsing user data:', error);
@@ -655,13 +655,13 @@ class AuthManager {
 
     /**
      * Connecte l'utilisateur
-     * @param {string} email - Email de l'utilisateur
-     * @param {string} password - Mot de passe
+     * @param {string} users - Nom d'utilisateur
+     * @param {string} mdp - Mot de passe
      * @returns {Promise<Object>} Résultat de la connexion {success: boolean, error?: string}
      */
-    static async login(email, password) {
+    static async login(users, mdp) {
         try {
-            const response = await API.login(email, password);
+            const response = await API.login(users, mdp);
             
             if (response.token && response.user) {
                 // Mettre à jour le state
@@ -672,7 +672,7 @@ class AuthManager {
                 localStorage.setItem(CONFIG.STORAGE_KEY_TOKEN, response.token);
                 localStorage.setItem(CONFIG.STORAGE_KEY_USER, JSON.stringify(response.user));
 
-                console.log('[Auth] Connexion réussie:', response.user.email);
+                console.log('[Auth] Connexion réussie:', response.user.users);
                 return { success: true };
             } else {
                 throw new Error('Réponse invalide du serveur');
@@ -2530,14 +2530,14 @@ function attachEventListeners() {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const email = document.getElementById('login-email')?.value;
-            const password = document.getElementById('login-password')?.value;
+            const users = document.getElementById('login-users')?.value;
+            const mdp = document.getElementById('login-mdp')?.value;
             const errorDiv = document.getElementById('login-error');
             const loginBtn = document.getElementById('login-btn');
             const loginBtnText = document.getElementById('login-btn-text');
             const loginSpinner = document.getElementById('login-spinner');
 
-            if (!email || !password) {
+            if (!users || !mdp) {
                 if (errorDiv) {
                     const errorText = errorDiv.querySelector('p');
                     if (errorText) {
@@ -2556,7 +2556,7 @@ function attachEventListeners() {
             if (loginSpinner) loginSpinner.classList.remove('hidden');
             if (errorDiv) errorDiv.classList.add('hidden');
 
-            const result = await AuthManager.login(email, password);
+            const result = await AuthManager.login(users, mdp);
 
             if (result.success) {
                 await loadInventaire();
@@ -2855,10 +2855,10 @@ async function loadInventaire() {
             const menuUserRole = document.getElementById('menu-user-role');
 
             if (userName && AppState.user) {
-                userName.textContent = AppState.user.name || AppState.user.email;
+                userName.textContent = AppState.user.users || 'Utilisateur';
             }
             if (menuUserName && AppState.user) {
-                menuUserName.textContent = AppState.user.name || AppState.user.email;
+                menuUserName.textContent = AppState.user.users || 'Utilisateur';
             }
             if (menuUserRole && AppState.user) {
                 menuUserRole.textContent = AppState.user.role === 'admin' ? 'Administrateur' : 'Agent';

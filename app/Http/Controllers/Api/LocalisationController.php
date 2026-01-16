@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Localisation;
-use App\Models\Bien;
+use App\Models\LocalisationImmo;
+use App\Models\Emplacement;
+use App\Models\Gesimmo;
 use Illuminate\Http\Request;
 
 /**
@@ -22,8 +23,7 @@ class LocalisationController extends Controller
      */
     public function byCode($code)
     {
-        $localisation = Localisation::where('code', $code)
-            ->where('actif', true)
+        $localisation = LocalisationImmo::where('CodeLocalisation', $code)
             ->first();
 
         if (!$localisation) {
@@ -32,51 +32,49 @@ class LocalisationController extends Controller
             ], 404);
         }
 
+        $localisation->loadCount('emplacements');
+
         return response()->json([
             'localisation' => [
-            'id' => $localisation->id,
-            'code' => $localisation->code,
-            'designation' => $localisation->designation,
-            'batiment' => $localisation->batiment,
-            'etage' => $localisation->etage,
-            'service_rattache' => $localisation->service_rattache,
-            'responsable' => $localisation->responsable,
-                'qr_code_path' => $localisation->qr_code_path,
+                'idLocalisation' => $localisation->idLocalisation,
+                'Localisation' => $localisation->Localisation,
+                'CodeLocalisation' => $localisation->CodeLocalisation,
+                'emplacements_count' => $localisation->emplacements_count,
             ]
         ]);
     }
 
     /**
-     * Récupérer tous les biens d'une localisation
-     * Utilisé pour charger les biens attendus lors du scan d'une localisation
+     * Récupérer toutes les immobilisations d'une localisation (via ses emplacements)
+     * Utilisé pour charger les immobilisations attendues lors du scan d'une localisation
      * 
-     * @param Localisation $localisation
+     * @param LocalisationImmo $localisation
      * @return \Illuminate\Http\JsonResponse
      */
-    public function biens(Localisation $localisation)
+    public function biens(LocalisationImmo $localisation)
     {
-        // Vérifier que la localisation est active
-        if (!$localisation->actif) {
-            return response()->json([
-                'message' => 'Localisation inactive'
-            ], 403);
-        }
-
-        $biens = Bien::where('localisation_id', $localisation->id)
-            ->whereNull('deleted_at')
+        // Récupérer tous les emplacements de cette localisation
+        $emplacements = $localisation->emplacements()->pluck('idEmplacement');
+        
+        // Récupérer toutes les immobilisations de ces emplacements
+        $biens = Gesimmo::whereIn('idEmplacement', $emplacements)
+            ->with([
+                'designation',
+                'categorie',
+                'etat',
+                'emplacement',
+                'code',
+            ])
             ->get()
             ->map(function ($bien) {
                 return [
-                    'id' => $bien->id,
-                    'code_inventaire' => $bien->code_inventaire,
-                    'designation' => $bien->designation,
-                    'nature' => $bien->nature,
-                    'service_usager' => $bien->service_usager,
-                    'localisation_id' => $bien->localisation_id,
-                    'valeur_acquisition' => $bien->valeur_acquisition,
-                    'etat' => $bien->etat,
-                    'date_acquisition' => $bien->date_acquisition?->format('Y-m-d'),
-                    'qr_code_path' => $bien->qr_code_path,
+                    'NumOrdre' => $bien->NumOrdre,
+                    'code' => $bien->code_formate ?? '',
+                    'designation' => $bien->designation ? $bien->designation->designation : 'N/A',
+                    'categorie' => $bien->categorie ? $bien->categorie->Categorie : 'N/A',
+                    'etat' => $bien->etat ? $bien->etat->Etat : 'N/A',
+                    'emplacement' => $bien->emplacement ? $bien->emplacement->Emplacement : 'N/A',
+                    'DateAcquisition' => $bien->DateAcquisition?->format('Y-m-d'),
                 ];
             });
 
@@ -89,25 +87,19 @@ class LocalisationController extends Controller
     /**
      * Récupérer les détails d'une localisation
      * 
-     * @param Localisation $localisation
+     * @param LocalisationImmo $localisation
      * @return \Illuminate\Http\JsonResponse
      */
-    public function show(Localisation $localisation)
+    public function show(LocalisationImmo $localisation)
     {
-        $localisation->loadCount('biens');
+        $localisation->loadCount('emplacements');
 
         return response()->json([
             'localisation' => [
-                'id' => $localisation->id,
-                'code' => $localisation->code,
-                'designation' => $localisation->designation,
-                'batiment' => $localisation->batiment,
-                'etage' => $localisation->etage,
-                'service_rattache' => $localisation->service_rattache,
-                'responsable' => $localisation->responsable,
-                'qr_code_path' => $localisation->qr_code_path,
-                'actif' => $localisation->actif,
-                'biens_count' => $localisation->biens_count,
+                'idLocalisation' => $localisation->idLocalisation,
+                'Localisation' => $localisation->Localisation,
+                'CodeLocalisation' => $localisation->CodeLocalisation,
+                'emplacements_count' => $localisation->emplacements_count,
             ]
         ]);
     }

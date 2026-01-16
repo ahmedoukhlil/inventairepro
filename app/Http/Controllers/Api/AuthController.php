@@ -24,29 +24,48 @@ class AuthController extends Controller
     {
         // Valider les données
         $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
+            'users' => 'required|string',
+            'mdp' => 'required|string',
         ]);
 
         // Récupérer l'utilisateur
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('users', $request->users)->first();
 
-        // Vérifier l'utilisateur et le mot de passe
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        // Vérifier l'utilisateur
+        if (!$user) {
             throw ValidationException::withMessages([
-                'email' => ['Les identifiants fournis sont incorrects.'],
+                'users' => ['Les identifiants fournis sont incorrects.'],
             ]);
         }
 
-        // Vérifier que l'utilisateur est actif
-        if (!$user->actif) {
-            return response()->json([
-                'message' => 'Votre compte est désactivé. Contactez un administrateur.'
-            ], 403);
+        // Vérifier le mot de passe (gérer les mots de passe en clair et hashés)
+        $passwordValid = false;
+        $storedPassword = $user->mdp;
+
+        // Vérifier si le mot de passe stocké est hashé (commence par $2y$ pour bcrypt)
+        if (str_starts_with($storedPassword, '$2y$')) {
+            // Mot de passe hashé, utiliser Hash::check
+            $passwordValid = Hash::check($request->mdp, $storedPassword);
+        } else {
+            // Mot de passe en clair, comparer directement
+            $passwordValid = ($request->mdp === $storedPassword);
+            
+            // Si la connexion réussit avec un mot de passe en clair, le hasher pour la sécurité
+            if ($passwordValid) {
+                $user->mdp = Hash::make($request->mdp);
+                $user->save();
+            }
         }
 
-        // Vérifier que l'utilisateur a le rôle approprié (agent ou admin)
-        if (!in_array($user->role, ['agent', 'admin'])) {
+        if (!$passwordValid) {
+            throw ValidationException::withMessages([
+                'users' => ['Les identifiants fournis sont incorrects.'],
+            ]);
+        }
+
+        // Vérifier que l'utilisateur a le rôle approprié (agent, admin, superuser, immobilisation)
+        $allowedRoles = ['agent', 'admin', 'superuser', 'immobilisation'];
+        if (!in_array($user->role, $allowedRoles)) {
             return response()->json([
                 'message' => 'Accès non autorisé pour ce type de compte.'
             ], 403);
@@ -63,12 +82,9 @@ class AuthController extends Controller
         return response()->json([
             'token' => $token,
             'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
+                'idUser' => $user->idUser,
+                'users' => $user->users,
                 'role' => $user->role,
-                'telephone' => $user->telephone,
-                'service' => $user->service,
             ]
         ]);
     }
@@ -114,13 +130,9 @@ class AuthController extends Controller
 
         return response()->json([
             'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
+                'idUser' => $user->idUser,
+                'users' => $user->users,
                 'role' => $user->role,
-                'telephone' => $user->telephone,
-                'service' => $user->service,
-                'actif' => $user->actif,
             ]
         ]);
     }

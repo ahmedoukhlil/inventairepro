@@ -39,44 +39,44 @@ class Dashboard extends Component
     private function loadStatistics()
     {
         try {
-        // Total biens actifs
-        $this->totalBiens = Bien::actifs()->count();
-        
-        // Biens créés cette année
-        $this->biensCetteAnnee = Bien::whereYear('created_at', now()->year)->count();
-        
-        // Total localisations actives
-        $this->totalLocalisations = Localisation::actives()->count();
-        
-        // Nombre de bâtiments uniques
-            $batiments = Localisation::actives()
-            ->whereNotNull('batiment')
-                ->pluck('batiment')
-                ->unique()
-                ->count();
-            $this->nombreBatiments = $batiments;
-        
-        // Valeur totale du parc
-            $this->valeurTotale = Bien::actifs()->sum('valeur_acquisition') ?? 0;
-        
-        // Inventaire en cours
+            // Total immobilisations (gesimmo)
+            $this->totalBiens = \App\Models\Gesimmo::count();
+            
+            // Biens créés cette année (basé sur l'année d'acquisition > année en cours - 1)
+            $this->biensCetteAnnee = \App\Models\Gesimmo::where('DateAcquisition', '>=', now()->year)->count();
+            
+            // Total localisations actives
+            $this->totalLocalisations = \App\Models\Localisation::count();
+            
+            // Nombre de bâtiments uniques (comptage des localisations distinctes)
+            $this->nombreBatiments = \App\Models\Localisation::distinct('CodeLocalisation')->count();
+            
+            // Valeur totale du parc (on ne dispose pas de cette info dans gesimmo, donc on laisse à 0)
+            $this->valeurTotale = 0;
+            
+            // Inventaire en cours
             $this->inventaireEnCours = Inventaire::where(function($query) {
                 $query->where('statut', 'en_cours')
                       ->orWhere('statut', 'en_preparation');
             })
             ->orderBy('annee', 'desc')
             ->first();
-        
-        // Charger les statistiques de l'inventaire en cours
-        if ($this->inventaireEnCours) {
-            $this->loadInventaireStats();
-        }
-        
-        // Dernières actions
-        $this->loadRecentActions();
+            
+            // Charger les statistiques de l'inventaire en cours
+            if ($this->inventaireEnCours) {
+                $this->loadInventaireStats();
+            }
+            
+            // Dernières actions
+            $this->loadRecentActions();
         } catch (\Exception $e) {
             // En cas d'erreur, initialiser avec des valeurs par défaut
             \Log::error('Erreur lors du chargement des statistiques du dashboard: ' . $e->getMessage());
+            $this->totalBiens = 0;
+            $this->totalLocalisations = 0;
+            $this->valeurTotale = 0;
+            $this->biensCetteAnnee = 0;
+            $this->nombreBatiments = 0;
         }
     }
 
@@ -160,66 +160,62 @@ class Dashboard extends Component
     {
         $actions = collect();
 
-        // Scans récents (7 derniers jours)
-        $scansRecents = InventaireScan::with(['bien', 'localisationReelle', 'agent'])
-            ->where('date_scan', '>=', now()->subDays(7))
-            ->orderBy('date_scan', 'desc')
-            ->limit(5)
-            ->get();
+        try {
+            // Scans récents (7 derniers jours)
+            $scansRecents = InventaireScan::with(['bien', 'localisationReelle', 'agent'])
+                ->where('date_scan', '>=', now()->subDays(7))
+                ->orderBy('date_scan', 'desc')
+                ->limit(5)
+                ->get();
 
-        foreach ($scansRecents as $scan) {
-            if ($scan->bien && $scan->agent) {
-                $actions->push([
-                    'type' => 'scan',
-                    'icon' => '📋',
-                    'message' => "{$scan->agent->name} a scanné {$scan->bien->designation} dans " . ($scan->localisationReelle->full_name ?? 'N/A'),
-                    'time' => $scan->date_scan,
-                ]);
+            foreach ($scansRecents as $scan) {
+                if ($scan->bien && $scan->agent) {
+                    $agentName = $scan->agent->name ?? 'Utilisateur';
+                    $bienDesignation = $scan->bien->designation->designation ?? 'Immobilisation';
+                    $localisationNom = $scan->localisationReelle->Localisation ?? 'N/A';
+                    
+                    $actions->push([
+                        'type' => 'scan',
+                        'icon' => '📋',
+                        'message' => "{$agentName} a scanné {$bienDesignation} dans {$localisationNom}",
+                        'time' => $scan->date_scan,
+                    ]);
+                }
             }
-        }
 
-        // Biens créés récemment
-        $biensRecents = Bien::with('user')
-            ->where('created_at', '>=', now()->subDays(7))
-            ->orderBy('created_at', 'desc')
-            ->limit(3)
-            ->get();
+            // Inventaires démarrés/clôturés récemment
+            $inventairesRecents = Inventaire::with('creator')
+                ->where(function ($query) {
+                    $query->where('date_debut', '>=', now()->subDays(7))
+                          ->orWhere('date_fin', '>=', now()->subDays(7));
+                })
+                ->orderBy('created_at', 'desc')
+                ->limit(2)
+                ->get();
 
-        foreach ($biensRecents as $bien) {
-            $actions->push([
-                'type' => 'bien_created',
-                'icon' => '➕',
-                'message' => "{$bien->user->name} a créé le bien {$bien->designation}",
-                'time' => $bien->created_at,
-            ]);
-        }
-
-        // Inventaires démarrés/clôturés
-        $inventairesRecents = Inventaire::with('creator')
-            ->where(function ($query) {
-                $query->where('date_debut', '>=', now()->subDays(7))
-                      ->orWhere('date_fin', '>=', now()->subDays(7));
-            })
-            ->orderBy('created_at', 'desc')
-            ->limit(2)
-            ->get();
-
-        foreach ($inventairesRecents as $inventaire) {
-            if ($inventaire->statut === 'en_cours') {
-                $actions->push([
-                    'type' => 'inventaire_started',
-                    'icon' => '🚀',
-                    'message' => "{$inventaire->creator->name} a démarré l'inventaire {$inventaire->annee}",
-                    'time' => $inventaire->date_debut,
-                ]);
-            } elseif ($inventaire->statut === 'cloture') {
-                $actions->push([
-                    'type' => 'inventaire_closed',
-                    'icon' => '✅',
-                    'message' => "L'inventaire {$inventaire->annee} a été clôturé",
-                    'time' => $inventaire->date_fin,
-                ]);
+            foreach ($inventairesRecents as $inventaire) {
+                if ($inventaire->creator) {
+                    $creatorName = $inventaire->creator->name ?? 'Utilisateur';
+                    
+                    if ($inventaire->statut === 'en_cours' && $inventaire->date_debut) {
+                        $actions->push([
+                            'type' => 'inventaire_started',
+                            'icon' => '🚀',
+                            'message' => "{$creatorName} a démarré l'inventaire {$inventaire->annee}",
+                            'time' => $inventaire->date_debut,
+                        ]);
+                    } elseif ($inventaire->statut === 'cloture' && $inventaire->date_fin) {
+                        $actions->push([
+                            'type' => 'inventaire_closed',
+                            'icon' => '✅',
+                            'message' => "L'inventaire {$inventaire->annee} a été clôturé",
+                            'time' => $inventaire->date_fin,
+                        ]);
+                    }
+                }
             }
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors du chargement des actions récentes: ' . $e->getMessage());
         }
 
         // Trier par date et prendre les 10 plus récents

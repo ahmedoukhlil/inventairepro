@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class AuthenticatedSessionController extends Controller
@@ -30,48 +32,69 @@ class AuthenticatedSessionController extends Controller
     {
         // Validation stricte avec règles de sécurité
         $validated = $request->validate([
-            'email' => [
+            'users' => [
                 'required',
                 'string',
-                'email:rfc,dns', // Validation stricte de l'email avec vérification DNS
                 'max:255',
-                'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/', // Pattern supplémentaire
             ],
-            'password' => [
+            'mdp' => [
                 'required',
                 'string',
-                'min:8', // Minimum 8 caractères
                 'max:255',
             ],
             'remember' => 'nullable|boolean',
         ], [
-            'email.required' => 'L\'adresse email est obligatoire.',
-            'email.email' => 'L\'adresse email doit être valide.',
-            'email.regex' => 'Le format de l\'adresse email est invalide.',
-            'email.max' => 'L\'adresse email ne peut pas dépasser 255 caractères.',
-            'password.required' => 'Le mot de passe est obligatoire.',
-            'password.min' => 'Le mot de passe doit contenir au moins 8 caractères.',
-            'password.max' => 'Le mot de passe ne peut pas dépasser 255 caractères.',
+            'users.required' => 'Le nom d\'utilisateur est obligatoire.',
+            'users.max' => 'Le nom d\'utilisateur ne peut pas dépasser 255 caractères.',
+            'mdp.required' => 'Le mot de passe est obligatoire.',
+            'mdp.max' => 'Le mot de passe ne peut pas dépasser 255 caractères.',
         ]);
 
         // Protection contre les attaques par force brute
         // Laravel gère automatiquement le rate limiting via le middleware throttle
         // Limite : 5 tentatives par minute par IP
 
-        // Tentative d'authentification
-        // Les mots de passe sont automatiquement hashés et comparés de manière sécurisée
-        if (!Auth::attempt(
-            [
-                'email' => $validated['email'], // Utiliser les données validées
-                'password' => $validated['password'],
-            ],
-            $request->boolean('remember')
-        )) {
-            // En cas d'échec, ne pas révéler si l'email existe ou non (sécurité)
+        // Récupérer l'utilisateur
+        $user = User::where('users', $validated['users'])->first();
+
+        // Vérifier l'utilisateur et le mot de passe
+        if (!$user) {
             throw ValidationException::withMessages([
-                'email' => __('Les identifiants fournis sont incorrects.'),
+                'users' => __('Les identifiants fournis sont incorrects.'),
             ]);
         }
+
+        // Vérifier le mot de passe (gérer les mots de passe en clair et hashés)
+        $passwordValid = false;
+        $storedPassword = $user->mdp;
+
+        // Vérifier si le mot de passe stocké est hashé (commence par $2y$ pour bcrypt)
+        if (str_starts_with($storedPassword, '$2y$')) {
+            // Mot de passe hashé, utiliser Hash::check
+            $passwordValid = Hash::check($validated['mdp'], $storedPassword);
+        } else {
+            // Mot de passe en clair, comparer directement
+            $passwordValid = ($validated['mdp'] === $storedPassword);
+            
+            // Si la connexion réussit avec un mot de passe en clair, le hasher pour la sécurité
+            if ($passwordValid) {
+                $user->mdp = Hash::make($validated['mdp']);
+                $user->save();
+            }
+        }
+
+        if (!$passwordValid) {
+            \Log::warning('Tentative de connexion échouée', [
+                'users' => $validated['users'],
+                'ip' => $request->ip(),
+            ]);
+            throw ValidationException::withMessages([
+                'users' => __('Les identifiants fournis sont incorrects.'),
+            ]);
+        }
+
+        // Connecter l'utilisateur manuellement
+        Auth::login($user, $request->boolean('remember'));
 
         // Régénération de la session pour prévenir les attaques de fixation de session
         $request->session()->regenerate();
@@ -81,13 +104,26 @@ class AuthenticatedSessionController extends Controller
 
         // Log de la connexion réussie (optionnel, pour audit)
         \Log::info('Connexion réussie', [
-            'user_id' => Auth::id(),
-            'email' => Auth::user()->email,
+            'user_id' => $user->idUser,
+            'users' => $user->users,
+            'role' => $user->role,
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent(),
         ]);
 
-        return redirect()->intended(route('dashboard'));
+        // Vérifier que la route dashboard existe
+        try {
+            $dashboardUrl = route('dashboard');
+            \Log::info('Redirection vers dashboard', ['url' => $dashboardUrl]);
+            return redirect()->intended($dashboardUrl);
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la redirection', [
+                'error' => $e->getMessage(),
+                'route' => 'dashboard'
+            ]);
+            // Redirection de secours vers la page d'accueil
+            return redirect('/');
+        }
     }
 
     /**

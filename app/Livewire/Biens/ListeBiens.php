@@ -2,8 +2,12 @@
 
 namespace App\Livewire\Biens;
 
-use App\Models\Bien;
-use App\Models\Localisation;
+use App\Models\Gesimmo;
+use App\Models\LocalisationImmo;
+use App\Models\Emplacement;
+use App\Models\Designation;
+use App\Models\Categorie;
+use App\Models\Etat;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -16,11 +20,11 @@ class ListeBiens extends Component
      * Propriétés publiques pour les filtres et la recherche
      */
     public $search = '';
-    public $filterNature = '';
-    public $filterLocalisation = '';
-    public $filterService = '';
+    public $filterDesignation = '';
+    public $filterCategorie = '';
+    public $filterEmplacement = '';
     public $filterEtat = '';
-    public $sortField = 'code_inventaire';
+    public $sortField = 'NumOrdre';
     public $sortDirection = 'asc';
     public $perPage = 20;
     public $selectedBiens = [];
@@ -35,55 +39,43 @@ class ListeBiens extends Component
     }
 
     /**
-     * Propriété calculée : Retourne toutes les localisations actives
+     * Propriété calculée : Retourne toutes les désignations
      */
-    public function getLocalisationsProperty()
+    public function getDesignationsProperty()
     {
-        return Localisation::actives()
-            ->orderBy('code')
-            ->get();
+        return Designation::orderBy('designation')->get();
     }
 
     /**
-     * Propriété calculée : Retourne la liste unique des services
+     * Propriété calculée : Retourne toutes les catégories
      */
-    public function getServicesProperty()
+    public function getCategoriesProperty()
     {
-        return Bien::query()
-            ->distinct()
-            ->whereNotNull('service_usager')
-            ->where('service_usager', '!=', '')
-            ->orderBy('service_usager')
-            ->pluck('service_usager')
-            ->unique()
-            ->values();
+        return Categorie::orderBy('Categorie')->get();
     }
 
     /**
-     * Propriété calculée : Retourne les valeurs enum de nature
+     * Propriété calculée : Retourne tous les emplacements groupés par localisation
      */
-    public function getNaturesProperty()
+    public function getEmplacementsProperty()
     {
-        return [
-            'mobilier' => 'Mobilier',
-            'informatique' => 'Informatique',
-            'vehicule' => 'Véhicule',
-            'materiel' => 'Matériel',
-        ];
+        return Emplacement::with('localisation')
+            ->join('localisation', 'emplacement.idLocalisation', '=', 'localisation.idLocalisation')
+            ->orderBy('localisation.Localisation')
+            ->orderBy('emplacement.Emplacement')
+            ->select('emplacement.*')
+            ->get()
+            ->groupBy(function($item) {
+                return $item->localisation ? $item->localisation->Localisation : 'Sans localisation';
+            });
     }
 
     /**
-     * Propriété calculée : Retourne les valeurs enum d'état
+     * Propriété calculée : Retourne tous les états
      */
     public function getEtatsProperty()
     {
-        return [
-            'neuf' => 'Neuf',
-            'bon' => 'Bon',
-            'moyen' => 'Moyen',
-            'mauvais' => 'Mauvais',
-            'reforme' => 'Réformé',
-        ];
+        return Etat::orderBy('Etat')->get();
     }
 
     /**
@@ -91,7 +83,7 @@ class ListeBiens extends Component
      */
     public function getAllSelectedProperty()
     {
-        $allBiensIds = $this->getBiensQuery()->pluck('id')->toArray();
+        $allBiensIds = $this->getBiensQuery()->pluck('NumOrdre')->toArray();
         
         if (empty($allBiensIds)) {
             return false;
@@ -125,9 +117,9 @@ class ListeBiens extends Component
     public function resetFilters(): void
     {
         $this->search = '';
-        $this->filterNature = '';
-        $this->filterLocalisation = '';
-        $this->filterService = '';
+        $this->filterDesignation = '';
+        $this->filterCategorie = '';
+        $this->filterEmplacement = '';
         $this->filterEtat = '';
         $this->selectedBiens = [];
         $this->resetPage();
@@ -139,7 +131,7 @@ class ListeBiens extends Component
     public function toggleSelectAll(): void
     {
         // Récupérer tous les IDs des biens correspondant aux filtres (sans pagination)
-        $allBiensIds = $this->getBiensQuery()->pluck('id')->toArray();
+        $allBiensIds = $this->getBiensQuery()->pluck('NumOrdre')->toArray();
         
         // Vérifier si tous les biens sont déjà sélectionnés
         $allSelected = !empty($allBiensIds) && 
@@ -156,7 +148,7 @@ class ListeBiens extends Component
     }
 
     /**
-     * Supprime un bien (soft delete)
+     * Supprime un bien
      */
     public function deleteBien($bienId): void
     {
@@ -166,16 +158,16 @@ class ListeBiens extends Component
             return;
         }
 
-        $bien = Bien::find($bienId);
+        $bien = Gesimmo::find($bienId);
 
         if ($bien) {
             $bien->delete();
-            session()->flash('success', 'Le bien a été supprimé avec succès.');
+            session()->flash('success', 'L\'immobilisation a été supprimée avec succès.');
             
             // Retirer de la sélection si présent
             $this->selectedBiens = array_diff($this->selectedBiens, [$bienId]);
         } else {
-            session()->flash('error', 'Bien introuvable.');
+            session()->flash('error', 'Immobilisation introuvable.');
         }
     }
 
@@ -195,39 +187,50 @@ class ListeBiens extends Component
     }
 
     /**
-     * Construit la requête de base pour les biens
+     * Construit la requête de base pour les immobilisations
      */
     protected function getBiensQuery()
     {
-        $query = Bien::with(['localisation', 'user']);
+        $query = Gesimmo::with([
+            'designation',
+            'categorie',
+            'etat',
+            'emplacement.localisation',
+            'natureJuridique',
+            'sourceFinancement'
+        ]);
 
         // Recherche globale
         if (!empty($this->search)) {
             $query->where(function ($q) {
-                $q->where('code_inventaire', 'like', '%' . $this->search . '%')
-                    ->orWhere('designation', 'like', '%' . $this->search . '%')
-                    ->orWhere('service_usager', 'like', '%' . $this->search . '%');
+                $q->where('NumOrdre', 'like', '%' . $this->search . '%')
+                    ->orWhereHas('designation', function ($q2) {
+                        $q2->where('designation', 'like', '%' . $this->search . '%');
+                    })
+                    ->orWhereHas('emplacement', function ($q2) {
+                        $q2->where('Emplacement', 'like', '%' . $this->search . '%');
+                    });
             });
         }
 
-        // Filtre par nature
-        if (!empty($this->filterNature)) {
-            $query->where('nature', $this->filterNature);
+        // Filtre par désignation
+        if (!empty($this->filterDesignation)) {
+            $query->where('idDesignation', $this->filterDesignation);
         }
 
-        // Filtre par localisation
-        if (!empty($this->filterLocalisation)) {
-            $query->where('localisation_id', $this->filterLocalisation);
+        // Filtre par catégorie
+        if (!empty($this->filterCategorie)) {
+            $query->where('idCategorie', $this->filterCategorie);
         }
 
-        // Filtre par service
-        if (!empty($this->filterService)) {
-            $query->where('service_usager', $this->filterService);
+        // Filtre par emplacement
+        if (!empty($this->filterEmplacement)) {
+            $query->where('idEmplacement', $this->filterEmplacement);
         }
 
         // Filtre par état
         if (!empty($this->filterEtat)) {
-            $query->where('etat', $this->filterEtat);
+            $query->where('idEtat', $this->filterEtat);
         }
 
         // Tri
