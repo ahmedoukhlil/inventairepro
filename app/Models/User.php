@@ -208,4 +208,55 @@ class User extends Authenticatable
     {
         return in_array($this->role, ['admin', 'superuser', 'agent', 'immobilisation']);
     }
+
+    /**
+     * Trouve un utilisateur par son nom d'utilisateur
+     * Gère automatiquement les différences de structure entre environnements
+     * 
+     * @param string $username
+     * @return User|null
+     */
+    public static function findByUsername(string $username): ?self
+    {
+        // Essayer avec la colonne 'users' (structure attendue)
+        try {
+            return static::where('users', $username)->first();
+        } catch (\Exception $e) {
+            // Si ça échoue, essayer avec DB::table directement
+            try {
+                $userData = \DB::table('users')
+                    ->where('users', $username)
+                    ->first();
+                
+                if ($userData) {
+                    $userId = $userData->idUser ?? $userData->id ?? null;
+                    return $userId ? static::find($userId) : null;
+                }
+            } catch (\Exception $e2) {
+                // Dernière tentative avec SQL brut
+                try {
+                    $userData = \DB::selectOne(
+                        'SELECT * FROM users WHERE users = ? LIMIT 1',
+                        [$username]
+                    );
+                    
+                    if ($userData) {
+                        $userId = $userData->idUser ?? $userData->id ?? null;
+                        return $userId ? static::find($userId) : null;
+                    }
+                } catch (\Exception $e3) {
+                    \Log::error('Erreur lors de la recherche d\'utilisateur', [
+                        'username' => $username,
+                        'errors' => [
+                            'eloquent' => $e->getMessage(),
+                            'query_builder' => $e2->getMessage(),
+                            'raw_sql' => $e3->getMessage()
+                        ]
+                    ]);
+                }
+            }
+        }
+        
+        return null;
+    }
 }

@@ -54,59 +54,9 @@ class AuthenticatedSessionController extends Controller
         // Protection contre les attaques par force brute
         // Laravel gère automatiquement le rate limiting via le middleware throttle
         // Limite : 5 tentatives par minute par IP
-
-        // Récupérer l'utilisateur avec détection automatique de la structure de la table
-        // Gère les différences entre environnement local et production
-        $user = null;
-        
-        try {
-            // Méthode 1: Utiliser le modèle Eloquent avec whereRaw (plus robuste)
-            $user = User::whereRaw('users = ?', [$validated['users']])->first();
-            
-            if (!$user) {
-                // Méthode 2: Essayer avec une requête SQL brute explicite
-                $userData = DB::selectOne(
-                    'SELECT * FROM users WHERE users.users = ? LIMIT 1',
-                    [$validated['users']]
-                );
-                
-                if ($userData) {
-                    $userId = $userData->idUser ?? $userData->id ?? null;
-                    if ($userId) {
-                        $user = User::find($userId);
-                    }
-                }
-            }
-        } catch (\Exception $e) {
-            // Log de l'erreur pour diagnostic
-            \Log::error('Erreur lors de la récupération de l\'utilisateur', [
-                'error' => $e->getMessage(),
-                'username' => $validated['users'],
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => substr($e->getTraceAsString(), 0, 500)
-            ]);
-            
-            // Dernière tentative: utiliser une requête SQL simple sans backticks
-            try {
-                $userData = DB::selectOne(
-                    'SELECT * FROM users WHERE users = ? LIMIT 1',
-                    [$validated['users']]
-                );
-                
-                if ($userData) {
-                    $userId = $userData->idUser ?? $userData->id ?? null;
-                    if ($userId) {
-                        $user = User::find($userId);
-                    }
-                }
-            } catch (\Exception $e2) {
-                \Log::error('Erreur avec la méthode de fallback', [
-                    'error' => $e2->getMessage()
-                ]);
-                $user = null;
-            }
-        }
+        // Récupérer l'utilisateur avec la méthode helper qui gère automatiquement
+        // les différences de structure entre local et production
+        $user = User::findByUsername($validated['users']);
 
         // Vérifier l'utilisateur et le mot de passe
         if (!$user) {

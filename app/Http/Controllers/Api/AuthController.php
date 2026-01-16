@@ -28,8 +28,8 @@ class AuthController extends Controller
             'mdp' => 'required|string',
         ]);
 
-        // Récupérer l'utilisateur
-        $user = User::where('users', $request->users)->first();
+        // Récupérer l'utilisateur (utilise la méthode helper qui gère les différences d'environnement)
+        $user = User::findByUsername($request->users);
 
         // Vérifier l'utilisateur
         if (!$user) {
