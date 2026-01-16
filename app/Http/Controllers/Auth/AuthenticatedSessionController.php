@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -54,8 +55,8 @@ class AuthenticatedSessionController extends Controller
         // Laravel gère automatiquement le rate limiting via le middleware throttle
         // Limite : 5 tentatives par minute par IP
 
-        // Récupérer l'utilisateur
-        $user = User::where('users', $validated['users'])->first();
+        // Récupérer l'utilisateur (utiliser DB::raw pour éviter l'ambiguïté avec le nom de table)
+        $user = User::where(DB::raw('`users`.`users`'), $validated['users'])->first();
 
         // Vérifier l'utilisateur et le mot de passe
         if (!$user) {
