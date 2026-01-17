@@ -3,10 +3,12 @@
 namespace App\Livewire;
 
 use App\Models\Bien;
+use App\Models\Gesimmo;
 use App\Models\Inventaire;
 use App\Models\InventaireLocalisation;
 use App\Models\InventaireScan;
 use App\Models\Localisation;
+use App\Models\LocalisationImmo;
 use Carbon\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -39,40 +41,97 @@ class Dashboard extends Component
     private function loadStatistics()
     {
         try {
-            // Total immobilisations (gesimmo)
-            $this->totalBiens = \App\Models\Gesimmo::count();
+            // Total immobilisations (gesimmo) - charger en premier pour éviter les erreurs
+            $this->totalBiens = Gesimmo::count();
             
-            // Biens créés cette année (basé sur l'année d'acquisition > année en cours - 1)
-            $this->biensCetteAnnee = \App\Models\Gesimmo::where('DateAcquisition', '>=', now()->year)->count();
+            // Biens créés cette année (DateAcquisition est un entier représentant l'année)
+            // Inclure aussi les années récentes (2 dernières années) pour avoir une vue plus large
+            $currentYear = now()->year;
+            $this->biensCetteAnnee = Gesimmo::where('DateAcquisition', '>=', $currentYear - 1)
+                ->where('DateAcquisition', '<=', $currentYear)
+                ->count();
             
-            // Total localisations actives
-            $this->totalLocalisations = \App\Models\Localisation::count();
+            // Total localisations - utiliser la table qui contient réellement les données
+            // D'abord essayer LocalisationImmo (table principale des localisations)
+            $this->totalLocalisations = LocalisationImmo::count();
             
-            // Nombre de bâtiments uniques (comptage des localisations distinctes)
-            $this->nombreBatiments = \App\Models\Localisation::distinct('CodeLocalisation')->count();
+            // Si la table localisations existe et a des données, l'utiliser aussi
+            try {
+                $localisationsCount = Localisation::where('actif', true)->count();
+                if ($localisationsCount > 0) {
+                    $this->totalLocalisations += $localisationsCount;
+                }
+            } catch (\Exception $e) {
+                // La table localisations n'existe peut-être pas, on continue avec LocalisationImmo
+            }
+            
+            // Nombre de bâtiments uniques - utiliser CodeLocalisation de LocalisationImmo
+            $this->nombreBatiments = LocalisationImmo::whereNotNull('CodeLocalisation')
+                ->where('CodeLocalisation', '!=', '')
+                ->distinct('CodeLocalisation')
+                ->count('CodeLocalisation');
+            
+            // Si la table localisations existe avec batiment, l'ajouter
+            try {
+                $batimentsCount = Localisation::whereNotNull('batiment')
+                    ->where('batiment', '!=', '')
+                    ->distinct('batiment')
+                    ->count('batiment');
+                if ($batimentsCount > 0) {
+                    // Prendre le maximum entre les deux
+                    $this->nombreBatiments = max($this->nombreBatiments, $batimentsCount);
+                }
+            } catch (\Exception $e) {
+                // Ignorer si la colonne n'existe pas
+            }
             
             // Valeur totale du parc (on ne dispose pas de cette info dans gesimmo, donc on laisse à 0)
             $this->valeurTotale = 0;
             
             // Inventaire en cours
-            $this->inventaireEnCours = Inventaire::where(function($query) {
-                $query->where('statut', 'en_cours')
-                      ->orWhere('statut', 'en_preparation');
-            })
-            ->orderBy('annee', 'desc')
-            ->first();
+            try {
+                $this->inventaireEnCours = Inventaire::where(function($query) {
+                    $query->where('statut', 'en_cours')
+                          ->orWhere('statut', 'en_preparation');
+                })
+                ->orderBy('annee', 'desc')
+                ->first();
+            } catch (\Exception $e) {
+                $this->inventaireEnCours = null;
+            }
             
             // Charger les statistiques de l'inventaire en cours
             if ($this->inventaireEnCours) {
-                $this->loadInventaireStats();
+                try {
+                    $this->loadInventaireStats();
+                } catch (\Exception $e) {
+                    \Log::warning('Erreur lors du chargement des stats d\'inventaire: ' . $e->getMessage());
+                }
             }
             
             // Dernières actions
-            $this->loadRecentActions();
+            try {
+                $this->loadRecentActions();
+            } catch (\Exception $e) {
+                \Log::warning('Erreur lors du chargement des actions récentes: ' . $e->getMessage());
+            }
         } catch (\Exception $e) {
-            // En cas d'erreur, initialiser avec des valeurs par défaut
-            \Log::error('Erreur lors du chargement des statistiques du dashboard: ' . $e->getMessage());
-            $this->totalBiens = 0;
+            // En cas d'erreur critique, logger et initialiser avec des valeurs par défaut
+            \Log::error('Erreur critique lors du chargement des statistiques du dashboard', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Essayer au moins de charger le total des biens
+            try {
+                $this->totalBiens = Gesimmo::count();
+            } catch (\Exception $e2) {
+                \Log::error('Impossible de charger le total des biens: ' . $e2->getMessage());
+                $this->totalBiens = 0;
+            }
+            
             $this->totalLocalisations = 0;
             $this->valeurTotale = 0;
             $this->biensCetteAnnee = 0;
@@ -93,13 +152,25 @@ class Dashboard extends Component
             ->limit(5)
             ->get()
             ->map(function ($item) {
+                // Gérer les différents formats de localisation
+                $localisationName = 'N/A';
+                if ($item->localisation) {
+                    if (method_exists($item->localisation, 'getFullNameAttribute')) {
+                        $localisationName = $item->localisation->full_name;
+                    } elseif (isset($item->localisation->Localisation)) {
+                        $localisationName = $item->localisation->Localisation;
+                    } elseif (isset($item->localisation->designation)) {
+                        $localisationName = $item->localisation->designation;
+                    }
+                }
+                
                 return [
-                    'localisation' => $item->localisation->full_name ?? 'N/A',
-                    'biens_attendus' => $item->nombre_biens_attendus,
-                    'biens_scannes' => $item->nombre_biens_scannes,
-                    'progression' => $item->progression,
-                    'statut' => $item->statut,
-                    'agent' => $item->agent->name ?? 'Non assigné',
+                    'localisation' => $localisationName,
+                    'biens_attendus' => $item->nombre_biens_attendus ?? 0,
+                    'biens_scannes' => $item->nombre_biens_scannes ?? 0,
+                    'progression' => $item->progression ?? 0,
+                    'statut' => $item->statut ?? 'en_attente',
+                    'agent' => $item->agent ? ($item->agent->users ?? 'Non assigné') : 'Non assigné',
                 ];
             })
             ->toArray();
@@ -169,10 +240,10 @@ class Dashboard extends Component
                 ->get();
 
             foreach ($scansRecents as $scan) {
-                if ($scan->bien && $scan->agent) {
-                    $agentName = $scan->agent->name ?? 'Utilisateur';
+                if ($scan->bien) {
+                    $agentName = $scan->agent ? ($scan->agent->users ?? 'Utilisateur') : 'Système';
                     $bienDesignation = $scan->bien->designation->designation ?? 'Immobilisation';
-                    $localisationNom = $scan->localisationReelle->Localisation ?? 'N/A';
+                    $localisationNom = $scan->localisationReelle ? ($scan->localisationReelle->Localisation ?? 'N/A') : 'N/A';
                     
                     $actions->push([
                         'type' => 'scan',
@@ -194,25 +265,42 @@ class Dashboard extends Component
                 ->get();
 
             foreach ($inventairesRecents as $inventaire) {
-                if ($inventaire->creator) {
-                    $creatorName = $inventaire->creator->name ?? 'Utilisateur';
-                    
-                    if ($inventaire->statut === 'en_cours' && $inventaire->date_debut) {
-                        $actions->push([
-                            'type' => 'inventaire_started',
-                            'icon' => '🚀',
-                            'message' => "{$creatorName} a démarré l'inventaire {$inventaire->annee}",
-                            'time' => $inventaire->date_debut,
-                        ]);
-                    } elseif ($inventaire->statut === 'cloture' && $inventaire->date_fin) {
-                        $actions->push([
-                            'type' => 'inventaire_closed',
-                            'icon' => '✅',
-                            'message' => "L'inventaire {$inventaire->annee} a été clôturé",
-                            'time' => $inventaire->date_fin,
-                        ]);
-                    }
+                $creatorName = $inventaire->creator ? ($inventaire->creator->users ?? 'Utilisateur') : 'Système';
+                
+                if ($inventaire->statut === 'en_cours' && $inventaire->date_debut) {
+                    $actions->push([
+                        'type' => 'inventaire_started',
+                        'icon' => '🚀',
+                        'message' => "{$creatorName} a démarré l'inventaire {$inventaire->annee}",
+                        'time' => $inventaire->date_debut,
+                    ]);
+                } elseif ($inventaire->statut === 'cloture' && $inventaire->date_fin) {
+                    $actions->push([
+                        'type' => 'inventaire_closed',
+                        'icon' => '✅',
+                        'message' => "L'inventaire {$inventaire->annee} a été clôturé",
+                        'time' => $inventaire->date_fin,
+                    ]);
                 }
+            }
+            
+            // Ajouter les localisations créées récemment (si la table a des timestamps)
+            try {
+                $localisationsRecentes = \App\Models\Localisation::where('created_at', '>=', now()->subDays(7))
+                    ->orderBy('created_at', 'desc')
+                    ->limit(3)
+                    ->get();
+                
+                foreach ($localisationsRecentes as $localisation) {
+                    $actions->push([
+                        'type' => 'localisation_created',
+                        'icon' => '📍',
+                        'message' => "Nouvelle localisation créée: {$localisation->code} - {$localisation->designation}",
+                        'time' => $localisation->created_at,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                // La table localisations n'a peut-être pas de timestamps, on ignore
             }
         } catch (\Exception $e) {
             \Log::error('Erreur lors du chargement des actions récentes: ' . $e->getMessage());

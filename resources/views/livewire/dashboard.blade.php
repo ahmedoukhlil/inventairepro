@@ -239,7 +239,10 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            @if($inventaireEnCours && !empty($repartitionStatuts))
+            @php
+                $hasInventaire = $inventaireEnCours && !empty($repartitionStatuts);
+            @endphp
+            @if($hasInventaire)
             // Graphique Pie - Répartition statuts
             var statutsCtx = document.getElementById('statutsChart');
             if (statutsCtx) {
@@ -291,7 +294,10 @@
             // Graphique Bar - Progression par service
             var servicesCtx = document.getElementById('servicesChart');
             if (servicesCtx) {
-                var progressionData = @json($progressionParService ?? []);
+                @php
+                    $progressionData = $progressionParService ?? [];
+                @endphp
+                var progressionData = @json($progressionData);
                 if (progressionData && progressionData.length > 0) {
                     new Chart(servicesCtx, {
                         type: 'bar',

@@ -60,8 +60,8 @@
                         </label>
                         <select 
                             id="idDesignation"
-                            wire:model.defer="idDesignation"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idDesignation') border-red-300 @enderror"
+                            wire:model.live="idDesignation"
+                            class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idDesignation') border-red-300 @enderror"
                             wire:loading.attr="disabled">
                             <option value="">Sélectionnez une désignation</option>
                             @foreach($this->designations as $designation)
@@ -82,12 +82,16 @@
                     <div>
                         <label for="idCategorie" class="block text-sm font-medium text-gray-700 mb-1">
                             Catégorie <span class="text-red-500">*</span>
+                            @if($idDesignation)
+                                <span class="text-xs text-gray-500 font-normal ml-2">(automatiquement remplie)</span>
+                            @endif
                         </label>
                         <select 
                             id="idCategorie"
                             wire:model.defer="idCategorie"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idCategorie') border-red-300 @enderror"
-                            wire:loading.attr="disabled">
+                            class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idCategorie') border-red-300 @enderror {{ $idDesignation ? 'bg-gray-50' : '' }}"
+                            wire:loading.attr="disabled"
+                            @if($idDesignation) disabled @endif>
                             <option value="">Sélectionnez une catégorie</option>
                             @foreach($this->categories as $categorie)
                                 <option value="{{ $categorie->idCategorie }}">{{ $categorie->Categorie }}</option>
@@ -96,6 +100,11 @@
                         @error('idCategorie')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
+                        @if($idDesignation)
+                            <p class="mt-1 text-xs text-gray-500">
+                                La catégorie est automatiquement définie selon la désignation sélectionnée.
+                            </p>
+                        @endif
                     </div>
 
                     {{-- État --}}
@@ -106,7 +115,7 @@
                         <select 
                             id="idEtat"
                             wire:model.defer="idEtat"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idEtat') border-red-300 @enderror"
+                            class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idEtat') border-red-300 @enderror"
                             wire:loading.attr="disabled">
                             <option value="">Sélectionnez un état</option>
                             @foreach($this->etats as $etat)
@@ -126,15 +135,12 @@
                         <select 
                             id="idEmplacement"
                             wire:model.defer="idEmplacement"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idEmplacement') border-red-300 @enderror"
+                            class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idEmplacement') border-red-300 @enderror"
                             wire:loading.attr="disabled">
                             <option value="">Sélectionnez un emplacement</option>
                             @foreach($this->emplacements as $emplacement)
                                 <option value="{{ $emplacement->idEmplacement }}">
-                                    {{ $emplacement->Emplacement }}
-                                    @if($emplacement->localisation)
-                                        - {{ $emplacement->localisation->Localisation }}
-                                    @endif
+                                    {{ $emplacement->display_name ?? $emplacement->Emplacement }}
                                 </option>
                             @endforeach
                         </select>
@@ -151,7 +157,7 @@
                         <select 
                             id="idNatJur"
                             wire:model.defer="idNatJur"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idNatJur') border-red-300 @enderror"
+                            class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idNatJur') border-red-300 @enderror"
                             wire:loading.attr="disabled">
                             <option value="">Sélectionnez une nature juridique</option>
                             @foreach($this->natureJuridiques as $natJur)
@@ -171,7 +177,7 @@
                         <select 
                             id="idSF"
                             wire:model.defer="idSF"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idSF') border-red-300 @enderror"
+                            class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idSF') border-red-300 @enderror"
                             wire:loading.attr="disabled">
                             <option value="">Sélectionnez une source de financement</option>
                             @foreach($this->sourceFinancements as $sf)
@@ -205,127 +211,6 @@
                 </div>
             </div>
 
-            {{-- Section 2 : Observations --}}
-            <div class="mb-8">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                    Observations
-                </h2>
-                
-                <div class="grid grid-cols-1 gap-6">
-                    {{-- Observations --}}
-                    <div>
-                        <label for="Observations" class="block text-sm font-medium text-gray-700 mb-1">
-                            Observations
-                        </label>
-                        <div class="relative">
-                            <textarea 
-                                id="Observations"
-                                wire:model.live="Observations"
-                                rows="4"
-                                maxlength="1000"
-                                placeholder="Remarques particulières..."
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('Observations') border-red-300 @enderror"
-                                wire:loading.attr="disabled"></textarea>
-                            <div class="absolute bottom-2 right-2 text-xs text-gray-500 bg-white px-1 rounded">
-                                {{ strlen($Observations ?? '') }}/1000
-                            </div>
-                        </div>
-                        @error('Observations')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-                </div>
-            </div>
-
-            {{-- Section 4 : Options --}}
-            <div class="mb-8">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                    Options
-                </h2>
-                
-                <div class="space-y-4">
-                    {{-- Générer QR Code --}}
-                    <div class="flex items-start">
-                        <div class="flex items-center h-5">
-                            <input 
-                                id="genererQRCode"
-                                type="checkbox"
-                                wire:model.defer="genererQRCode"
-                                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                wire:loading.attr="disabled">
-                        </div>
-                        <div class="ml-3 text-sm">
-                            <label for="genererQRCode" class="font-medium text-gray-700">
-                                Générer automatiquement le QR code
-                            </label>
-                            <p class="text-gray-500">
-                                Un QR code unique sera généré pour ce bien
-                            </p>
-                        </div>
-                        <div 
-                            x-data="{ show: false }"
-                            class="ml-2">
-                            <button 
-                                type="button"
-                                @mouseenter="show = true"
-                                @mouseleave="show = false"
-                                class="text-gray-400 hover:text-gray-500">
-                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path>
-                                </svg>
-                            </button>
-                            <div 
-                                x-show="show"
-                                x-transition
-                                class="absolute z-10 w-64 p-2 mt-1 text-xs text-white bg-gray-900 rounded-lg shadow-lg"
-                                style="display: none;">
-                                Le QR code permettra d'identifier rapidement le bien lors des inventaires
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Afficher QR code existant si édition --}}
-                    @if($this->isEdit && $bien && $bien->qr_code_path)
-                        <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                            <div class="flex items-start">
-                                <div class="flex-shrink-0">
-                                    <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                                    </svg>
-                                </div>
-                                <div class="ml-3 flex-1">
-                                    <h3 class="text-sm font-medium text-blue-800">
-                                        QR code déjà généré
-                                    </h3>
-                                    <div class="mt-2 text-sm text-blue-700">
-                                        <p>Ce bien possède déjà un QR code. Cochez la case ci-dessus pour en générer un nouveau.</p>
-                                    </div>
-                                    @if($bien->qr_code_path && Storage::disk('public')->exists($bien->qr_code_path))
-                                        <div class="mt-3">
-                                            @if(str_ends_with($bien->qr_code_path, '.svg'))
-                                                <div class="h-24 w-24 border border-blue-300 rounded flex items-center justify-center overflow-hidden">
-                                                    @php
-                                                        $svgContent = file_get_contents(storage_path('app/public/' . $bien->qr_code_path));
-                                                        $svgContent = preg_replace('/width="[^"]*"/', 'width="100%"', $svgContent);
-                                                        $svgContent = preg_replace('/height="[^"]*"/', 'height="100%"', $svgContent);
-                                                        $svgContent = str_replace('<svg', '<svg style="width: 100%; height: 100%; max-width: 100%; max-height: 100%;"', $svgContent);
-                                                    @endphp
-                                                    {!! $svgContent !!}
-                                                </div>
-                                            @else
-                                                <img 
-                                                    src="{{ asset('storage/' . $bien->qr_code_path) }}"
-                                                    alt="QR Code"
-                                                    class="h-24 w-24 border border-blue-300 rounded object-contain">
-                                            @endif
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-                </div>
-            </div>
         </div>
 
         {{-- Boutons d'action (sticky footer) --}}
@@ -379,5 +264,79 @@
             {{ session('error') }}
         </div>
     @endif
-</div>
 
+    {{-- Select2 pour les champs de recherche --}}
+    @push('styles')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    @endpush
+
+    @push('scripts')
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialiser Select2 sur tous les selects avec la classe select2-search
+            function initSelect2() {
+                $('.select2-search').select2({
+                    theme: 'default',
+                    width: '100%',
+                    placeholder: function() {
+                        return $(this).find('option[value=""]').text() || 'Rechercher...';
+                    },
+                    language: {
+                        noResults: function() {
+                            return "Aucun résultat trouvé";
+                        },
+                        searching: function() {
+                            return "Recherche en cours...";
+                        }
+                    },
+                    minimumResultsForSearch: 0 // Toujours afficher la recherche
+                });
+
+                // Synchroniser Select2 avec Livewire
+                $('.select2-search').on('change', function(e) {
+                    var select = $(this);
+                    var wireModel = select.attr('wire:model') || select.attr('wire:model.defer') || select.attr('wire:model.live');
+                    if (wireModel) {
+                        var propertyName = wireModel.replace('wire:model.defer=', '').replace('wire:model=', '').replace('wire:model.live=', '');
+                        var value = select.val();
+                        // Utiliser @this pour mettre à jour la propriété Livewire
+                        @this.set(propertyName, value);
+                    }
+                });
+            }
+
+            // Initialiser au chargement
+            initSelect2();
+
+            // Réinitialiser après les mises à jour Livewire
+            document.addEventListener('livewire:update', function() {
+                setTimeout(function() {
+                    $('.select2-search').select2('destroy');
+                    initSelect2();
+                    
+                    // Mettre à jour l'état disabled du champ catégorie après mise à jour Livewire
+                    var categorieSelect = $('#idCategorie');
+                    if (categorieSelect.length) {
+                        var isDisabled = categorieSelect.prop('disabled') || categorieSelect.attr('disabled') !== undefined;
+                        if (isDisabled) {
+                            categorieSelect.addClass('bg-gray-50');
+                        } else {
+                            categorieSelect.removeClass('bg-gray-50');
+                        }
+                    }
+                }, 100);
+            });
+
+            // Réinitialiser après les erreurs de validation
+            document.addEventListener('livewire:error', function() {
+                setTimeout(function() {
+                    $('.select2-search').select2('destroy');
+                    initSelect2();
+                }, 100);
+            });
+        });
+    </script>
+    @endpush
+</div>

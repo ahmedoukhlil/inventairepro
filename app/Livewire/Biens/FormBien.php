@@ -34,8 +34,23 @@ class FormBien extends Component
     public $idNatJur = '';
     public $idSF = '';
     public $DateAcquisition = '';
-    public $Observations = '';
-    public $genererQRCode = false;
+
+    /**
+     * Mise à jour automatique de la catégorie lorsque la désignation change
+     */
+    public function updatedIdDesignation($value)
+    {
+        if (!empty($value)) {
+            $designation = Designation::with('categorie')->find($value);
+            if ($designation && $designation->categorie) {
+                $this->idCategorie = $designation->categorie->idCategorie;
+            } else {
+                $this->idCategorie = '';
+            }
+        } else {
+            $this->idCategorie = '';
+        }
+    }
 
     /**
      * Initialisation du composant
@@ -56,7 +71,6 @@ class FormBien extends Component
             $this->idSF = $bien->idSF;
             // DateAcquisition est un entier (année), pas une date
             $this->DateAcquisition = $bien->DateAcquisition ?? '';
-            $this->Observations = $bien->Observations ?? '';
         } else {
             // Mode création : valeurs par défaut (année actuelle)
             $this->DateAcquisition = now()->year;
@@ -90,13 +104,45 @@ class FormBien extends Component
     }
 
     /**
-     * Propriété calculée : Retourne tous les emplacements
+     * Propriété calculée : Retourne tous les emplacements avec leurs relations
+     * Groupés par localisation pour faciliter la sélection
      */
     public function getEmplacementsProperty()
     {
-        return Emplacement::with('localisation', 'affectation')
+        return Emplacement::with(['localisation', 'affectation'])
             ->orderBy('Emplacement')
-            ->get();
+            ->get()
+            ->map(function ($emplacement) {
+                // Ajouter un attribut calculé pour l'affichage
+                $emplacement->display_name = $this->getEmplacementDisplayName($emplacement);
+                return $emplacement;
+            });
+    }
+    
+    /**
+     * Génère le nom d'affichage d'un emplacement avec ses relations
+     */
+    private function getEmplacementDisplayName($emplacement): string
+    {
+        $parts = [];
+        
+        // Localisation
+        if ($emplacement->localisation) {
+            $parts[] = $emplacement->localisation->Localisation ?? '';
+            if ($emplacement->localisation->CodeLocalisation) {
+                $parts[] = '(' . $emplacement->localisation->CodeLocalisation . ')';
+            }
+        }
+        
+        // Affectation
+        if ($emplacement->affectation) {
+            $parts[] = '- ' . ($emplacement->affectation->Affectation ?? '');
+        }
+        
+        // Emplacement
+        $parts[] = '- ' . ($emplacement->Emplacement ?? '');
+        
+        return implode(' ', array_filter($parts));
     }
 
     /**
@@ -136,7 +182,6 @@ class FormBien extends Component
             'idNatJur' => 'required|exists:naturejurdique,idNatJur',
             'idSF' => 'required|exists:sourcefinancement,idSF',
             'DateAcquisition' => 'nullable|integer|min:1900|max:' . (now()->year + 1),
-            'Observations' => 'nullable|string|max:1000',
         ];
     }
 
@@ -161,7 +206,6 @@ class FormBien extends Component
             'DateAcquisition.integer' => 'L\'année d\'acquisition doit être un nombre.',
             'DateAcquisition.min' => 'L\'année d\'acquisition doit être supérieure ou égale à 1900.',
             'DateAcquisition.max' => 'L\'année d\'acquisition ne peut pas être dans le futur.',
-            'Observations.max' => 'Les observations ne peuvent pas dépasser 1000 caractères.',
         ];
     }
 
@@ -184,7 +228,6 @@ class FormBien extends Component
                     'idNatJur' => $validated['idNatJur'],
                     'idSF' => $validated['idSF'],
                     'DateAcquisition' => !empty($validated['DateAcquisition']) ? (int)$validated['DateAcquisition'] : null,
-                    'Observations' => $validated['Observations'] ?? null,
                 ]);
 
                 $bien = $this->bien->fresh();
@@ -199,7 +242,16 @@ class FormBien extends Component
                     'idNatJur' => $validated['idNatJur'],
                     'idSF' => $validated['idSF'],
                     'DateAcquisition' => !empty($validated['DateAcquisition']) ? (int)$validated['DateAcquisition'] : null,
-                    'Observations' => $validated['Observations'] ?? null,
+                ]);
+                
+                // Charger les relations nécessaires pour le code formaté et l'affichage
+                $bien->load([
+                    'designation',
+                    'categorie',
+                    'natureJuridique',
+                    'sourceFinancement',
+                    'emplacement.localisation',
+                    'emplacement.affectation'
                 ]);
 
                 $message = 'Immobilisation créée avec succès';

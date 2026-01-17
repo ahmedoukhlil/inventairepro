@@ -63,6 +63,33 @@ class FormLocalisation extends Component
         }
     }
 
+    /**
+     * Génère une suggestion de code automatiquement
+     */
+    public function generateCodeSuggestion()
+    {
+        // Compter les localisations existantes pour générer un numéro unique
+        $count = LocalisationImmo::count() + 1;
+        
+        // Générer un code basé sur le nom de la localisation
+        $prefix = 'LOC';
+        if (!empty($this->Localisation)) {
+            // Extraire les premières lettres du nom
+            $words = explode(' ', $this->Localisation);
+            $initials = '';
+            foreach ($words as $word) {
+                if (!empty($word)) {
+                    $initials .= strtoupper(substr($word, 0, 1));
+                }
+            }
+            if (strlen($initials) > 0) {
+                $prefix = substr($initials, 0, 3);
+            }
+        }
+        
+        $this->CodeLocalisation = $prefix . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+    }
+
 
     /**
      * Propriété calculée : Vérifie si on est en mode édition
@@ -154,8 +181,8 @@ class FormLocalisation extends Component
 
             session()->flash('success', $message);
 
-            // Rediriger vers la page de détail de la localisation
-            return $this->redirect(route('localisations.show', $localisation), navigate: true);
+            // Rediriger vers la liste des localisations
+            return $this->redirect(route('localisations.index'), navigate: true);
         } catch (\Illuminate\Validation\ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {

@@ -1,5 +1,23 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data="{ sidebarOpen: false, profileOpen: false }" :class="{ 'overflow-hidden': sidebarOpen }">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data="{ 
+    sidebarOpen: true, 
+    profileOpen: false,
+    isDesktop: window.innerWidth >= 768,
+    init() {
+        // Initialiser isDesktop au chargement
+        this.isDesktop = window.innerWidth >= 768;
+        if (this.isDesktop) {
+            this.sidebarOpen = true;
+        }
+        // Écouter les changements de taille d'écran
+        window.addEventListener('resize', () => {
+            this.isDesktop = window.innerWidth >= 768;
+            if (this.isDesktop) {
+                this.sidebarOpen = true;
+            }
+        });
+    }
+}" :class="{ 'overflow-hidden': sidebarOpen && !isDesktop }">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -43,7 +61,7 @@
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
         <aside 
-            x-show="sidebarOpen || window.innerWidth >= 768"
+            x-show="sidebarOpen || isDesktop"
             x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="-translate-x-full"
             x-transition:enter-end="translate-x-0"
@@ -51,7 +69,7 @@
             x-transition:leave-start="translate-x-0"
             x-transition:leave-end="-translate-x-full"
             class="fixed md:static inset-y-0 left-0 z-50 w-64 bg-gray-800 text-white flex flex-col"
-            x-cloak
+            :class="{ 'translate-x-0': isDesktop || sidebarOpen }"
         >
             <!-- Logo -->
             <div class="flex items-center justify-between h-16 px-6 bg-gray-900 border-b border-gray-700">
@@ -81,7 +99,7 @@
                     </li>
 
                     @auth
-                        @if(auth()->user()->role === 'admin' || auth()->user()->role === 'agent')
+                        @if(auth()->user()->canManageInventaire())
                             <!-- Localisations -->
                             <li>
                                 <a href="{{ route('localisations.index') }}" 
@@ -91,6 +109,29 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                     </svg>
                                     <span>Localisations</span>
+                                </a>
+                            </li>
+
+                            <!-- Emplacements -->
+                            <li>
+                                <a href="{{ route('emplacements.index') }}" 
+                                   class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('emplacements.*') ? 'bg-gray-700 text-white' : '' }}">
+                                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                    <span>Emplacements</span>
+                                </a>
+                            </li>
+
+                            <!-- Affectations -->
+                            <li>
+                                <a href="{{ route('affectations.index') }}" 
+                                   class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('affectations.*') ? 'bg-gray-700 text-white' : '' }}">
+                                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                    </svg>
+                                    <span>Affectations</span>
                                 </a>
                             </li>
 
@@ -126,20 +167,20 @@
                                     <span>Inventaires</span>
                                 </a>
                             </li>
-
-                            <!-- Rapports -->
-                            <li>
-                                <a href="{{ route('rapports.index') }}" 
-                                   class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('rapports.*') ? 'bg-gray-700 text-white' : '' }}">
-                                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                    </svg>
-                                    <span>Rapports</span>
-                                </a>
-                            </li>
                         @endif
 
-                        @if(auth()->user()->role === 'admin')
+                        {{-- Rapports - Désactivé pour l'instant (route commentée) --}}
+                        {{-- <li>
+                            <a href="{{ route('rapports.index') }}" 
+                               class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('rapports.*') ? 'bg-gray-700 text-white' : '' }}">
+                                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                                <span>Rapports</span>
+                            </a>
+                        </li> --}}
+
+                        @if(auth()->check() && auth()->user()->isAdmin())
                             <!-- Utilisateurs -->
                             <li>
                                 <a href="{{ route('users.index') }}" 
@@ -223,12 +264,12 @@
                             >
                                 <div class="flex items-center space-x-2">
                                     <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                                        {{ strtoupper(substr(auth()->user()->users ?? auth()->user()->name ?? 'U', 0, 1)) }}
                                     </div>
                                     <div class="hidden md:block text-left">
-                                        <div class="text-sm font-medium text-gray-900">{{ auth()->user()->name }}</div>
+                                        <div class="text-sm font-medium text-gray-900">{{ auth()->user()->users ?? auth()->user()->name ?? 'Utilisateur' }}</div>
                                         <div class="text-xs text-gray-500">
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ auth()->user()->role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' }}">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ auth()->user()->isAdmin() ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' }}">
                                                 {{ auth()->user()->role_name }}
                                             </span>
                                         </div>
@@ -338,11 +379,17 @@
 
     <script>
         // Messages flash de session (échappés pour éviter les erreurs JavaScript)
+        @php
+            $success = session('success');
+            $error = session('error');
+            $info = session('info');
+            $warning = session('warning');
+        @endphp
         var sessionMessages = {
-            success: @json(session('success', null)),
-            error: @json(session('error', null)),
-            info: @json(session('info', null)),
-            warning: @json(session('warning', null))
+            success: @json($success ?? null),
+            error: @json($error ?? null),
+            info: @json($info ?? null),
+            warning: @json($warning ?? null)
         };
         
         function toastNotifications() {

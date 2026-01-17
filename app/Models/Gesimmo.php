@@ -64,6 +64,7 @@ class Gesimmo extends Model
 
     /**
      * Relation avec l'emplacement
+     * L'emplacement est la table centrale qui lie LocalisationImmo et Affectation
      */
     public function emplacement(): BelongsTo
     {
@@ -100,19 +101,44 @@ class Gesimmo extends Model
 
     /**
      * Génère le code d'immobilisation au format: CodeNatJur/CodeDesignation/CodeCategorie/Année/CodeSourceFin/NumOrdre
+     * 
+     * Note: Le code formaté est utilisé pour générer le code-barres Code 128.
+     * Il doit être unique et refléter les caractéristiques de l'immobilisation.
+     * Les relations avec Emplacement, Localisation et Affectation sont utilisées
+     * pour l'affichage mais ne font pas partie du code formaté.
      */
     public function getCodeFormateAttribute(): string
     {
+        // S'assurer que les relations sont chargées
+        if (!$this->relationLoaded('natureJuridique')) {
+            $this->load('natureJuridique');
+        }
+        if (!$this->relationLoaded('designation')) {
+            $this->load('designation');
+        }
+        if (!$this->relationLoaded('categorie')) {
+            $this->load('categorie');
+        }
+        if (!$this->relationLoaded('sourceFinancement')) {
+            $this->load('sourceFinancement');
+        }
+        
         // DateAcquisition contient l'année (ex: 2019)
         $annee = ($this->DateAcquisition && $this->DateAcquisition > 1970) ? $this->DateAcquisition : '';
         
+        // Construire le code formaté avec les codes des relations
+        $codeNatJur = $this->natureJuridique->CodeNatJur ?? '';
+        $codeDesignation = $this->designation->CodeDesignation ?? '';
+        $codeCategorie = $this->categorie->CodeCategorie ?? '';
+        $codeSourceFin = $this->sourceFinancement->CodeSourceFin ?? '';
+        
         return sprintf(
             '%s/%s/%s/%s/%s/%s',
-            $this->natureJuridique->CodeNatJur ?? '',
-            $this->designation->CodeDesignation ?? '',
-            $this->categorie->CodeCategorie ?? '',
+            $codeNatJur,
+            $codeDesignation,
+            $codeCategorie,
             $annee,
-            $this->sourceFinancement->CodeSourceFin ?? '',
+            $codeSourceFin,
             $this->NumOrdre
         );
     }

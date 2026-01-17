@@ -206,6 +206,66 @@ class BienController extends Controller
     }
 
     /**
+     * Affiche la page pour imprimer les étiquettes groupées par emplacement
+     * 
+     * Disposition : 21 étiquettes par page A4 (3 colonnes x 7 lignes)
+     * Format : Groupé par emplacement, génération côté client avec jsbarcode et pdf-lib
+     * 
+     * @param Request $request
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     */
+    public function imprimerEtiquettesParEmplacement(Request $request)
+    {
+        try {
+            $request->validate([
+                'idEmplacement' => 'required|exists:emplacement,idEmplacement',
+            ]);
+
+            $idEmplacement = $request->input('idEmplacement');
+            
+            // Récupérer toutes les immobilisations de cet emplacement avec leurs relations
+            $biens = Gesimmo::where('idEmplacement', $idEmplacement)
+                ->with([
+                    'emplacement.localisation',
+                    'emplacement.affectation',
+                    'designation',
+                    'categorie',
+                    'etat',
+                    'natureJuridique',
+                    'sourceFinancement'
+                ])
+                ->orderBy('NumOrdre')
+                ->get();
+
+            if ($biens->isEmpty()) {
+                return redirect()->back()->with('error', 'Aucun bien trouvé pour cet emplacement.');
+            }
+
+            // Récupérer les informations de l'emplacement
+            $emplacement = \App\Models\Emplacement::with(['localisation', 'affectation'])
+                ->find($idEmplacement);
+
+            // Préparer les données pour le JavaScript
+            $biensData = $biens->map(function($bien) {
+                return [
+                    'NumOrdre' => $bien->NumOrdre,
+                    'code_formate' => $bien->code_formate ?? $bien->NumOrdre,
+                    // Pour le code-barres, on utilise uniquement NumOrdre
+                    'barcode_value' => (string)$bien->NumOrdre,
+                ];
+            })->toArray();
+
+            return view('pdf.etiquettes-biens-par-emplacement-client', [
+                'biens' => $biens,
+                'biensData' => $biensData,
+                'emplacement' => $emplacement,
+            ]);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Erreur lors de l\'impression des étiquettes: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Exporte les biens en format Excel (CSV)
      * 
      * Colonnes : Code, Désignation, Nature, Localisation, Service, Valeur, État, Date acquisition

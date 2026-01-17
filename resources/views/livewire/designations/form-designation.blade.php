@@ -16,7 +16,7 @@
                         <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                         </svg>
-                        <a href="{{ route('localisations.index') }}" class="ml-1 text-sm font-medium text-gray-700 hover:text-indigo-600 md:ml-2">Localisations</a>
+                        <a href="{{ route('designations.index') }}" class="ml-1 text-sm font-medium text-gray-700 hover:text-indigo-600 md:ml-2">Désignations</a>
                     </div>
                 </li>
                 <li aria-current="page">
@@ -25,7 +25,7 @@
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                         </svg>
                         <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">
-                            {{ $this->isEdit ? 'Modifier' : 'Ajouter' }}
+                            {{ $this->isEdit ? 'Modifier' : 'Ajouter' }} une désignation
                         </span>
                     </div>
                 </li>
@@ -33,10 +33,10 @@
         </nav>
 
         <h1 class="text-3xl font-bold text-gray-900">
-            {{ $this->isEdit && $this->localisation ? 'Modifier ' . $this->localisation->Localisation : 'Ajouter une localisation' }}
+            {{ $this->isEdit && $this->designation ? 'Modifier ' . $this->designation->designation : 'Ajouter une désignation' }}
         </h1>
         <p class="mt-1 text-sm text-gray-500">
-            {{ $this->isEdit ? 'Modifiez les informations de la localisation' : 'Remplissez le formulaire pour ajouter une nouvelle localisation' }}
+            {{ $this->isEdit ? 'Modifiez les informations de la désignation' : 'Remplissez le formulaire pour ajouter une nouvelle désignation' }}
         </p>
     </div>
 
@@ -53,34 +53,54 @@
                 </h2>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {{-- Localisation --}}
+                    {{-- Désignation --}}
                     <div>
-                        <label for="Localisation" class="block text-sm font-medium text-gray-700 mb-1">
-                            Localisation <span class="text-red-500">*</span>
+                        <label for="designation_name" class="block text-sm font-medium text-gray-700 mb-1">
+                            Désignation <span class="text-red-500">*</span>
                         </label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             </div>
                             <input 
                                 type="text"
-                                id="Localisation"
-                                wire:model="Localisation"
-                                placeholder="Ex: Bâtiment A, Annexe"
-                                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('Localisation') border-red-300 @enderror"
+                                id="designation_name"
+                                wire:model="designation_name"
+                                placeholder="Ex: Bureau, Chaise, Table"
+                                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('designation_name') border-red-300 @enderror"
                                 wire:loading.attr="disabled">
                         </div>
-                        @error('Localisation')
+                        @error('designation_name')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
-                    {{-- Code Localisation --}}
+                    {{-- Catégorie --}}
                     <div>
-                        <label for="CodeLocalisation" class="block text-sm font-medium text-gray-700 mb-1">
-                            Code de localisation
+                        <label for="idCat" class="block text-sm font-medium text-gray-700 mb-1">
+                            Catégorie <span class="text-red-500">*</span>
+                        </label>
+                        <select 
+                            id="idCat"
+                            wire:model="idCat"
+                            class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idCat') border-red-300 @enderror"
+                            wire:loading.attr="disabled">
+                            <option value="">Sélectionnez une catégorie</option>
+                            @foreach($this->categories as $categorie)
+                                <option value="{{ $categorie->idCategorie }}">{{ $categorie->Categorie }}</option>
+                            @endforeach
+                        </select>
+                        @error('idCat')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Code Désignation --}}
+                    <div>
+                        <label for="CodeDesignation" class="block text-sm font-medium text-gray-700 mb-1">
+                            Code de désignation
                         </label>
                         <div class="flex gap-2">
                             <div class="flex-1 relative">
@@ -91,10 +111,10 @@
                                 </div>
                                 <input 
                                     type="text"
-                                    id="CodeLocalisation"
-                                    wire:model="CodeLocalisation"
-                                    placeholder="Ex: BAT-A, LOC-001"
-                                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('CodeLocalisation') border-red-300 @enderror"
+                                    id="CodeDesignation"
+                                    wire:model="CodeDesignation"
+                                    placeholder="Ex: BUR, CHA, TAB"
+                                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('CodeDesignation') border-red-300 @enderror"
                                     wire:loading.attr="disabled">
                             </div>
                             <button 
@@ -105,11 +125,11 @@
                                 Auto
                             </button>
                         </div>
-                        @error('CodeLocalisation')
+                        @error('CodeDesignation')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                         <p class="mt-1 text-xs text-gray-500">
-                            Code optionnel pour identifier la localisation
+                            Code optionnel pour identifier la désignation
                         </p>
                     </div>
                 </div>
@@ -168,4 +188,3 @@
         </div>
     @endif
 </div>
-

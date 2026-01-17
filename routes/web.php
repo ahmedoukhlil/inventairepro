@@ -101,6 +101,63 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
 
         /*
         |------------------------------------------------------------------
+        | Emplacements
+        |------------------------------------------------------------------
+        |
+        | Gestion des emplacements (liés à Localisation et Affectation)
+        |
+        */
+        Route::prefix('emplacements')->name('emplacements.')->group(function () {
+            // Liste des emplacements
+            Route::get('/', \App\Livewire\Emplacements\ListeEmplacements::class)->name('index');
+            
+            // Création d'un emplacement
+            Route::get('/create', \App\Livewire\Emplacements\FormEmplacement::class)->name('create');
+            
+            // Édition d'un emplacement
+            Route::get('/{emplacement}/edit', \App\Livewire\Emplacements\FormEmplacement::class)->name('edit');
+        });
+
+        /*
+        |------------------------------------------------------------------
+        | Affectations
+        |------------------------------------------------------------------
+        |
+        | Gestion des affectations
+        |
+        */
+        Route::prefix('affectations')->name('affectations.')->group(function () {
+            // Liste des affectations
+            Route::get('/', \App\Livewire\Affectations\ListeAffectations::class)->name('index');
+            
+            // Création d'une affectation
+            Route::get('/create', \App\Livewire\Affectations\FormAffectation::class)->name('create');
+            
+            // Édition d'une affectation
+            Route::get('/{affectation}/edit', \App\Livewire\Affectations\FormAffectation::class)->name('edit');
+        });
+
+        /*
+        |------------------------------------------------------------------
+        | Désignations
+        |------------------------------------------------------------------
+        |
+        | Gestion des désignations
+        |
+        */
+        Route::prefix('designations')->name('designations.')->group(function () {
+            // Liste des désignations
+            Route::get('/', \App\Livewire\Designations\ListeDesignations::class)->name('index');
+            
+            // Création d'une désignation
+            Route::get('/create', \App\Livewire\Designations\FormDesignation::class)->name('create');
+            
+            // Édition d'une désignation
+            Route::get('/{designation}/edit', \App\Livewire\Designations\FormDesignation::class)->name('edit');
+        });
+
+        /*
+        |------------------------------------------------------------------
         | Biens
         |------------------------------------------------------------------
         |
@@ -130,6 +187,9 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
             
             // Impression en masse d'étiquettes
             Route::post('/imprimer-etiquettes', [BienController::class, 'imprimerEtiquettes'])->name('imprimer-etiquettes');
+            
+            // Impression groupée par emplacement (21 étiquettes par page A4)
+            Route::post('/imprimer-etiquettes-par-emplacement', [BienController::class, 'imprimerEtiquettesParEmplacement'])->name('imprimer-etiquettes-par-emplacement');
             
             // Export Excel des biens
             Route::get('/export/excel', [BienController::class, 'exportExcel'])->name('export-excel');

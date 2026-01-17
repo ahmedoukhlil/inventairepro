@@ -1,5 +1,23 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data="{ sidebarOpen: false, profileOpen: false }" :class="{ 'overflow-hidden': sidebarOpen }">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data="{ 
+    sidebarOpen: true, 
+    profileOpen: false,
+    isDesktop: window.innerWidth >= 768,
+    init() {
+        // Initialiser isDesktop au chargement
+        this.isDesktop = window.innerWidth >= 768;
+        if (this.isDesktop) {
+            this.sidebarOpen = true;
+        }
+        // Écouter les changements de taille d'écran
+        window.addEventListener('resize', () => {
+            this.isDesktop = window.innerWidth >= 768;
+            if (this.isDesktop) {
+                this.sidebarOpen = true;
+            }
+        });
+    }
+}" :class="{ 'overflow-hidden': sidebarOpen && !isDesktop }">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -35,12 +53,14 @@
     <style>
         [x-cloak] { display: none !important; }
     </style>
+
+    @stack('styles')
 </head>
 <body class="font-sans antialiased bg-gray-50">
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
         <aside 
-            x-show="sidebarOpen || window.innerWidth >= 768"
+            x-show="sidebarOpen || isDesktop"
             x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="-translate-x-full"
             x-transition:enter-end="translate-x-0"
@@ -48,7 +68,7 @@
             x-transition:leave-start="translate-x-0"
             x-transition:leave-end="-translate-x-full"
             class="fixed md:static inset-y-0 left-0 z-50 w-64 bg-gray-800 text-white flex flex-col"
-            x-cloak
+            :class="{ 'translate-x-0': isDesktop || sidebarOpen }"
         >
             <!-- Logo -->
             <div class="flex items-center justify-between h-16 px-6 bg-gray-900 border-b border-gray-700">
@@ -78,7 +98,7 @@
                     </li>
 
                     @auth
-                        @if(auth()->user()->role === 'admin' || auth()->user()->role === 'agent')
+                        @if(auth()->user()->canManageInventaire())
                             <!-- Localisations -->
                             <li>
                                 <a href="{{ route('localisations.index') }}" 
@@ -91,6 +111,40 @@
                                 </a>
                             </li>
 
+                            <!-- Emplacements -->
+                            <li>
+                                <a href="{{ route('emplacements.index') }}" 
+                                   class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('emplacements.*') ? 'bg-gray-700 text-white' : '' }}">
+                                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                    <span>Emplacements</span>
+                                </a>
+                            </li>
+
+                            <!-- Affectations -->
+                            <li>
+                                <a href="{{ route('affectations.index') }}" 
+                                   class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('affectations.*') ? 'bg-gray-700 text-white' : '' }}">
+                                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                    </svg>
+                                    <span>Affectations</span>
+                                </a>
+                            </li>
+
+                            <!-- Désignations -->
+                            <li>
+                                <a href="{{ route('designations.index') }}" 
+                                   class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('designations.*') ? 'bg-gray-700 text-white' : '' }}">
+                                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    <span>Désignations</span>
+                                </a>
+                            </li>
+
                             <!-- Immobilisations -->
                             <li>
                                 <a href="{{ route('biens.index') }}" 
@@ -99,6 +153,17 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                                     </svg>
                                     <span>Immobilisations</span>
+                                </a>
+                            </li>
+                            
+                            <!-- Ajouter Immobilisation -->
+                            <li>
+                                <a href="{{ route('biens.create') }}" 
+                                   class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('biens.create') || request()->routeIs('biens.edit') ? 'bg-gray-700 text-white' : '' }}">
+                                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                    <span>Ajouter Immobilisation</span>
                                 </a>
                             </li>
 
@@ -114,11 +179,11 @@
                             </li>
                         @endif
 
-                        @if(auth()->user()->role === 'admin')
+                        @if(auth()->check() && auth()->user()->isAdmin())
                             <!-- Utilisateurs -->
                             <li>
-                                <a href="#" 
-                                   class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors">
+                                <a href="{{ route('users.index') }}" 
+                                   class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('users.*') ? 'bg-gray-700 text-white' : '' }}">
                                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
                                     </svg>
@@ -235,6 +300,8 @@
     </div>
 
     @livewireScripts
+    
+    @stack('scripts')
     
     {{-- PWA Service Worker Registration --}}
     <script>

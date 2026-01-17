@@ -11,21 +11,13 @@
                         Dashboard
                     </a>
                 </li>
-                <li>
-                    <div class="flex items-center">
-                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
-                        </svg>
-                        <a href="{{ route('localisations.index') }}" class="ml-1 text-sm font-medium text-gray-700 hover:text-indigo-600 md:ml-2">Localisations</a>
-                    </div>
-                </li>
                 <li aria-current="page">
                     <div class="flex items-center">
                         <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                         </svg>
                         <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">
-                            {{ $this->isEdit ? 'Modifier' : 'Ajouter' }}
+                            {{ $this->isEdit ? 'Modifier' : 'Ajouter' }} un emplacement
                         </span>
                     </div>
                 </li>
@@ -33,10 +25,10 @@
         </nav>
 
         <h1 class="text-3xl font-bold text-gray-900">
-            {{ $this->isEdit && $this->localisation ? 'Modifier ' . $this->localisation->Localisation : 'Ajouter une localisation' }}
+            {{ $this->isEdit && $this->emplacement ? 'Modifier ' . $this->emplacement->Emplacement : 'Ajouter un emplacement' }}
         </h1>
         <p class="mt-1 text-sm text-gray-500">
-            {{ $this->isEdit ? 'Modifiez les informations de la localisation' : 'Remplissez le formulaire pour ajouter une nouvelle localisation' }}
+            {{ $this->isEdit ? 'Modifiez les informations de l\'emplacement' : 'Remplissez le formulaire pour ajouter un nouvel emplacement' }}
         </p>
     </div>
 
@@ -53,34 +45,35 @@
                 </h2>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {{-- Localisation --}}
+                    {{-- Emplacement --}}
                     <div>
-                        <label for="Localisation" class="block text-sm font-medium text-gray-700 mb-1">
-                            Localisation <span class="text-red-500">*</span>
+                        <label for="Emplacement" class="block text-sm font-medium text-gray-700 mb-1">
+                            Emplacement <span class="text-red-500">*</span>
                         </label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                             </div>
                             <input 
                                 type="text"
-                                id="Localisation"
-                                wire:model="Localisation"
-                                placeholder="Ex: Bâtiment A, Annexe"
-                                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('Localisation') border-red-300 @enderror"
+                                id="Emplacement"
+                                wire:model="Emplacement"
+                                placeholder="Ex: Bureau 101, Atelier A"
+                                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('Emplacement') border-red-300 @enderror"
                                 wire:loading.attr="disabled">
                         </div>
-                        @error('Localisation')
+                        @error('Emplacement')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
-                    {{-- Code Localisation --}}
+                    {{-- Code Emplacement --}}
                     <div>
-                        <label for="CodeLocalisation" class="block text-sm font-medium text-gray-700 mb-1">
-                            Code de localisation
+                        <label for="CodeEmplacement" class="block text-sm font-medium text-gray-700 mb-1">
+                            Code d'emplacement
                         </label>
                         <div class="flex gap-2">
                             <div class="flex-1 relative">
@@ -91,10 +84,10 @@
                                 </div>
                                 <input 
                                     type="text"
-                                    id="CodeLocalisation"
-                                    wire:model="CodeLocalisation"
-                                    placeholder="Ex: BAT-A, LOC-001"
-                                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('CodeLocalisation') border-red-300 @enderror"
+                                    id="CodeEmplacement"
+                                    wire:model="CodeEmplacement"
+                                    placeholder="Ex: BUR-101, ATEL-A"
+                                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('CodeEmplacement') border-red-300 @enderror"
                                     wire:loading.attr="disabled">
                             </div>
                             <button 
@@ -105,12 +98,65 @@
                                 Auto
                             </button>
                         </div>
-                        @error('CodeLocalisation')
+                        @error('CodeEmplacement')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                         <p class="mt-1 text-xs text-gray-500">
-                            Code optionnel pour identifier la localisation
+                            Code optionnel pour identifier l'emplacement
                         </p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Section 2 : Relations --}}
+            <div class="mb-8">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                    Relations
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {{-- Localisation --}}
+                    <div>
+                        <label for="idLocalisation" class="block text-sm font-medium text-gray-700 mb-1">
+                            Localisation <span class="text-red-500">*</span>
+                        </label>
+                        <select 
+                            id="idLocalisation"
+                            wire:model="idLocalisation"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idLocalisation') border-red-300 @enderror"
+                            wire:loading.attr="disabled">
+                            <option value="">Sélectionnez une localisation</option>
+                            @foreach($this->localisations as $localisation)
+                                <option value="{{ $localisation->idLocalisation }}">
+                                    {{ $localisation->Localisation }} @if($localisation->CodeLocalisation)({{ $localisation->CodeLocalisation }})@endif
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('idLocalisation')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Affectation --}}
+                    <div>
+                        <label for="idAffectation" class="block text-sm font-medium text-gray-700 mb-1">
+                            Affectation <span class="text-red-500">*</span>
+                        </label>
+                        <select 
+                            id="idAffectation"
+                            wire:model="idAffectation"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idAffectation') border-red-300 @enderror"
+                            wire:loading.attr="disabled">
+                            <option value="">Sélectionnez une affectation</option>
+                            @foreach($this->affectations as $affectation)
+                                <option value="{{ $affectation->idAffectation }}">
+                                    {{ $affectation->Affectation }} @if($affectation->CodeAffectation)({{ $affectation->CodeAffectation }})@endif
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('idAffectation')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
             </div>
@@ -168,4 +214,3 @@
         </div>
     @endif
 </div>
-

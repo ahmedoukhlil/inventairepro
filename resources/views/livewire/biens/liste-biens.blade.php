@@ -132,30 +132,6 @@
                         </select>
                     </div>
 
-                    {{-- Filtre Emplacement (niveau le plus bas) --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Emplacement
-                        </label>
-                        <select 
-                            wire:model.live="filterEmplacement"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option value="">Tous les emplacements</option>
-                            @foreach($this->emplacements as $localisation => $emplacementsGroupe)
-                                <optgroup label="{{ $localisation }}">
-                                    @foreach($emplacementsGroupe as $emplacement)
-                                        <option value="{{ $emplacement->idEmplacement }}">
-                                            └─ {{ $emplacement->Emplacement }}
-                                            @if($emplacement->CodeEmplacement)
-                                                ({{ $emplacement->CodeEmplacement }})
-                                            @endif
-                                        </option>
-                                    @endforeach
-                                </optgroup>
-                            @endforeach
-                        </select>
-                    </div>
-
                     {{-- Filtre État --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -169,6 +145,55 @@
                                 <option value="{{ $etat->idEtat }}">{{ $etat->Etat }}</option>
                             @endforeach
                         </select>
+                    </div>
+
+                    {{-- Filtre Emplacement (niveau le plus bas) - Déplacé en bas, aligné avec État --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Emplacement
+                        </label>
+                        <div class="flex gap-2">
+                            <select 
+                                wire:model.live="filterEmplacement"
+                                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="">Tous les emplacements</option>
+                                @foreach($this->emplacements as $localisation => $emplacementsGroupe)
+                                    <optgroup label="{{ $localisation }}">
+                                        @foreach($emplacementsGroupe as $emplacement)
+                                            <option value="{{ $emplacement->idEmplacement }}">
+                                                └─ {{ $emplacement->Emplacement }}
+                                                @if($emplacement->CodeEmplacement)
+                                                    ({{ $emplacement->CodeEmplacement }})
+                                                @endif
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endforeach
+                            </select>
+                            @if($filterEmplacement)
+                                <form 
+                                    action="{{ route('biens.imprimer-etiquettes-par-emplacement') }}" 
+                                    method="POST" 
+                                    class="inline-block">
+                                    @csrf
+                                    <input type="hidden" name="idEmplacement" value="{{ $filterEmplacement }}">
+                                    <button 
+                                        type="submit"
+                                        class="inline-flex items-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                        title="Imprimer toutes les étiquettes de cet emplacement (21 par page A4)">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                        </svg>
+                                        Imprimer
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+                        @if($filterEmplacement)
+                            <p class="mt-1 text-xs text-gray-500">
+                                Cliquez sur "Imprimer" pour générer un PDF avec toutes les étiquettes de cet emplacement (format: 21 étiquettes par page A4)
+                            </p>
+                        @endif
                     </div>
                 </div>
 
