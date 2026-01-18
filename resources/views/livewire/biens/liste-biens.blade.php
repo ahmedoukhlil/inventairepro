@@ -111,7 +111,8 @@
                             </label>
                             <select 
                                 wire:model.live="filterDesignation"
-                                class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                data-placeholder="Toutes les désignations">
                                 <option value="">Toutes les désignations</option>
                                 @foreach($this->designations as $designation)
                                     <option value="{{ $designation->id }}">
@@ -131,7 +132,8 @@
                             </label>
                             <select 
                                 wire:model.live="filterCategorie"
-                                class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                data-placeholder="Toutes les catégories">
                                 <option value="">Toutes les catégories</option>
                                 @foreach($this->categories as $categorie)
                                     <option value="{{ $categorie->idCategorie }}">{{ $categorie->Categorie }}</option>
@@ -156,7 +158,8 @@
                                 </label>
                                 <select 
                                     wire:model.live="filterLocalisation"
-                                    class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white">
+                                    class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white"
+                                    data-placeholder="Toutes les localisations">
                                     <option value="">Toutes les localisations</option>
                                     @foreach($this->localisations as $localisation)
                                         <option value="{{ $localisation->idLocalisation }}">
@@ -179,7 +182,8 @@
                                 </label>
                                 <select 
                                     wire:model.live="filterAffectation"
-                                    class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white {{ empty($filterLocalisation) && !empty($filterAffectation) ? 'border-yellow-300 bg-yellow-50' : '' }}"
+                                    class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white {{ empty($filterLocalisation) && !empty($filterAffectation) ? 'border-yellow-300 bg-yellow-50' : '' }}"
+                                    data-placeholder="Toutes les affectations"
                                     @if(empty($filterLocalisation) && !empty($filterAffectation)) title="Sélectionnez d'abord une localisation pour un meilleur filtrage" @endif>
                                     <option value="">Toutes les affectations</option>
                                     @foreach($this->affectations as $affectation)
@@ -209,7 +213,8 @@
                                 <div class="flex flex-col gap-2">
                                     <select 
                                         wire:model.live="filterEmplacement"
-                                        class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white {{ (empty($filterLocalisation) && empty($filterAffectation)) && !empty($filterEmplacement) ? 'border-yellow-300 bg-yellow-50' : '' }}"
+                                        class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white {{ (empty($filterLocalisation) && empty($filterAffectation)) && !empty($filterEmplacement) ? 'border-yellow-300 bg-yellow-50' : '' }}"
+                                        data-placeholder="Tous les emplacements"
                                         @if((empty($filterLocalisation) && empty($filterAffectation)) && !empty($filterEmplacement)) title="Utilisez les filtres Localisation et Affectation pour un meilleur filtrage" @endif>
                                         <option value="">Tous les emplacements</option>
                                         @foreach($this->emplacements as $emplacement)
@@ -263,7 +268,8 @@
                             </label>
                             <select 
                                 wire:model.live="filterEtat"
-                                class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                data-placeholder="Tous les états">
                                 <option value="">Tous les états</option>
                                 @foreach($this->etats as $etat)
                                     <option value="{{ $etat->idEtat }}">{{ $etat->Etat }}</option>
@@ -278,7 +284,8 @@
                             </label>
                             <select 
                                 wire:model.live="filterNatJur"
-                                class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                data-placeholder="Toutes les natures juridiques">
                                 <option value="">Toutes les natures juridiques</option>
                                 @foreach($this->natureJuridiques as $natJur)
                                     <option value="{{ $natJur->idNatJur }}">{{ $natJur->NatJur }}</option>
@@ -293,7 +300,8 @@
                             </label>
                             <select 
                                 wire:model.live="filterSF"
-                                class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                data-placeholder="Toutes les sources de financement">
                                 <option value="">Toutes les sources de financement</option>
                                 @foreach($this->sourceFinancements as $sf)
                                     <option value="{{ $sf->idSF }}">{{ $sf->SourceFin }}</option>
@@ -565,334 +573,123 @@
         </div>
     @endif
 
-    {{-- Select2 pour les champs de recherche --}}
+    {{-- TomSelect CSS & JS --}}
     @push('styles')
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
     <style>
-        .select2-container--default .select2-search--inline .select2-search__field {
-            margin-top: 0;
-            padding: 0;
+        /* Personnalisation TomSelect pour s'aligner avec Tailwind */
+        .ts-wrapper .ts-control {
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            min-height: 2.5rem;
         }
-        .select2-container--default .select2-results__option--highlighted[aria-selected] {
-            background-color: #4f46e5;
+        .ts-wrapper .ts-control:focus {
+            border-color: #6366f1;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        .ts-wrapper .ts-dropdown {
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 10000;
+        }
+        .ts-wrapper .ts-dropdown .option.active {
+            background-color: #6366f1;
             color: white;
         }
-        /* S'assurer que le dropdown Select2 ne bloque pas le scroll */
-        .select2-container {
-            z-index: 9999;
+        .ts-wrapper.single .ts-control {
+            background-color: white;
         }
-        .select2-dropdown {
-            z-index: 10000 !important;
-            position: absolute !important;
-        }
-        /* Permettre le scroll même avec le dropdown ouvert */
-        .select2-results {
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        /* S'assurer que le conteneur parent permet le scroll */
-        html, body {
+        /* S'assurer que TomSelect ne bloque pas le scroll */
+        body {
             overflow-y: auto !important;
-            overflow-x: hidden !important;
-            height: auto !important;
-        }
-        /* Empêcher Select2 de bloquer le scroll */
-        .select2-container--open {
-            position: relative;
-        }
-        /* S'assurer qu'aucun overlay ne bloque */
-        .select2-dropdown {
-            pointer-events: auto;
-        }
-        /* Permettre le scroll de la page même avec le dropdown ouvert */
-        body.select2-dropdown-open {
-            overflow-y: auto !important;
-        }
-        /* Forcer l'affichage de la barre de recherche dans Select2 */
-        .select2-search {
-            display: block !important;
-        }
-        .select2-search--dropdown {
-            display: block !important;
-            padding: 4px !important;
-        }
-        .select2-search__field {
-            display: block !important;
-            width: 100% !important;
-            padding: 6px 12px !important;
-        }
-        /* S'assurer que la barre de recherche est visible même avec peu d'éléments */
-        .select2-container--default .select2-search--dropdown .select2-search__field {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-        /* Cacher le message "Trop de résultats" si la recherche est toujours active */
-        .select2-results__message {
-            display: none !important;
         }
     </style>
     @endpush
 
     @push('scripts')
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
     <script>
-        (function() {
-            'use strict';
-            
-            // Fonction pour forcer le scroll et fermer tous les dropdowns
-            function forceScrollAndCloseDropdowns() {
-                // Fermer tous les dropdowns
-                $('.select2-search').each(function() {
-                    if ($(this).hasClass('select2-hidden-accessible')) {
-                        try {
-                            $(this).select2('close');
-                        } catch(e) {
-                            // Ignorer les erreurs
-                        }
-                    }
-                });
-                // Cacher tous les dropdowns
-                $('.select2-dropdown').hide().remove();
-                // Forcer le scroll
-                $('html, body').css({
-                    'overflow-y': 'auto',
-                    'overflow-x': 'hidden',
-                    'position': 'relative'
-                });
-                $('body').removeClass('select2-dropdown-open');
-                // Supprimer tout overlay Select2
-                $('.select2-container--open').removeClass('select2-container--open');
-            }
-            
-            document.addEventListener('DOMContentLoaded', function() {
-                // Gestionnaires d'événements globaux (une seule fois)
-                $(document).off('click.select2-close').on('click.select2-close', function(e) {
-                    if (!$(e.target).closest('.select2-container').length) {
-                        forceScrollAndCloseDropdowns();
-                    }
-                });
-                
-                // Permettre le scroll même avec dropdown ouvert
-                $(window).off('scroll.select2-scroll wheel.select2-scroll touchmove.select2-scroll').on('scroll.select2-scroll wheel.select2-scroll touchmove.select2-scroll', function() {
-                    $('html, body').css('overflow-y', 'auto');
-                });
-                
-                // Initialiser Select2 sur tous les selects avec la classe select2-search
-                function initSelect2() {
-                    $('.select2-search').each(function() {
-                        var $select = $(this);
-                        
-                        // Vérifier si Select2 est déjà initialisé
-                        if ($select.hasClass('select2-hidden-accessible')) {
-                            $select.select2('destroy');
-                        }
-                        
-                        // Configuration Select2 avec recherche toujours activée
-                        var select2Config = {
-                            theme: 'default',
-                            width: '100%',
-                            placeholder: function() {
-                                return $select.find('option[value=""]').text() || 'Rechercher...';
-                            },
-                            language: {
-                                noResults: function() {
-                                    return "Aucun résultat trouvé";
-                                },
-                                searching: function() {
-                                    return "Recherche en cours...";
-                                }
-                            },
-                            // TOUJOURS activer la recherche, même avec 0 éléments
-                            minimumResultsForSearch: 0,
-                            allowClear: true,
-                            dropdownAutoWidth: false,
-                            closeOnSelect: true,
-                            dropdownParent: $(document.body),
-                            dropdownCssClass: 'select2-dropdown-scrollable',
-                            selectOnClose: false,
-                            // Améliorer la recherche avec matcher personnalisé
-                            matcher: function(params, data) {
-                                // Si la recherche est vide, afficher tous les résultats
-                                if ($.trim(params.term) === '') {
-                                    return data;
-                                }
-                                
-                                // Recherche insensible à la casse
-                                var term = params.term.toLowerCase();
-                                var text = data.text.toLowerCase();
-                                
-                                // Rechercher dans le texte complet
-                                if (text.indexOf(term) > -1) {
-                                    return data;
-                                }
-                                
-                                // Si c'est un optgroup, vérifier les enfants
-                                if (data.children) {
-                                    var match = false;
-                                    $.each(data.children, function(idx, child) {
-                                        if (child.text.toLowerCase().indexOf(term) > -1) {
-                                            match = true;
-                                            return false;
-                                        }
-                                    });
-                                    return match ? data : null;
-                                }
-                                
-                                return null;
-                            }
-                        };
-                        
-                        $select.select2(select2Config);
-                        
-                        // Forcer l'affichage de la barre de recherche après initialisation
-                        var select2Instance = $select.data('select2');
-                        if (select2Instance) {
-                            // Surcharger la méthode qui détermine si la recherche doit être affichée
-                            select2Instance.options.get('minimumResultsForSearch', function() {
-                                return 0; // Toujours retourner 0 pour forcer l'affichage
-                            });
-                        }
-                        
-                        // Gérer l'ouverture - permettre le scroll et forcer l'affichage de la recherche
-                        $select.off('select2:open').on('select2:open', function() {
-                            $('html, body').css('overflow-y', 'auto');
-                            $('body').addClass('select2-dropdown-open');
-                            
-                            // Forcer l'affichage de la barre de recherche
-                            setTimeout(function() {
-                                // Méthode 1 : Via le dropdown directement
-                                var $allDropdowns = $('.select2-dropdown:visible');
-                                $allDropdowns.each(function() {
-                                    var $dropdown = $(this);
-                                    var $searchContainer = $dropdown.find('.select2-search--dropdown');
-                                    var $searchField = $dropdown.find('.select2-search__field');
-                                    
-                                    if ($searchContainer.length) {
-                                        $searchContainer.show().css({'display': 'block !important', 'visibility': 'visible'});
-                                    }
-                                    if ($searchField.length) {
-                                        $searchField.show().css({
-                                            'display': 'block !important',
-                                            'visibility': 'visible',
-                                            'opacity': '1'
-                                        });
-                                        $searchField.attr('placeholder', 'Rechercher...');
-                                        $searchField.focus();
-                                    }
-                                });
-                                
-                                // Méthode 2 : Via l'instance Select2
-                                try {
-                                    var select2Data = $select.data('select2');
-                                    if (select2Data && select2Data.$dropdown) {
-                                        var $dropdown = select2Data.$dropdown;
-                                        var $search = $dropdown.find('.select2-search__field');
-                                        var $searchContainer = $dropdown.find('.select2-search');
-                                        
-                                        if ($searchContainer.length) {
-                                            $searchContainer.show().css({'display': 'block', 'visibility': 'visible'});
-                                        }
-                                        if ($search.length) {
-                                            $search.show().css({'display': 'block', 'visibility': 'visible', 'opacity': '1'});
-                                            $search.attr('placeholder', 'Rechercher...');
-                                            $search.focus();
-                                        }
-                                    }
-                                } catch(e) {
-                                    console.log('Erreur forçage recherche:', e);
-                                }
-                            }, 100);
-                        });
-                        
-                        // Gérer la fermeture - restaurer le scroll
-                        $select.off('select2:close').on('select2:close', function() {
-                            forceScrollAndCloseDropdowns();
-                        });
-                        
-                        // Fermer AVANT la sélection
-                        $select.off('select2:selecting').on('select2:selecting', function(e) {
-                            var $self = $(this);
-                            setTimeout(function() {
-                                $self.select2('close');
-                                forceScrollAndCloseDropdowns();
-                            }, 10);
-                        });
-                        
-                        // Synchroniser avec Livewire et fermer
-                        $select.off('change.select2-livewire').on('change.select2-livewire', function(e) {
-                            var wireModel = $select.attr('wire:model') || $select.attr('wire:model.defer') || $select.attr('wire:model.live');
-                            if (wireModel) {
-                                var propertyName = wireModel.replace('wire:model.defer=', '').replace('wire:model=', '').replace('wire:model.live=', '');
-                                var value = $select.val();
-                                // Fermer immédiatement
-                                forceScrollAndCloseDropdowns();
-                                // Mettre à jour Livewire
-                                @this.set(propertyName, value || '');
-                            }
-                        });
-                        
-                        // Fermer après sélection (double sécurité)
-                        $select.off('select2:select').on('select2:select', function(e) {
-                            var $self = $(this);
-                            setTimeout(function() {
-                                $self.select2('close');
-                                forceScrollAndCloseDropdowns();
-                            }, 50);
-                        });
-                    });
-                }
+        document.addEventListener('DOMContentLoaded', function() {
+            let tomSelectInstances = {};
 
-                // Initialiser au chargement
-                initSelect2();
-                
-                // Réinitialiser après les mises à jour Livewire
-                document.addEventListener('livewire:update', function() {
-                    forceScrollAndCloseDropdowns();
-                    setTimeout(function() {
-                        $('.select2-search').each(function() {
-                            if ($(this).hasClass('select2-hidden-accessible')) {
-                                $(this).select2('destroy');
-                            }
-                        });
-                        initSelect2();
-                    }, 150);
+            // Fonction pour initialiser TomSelect
+            function initTomSelect() {
+                // Détruire les instances existantes
+                Object.values(tomSelectInstances).forEach(instance => {
+                    if (instance && instance.destroy) {
+                        instance.destroy();
+                    }
                 });
-                
-                // Réinitialiser après les erreurs de validation
-                document.addEventListener('livewire:error', function() {
-                    forceScrollAndCloseDropdowns();
-                    setTimeout(function() {
-                        $('.select2-search').each(function() {
-                            if ($(this).hasClass('select2-hidden-accessible')) {
-                                $(this).select2('destroy');
-                            }
-                        });
-                        initSelect2();
-                    }, 150);
-                });
-                
-                // Écouter l'événement personnalisé filters-updated
-                if (typeof Livewire !== 'undefined') {
-                    Livewire.on('filters-updated', function() {
-                        forceScrollAndCloseDropdowns();
-                        setTimeout(function() {
-                            $('.select2-search').each(function() {
-                                if ($(this).hasClass('select2-hidden-accessible')) {
-                                    $(this).select2('destroy');
-                                }
-                            });
-                            initSelect2();
-                        }, 200);
-                    });
+                tomSelectInstances = {};
+
+                // Initialiser sur tous les selects avec la classe 'tomselect'
+                document.querySelectorAll('.tomselect').forEach((el) => {
+                    if (el.tomselect) {
+                        el.tomselect.destroy();
+                    }
+
+                    const selectId = el.id || el.getAttribute('wire:model.live') || Math.random().toString(36).substr(2, 9);
                     
-                    Livewire.hook('message.sent', function() {
-                        forceScrollAndCloseDropdowns();
+                    tomSelectInstances[selectId] = new TomSelect(el, {
+                        plugins: ['clear_button'],
+                        allowEmptyOption: true,
+                        placeholder: el.getAttribute('data-placeholder') || 'Sélectionner...',
+                        onInitialize: function() {
+                            const value = el.value;
+                            if (value) {
+                                this.setValue(value, true);
+                            }
+                        },
+                        onChange: function(value) {
+                            // Synchroniser avec Livewire
+                            const wireModel = el.getAttribute('wire:model.live') || 
+                                            el.getAttribute('wire:model') || 
+                                            el.getAttribute('wire:model.defer');
+                            
+                            if (wireModel) {
+                                // Mettre à jour l'élément select original
+                                el.value = value || '';
+                                
+                                // Déclencher l'événement pour Livewire
+                                el.dispatchEvent(new Event('change', { bubbles: true }));
+                                
+                                // Mettre à jour via Livewire
+                                const component = Livewire.find(el.closest('[wire\\:id]').getAttribute('wire:id'));
+                                if (component) {
+                                    component.set(wireModel, value || '');
+                                }
+                            }
+                        },
+                        onDropdownOpen: function() {
+                            // S'assurer que le scroll reste activé
+                            document.body.style.overflowY = 'auto';
+                        },
+                        onDropdownClose: function() {
+                            // S'assurer que le scroll reste activé
+                            document.body.style.overflowY = 'auto';
+                        }
                     });
-                }
+                });
+            }
+
+            // Initialiser au chargement
+            initTomSelect();
+
+            // Réinitialiser après les mises à jour Livewire
+            document.addEventListener('livewire:update', function() {
+                setTimeout(() => initTomSelect(), 100);
             });
-        })();
+
+            // Écouter l'événement filters-updated si vous l'utilisez
+            if (typeof Livewire !== 'undefined') {
+                Livewire.on('filters-updated', function() {
+                    setTimeout(() => initTomSelect(), 100);
+                });
+            }
+        });
     </script>
     @endpush
 
