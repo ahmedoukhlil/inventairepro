@@ -34,6 +34,7 @@ class FormBien extends Component
     public $idNatJur = '';
     public $idSF = '';
     public $DateAcquisition = '';
+    public $quantite = 1;
 
     /**
      * Mise à jour automatique de la catégorie lorsque la désignation change
@@ -74,6 +75,7 @@ class FormBien extends Component
         } else {
             // Mode création : valeurs par défaut (année actuelle)
             $this->DateAcquisition = now()->year;
+            $this->quantite = 1;
         }
     }
 
@@ -174,7 +176,7 @@ class FormBien extends Component
      */
     protected function rules(): array
     {
-        return [
+        $rules = [
             'idDesignation' => 'required|exists:designation,id',
             'idCategorie' => 'required|exists:categorie,idCategorie',
             'idEtat' => 'required|exists:etat,idEtat',
@@ -183,6 +185,13 @@ class FormBien extends Component
             'idSF' => 'required|exists:sourcefinancement,idSF',
             'DateAcquisition' => 'nullable|integer|min:1900|max:' . (now()->year + 1),
         ];
+
+        // Ajouter la validation de quantité uniquement en mode création
+        if (!$this->isEdit) {
+            $rules['quantite'] = 'required|integer|min:1|max:1000';
+        }
+
+        return $rules;
     }
 
     /**
@@ -206,6 +215,10 @@ class FormBien extends Component
             'DateAcquisition.integer' => 'L\'année d\'acquisition doit être un nombre.',
             'DateAcquisition.min' => 'L\'année d\'acquisition doit être supérieure ou égale à 1900.',
             'DateAcquisition.max' => 'L\'année d\'acquisition ne peut pas être dans le futur.',
+            'quantite.required' => 'La quantité est obligatoire.',
+            'quantite.integer' => 'La quantité doit être un nombre entier.',
+            'quantite.min' => 'La quantité doit être au moins de 1.',
+            'quantite.max' => 'La quantité ne peut pas dépasser 1000.',
         ];
     }
 
@@ -233,8 +246,12 @@ class FormBien extends Component
                 $bien = $this->bien->fresh();
                 $message = 'Immobilisation modifiée avec succès';
             } else {
-                // Mode création : créer une nouvelle immobilisation
-                $bien = Gesimmo::create([
+                // Mode création : créer une ou plusieurs immobilisations selon la quantité
+                $quantite = (int)($validated['quantite'] ?? 1);
+                $biensCrees = [];
+                
+                // Données communes pour toutes les immobilisations
+                $donneesCommunes = [
                     'idDesignation' => $validated['idDesignation'],
                     'idCategorie' => $validated['idCategorie'],
                     'idEtat' => $validated['idEtat'],
@@ -242,19 +259,33 @@ class FormBien extends Component
                     'idNatJur' => $validated['idNatJur'],
                     'idSF' => $validated['idSF'],
                     'DateAcquisition' => !empty($validated['DateAcquisition']) ? (int)$validated['DateAcquisition'] : null,
-                ]);
+                ];
                 
-                // Charger les relations nécessaires pour le code formaté et l'affichage
-                $bien->load([
-                    'designation',
-                    'categorie',
-                    'natureJuridique',
-                    'sourceFinancement',
-                    'emplacement.localisation',
-                    'emplacement.affectation'
-                ]);
-
-                $message = 'Immobilisation créée avec succès';
+                // Créer les immobilisations
+                for ($i = 0; $i < $quantite; $i++) {
+                    $bien = Gesimmo::create($donneesCommunes);
+                    
+                    // Charger les relations nécessaires pour le code formaté et l'affichage
+                    $bien->load([
+                        'designation',
+                        'categorie',
+                        'natureJuridique',
+                        'sourceFinancement',
+                        'emplacement.localisation',
+                        'emplacement.affectation'
+                    ]);
+                    
+                    $biensCrees[] = $bien;
+                }
+                
+                // Utiliser le dernier bien créé pour la redirection
+                $bien = end($biensCrees);
+                
+                if ($quantite > 1) {
+                    $message = $quantite . ' immobilisations créées avec succès';
+                } else {
+                    $message = 'Immobilisation créée avec succès';
+                }
             }
 
             session()->flash('success', $message);

@@ -5,9 +5,12 @@ namespace App\Livewire\Biens;
 use App\Models\Gesimmo;
 use App\Models\LocalisationImmo;
 use App\Models\Emplacement;
+use App\Models\Affectation;
 use App\Models\Designation;
 use App\Models\Categorie;
 use App\Models\Etat;
+use App\Models\NatureJuridique;
+use App\Models\SourceFinancement;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -22,8 +25,13 @@ class ListeBiens extends Component
     public $search = '';
     public $filterDesignation = '';
     public $filterCategorie = '';
+    public $filterLocalisation = '';
+    public $filterAffectation = '';
     public $filterEmplacement = '';
     public $filterEtat = '';
+    public $filterNatJur = '';
+    public $filterSF = '';
+    public $filterDateAcquisition = '';
     public $sortField = 'NumOrdre';
     public $sortDirection = 'asc';
     public $perPage = 20;
@@ -39,11 +47,13 @@ class ListeBiens extends Component
     }
 
     /**
-     * Propriété calculée : Retourne toutes les désignations
+     * Propriété calculée : Retourne toutes les désignations avec leurs catégories
      */
     public function getDesignationsProperty()
     {
-        return Designation::orderBy('designation')->get();
+        return Designation::with('categorie')
+            ->orderBy('designation')
+            ->get();
     }
 
     /**
@@ -55,19 +65,81 @@ class ListeBiens extends Component
     }
 
     /**
-     * Propriété calculée : Retourne tous les emplacements groupés par localisation
+     * Propriété calculée : Retourne toutes les localisations
+     */
+    public function getLocalisationsProperty()
+    {
+        return LocalisationImmo::orderBy('Localisation')->get();
+    }
+
+    /**
+     * Propriété calculée : Retourne les affectations filtrées selon la localisation sélectionnée
+     */
+    public function getAffectationsProperty()
+    {
+        $query = Affectation::query();
+        
+        // Si une localisation est sélectionnée, filtrer les affectations qui ont des emplacements dans cette localisation
+        if (!empty($this->filterLocalisation)) {
+            $query->whereHas('emplacements', function ($q) {
+                $q->where('idLocalisation', $this->filterLocalisation);
+            });
+        }
+        
+        return $query->orderBy('Affectation')->get();
+    }
+
+    /**
+     * Propriété calculée : Retourne les emplacements filtrés selon la localisation et/ou l'affectation
+     * Format similaire au formulaire de création
      */
     public function getEmplacementsProperty()
     {
-        return Emplacement::with('localisation')
-            ->join('localisation', 'emplacement.idLocalisation', '=', 'localisation.idLocalisation')
-            ->orderBy('localisation.Localisation')
-            ->orderBy('emplacement.Emplacement')
-            ->select('emplacement.*')
+        $query = Emplacement::with(['localisation', 'affectation']);
+        
+        // Filtrer par localisation si sélectionnée
+        if (!empty($this->filterLocalisation)) {
+            $query->where('idLocalisation', $this->filterLocalisation);
+        }
+        
+        // Filtrer par affectation si sélectionnée
+        if (!empty($this->filterAffectation)) {
+            $query->where('idAffectation', $this->filterAffectation);
+        }
+        
+        return $query->orderBy('Emplacement')
             ->get()
-            ->groupBy(function($item) {
-                return $item->localisation ? $item->localisation->Localisation : 'Sans localisation';
+            ->map(function ($emplacement) {
+                // Ajouter un attribut calculé pour l'affichage
+                $emplacement->display_name = $this->getEmplacementDisplayName($emplacement);
+                return $emplacement;
             });
+    }
+    
+    /**
+     * Génère le nom d'affichage d'un emplacement avec ses relations
+     */
+    private function getEmplacementDisplayName($emplacement): string
+    {
+        $parts = [];
+        
+        // Localisation
+        if ($emplacement->localisation) {
+            $parts[] = $emplacement->localisation->Localisation ?? '';
+            if ($emplacement->localisation->CodeLocalisation) {
+                $parts[] = '(' . $emplacement->localisation->CodeLocalisation . ')';
+            }
+        }
+        
+        // Affectation
+        if ($emplacement->affectation) {
+            $parts[] = '- ' . ($emplacement->affectation->Affectation ?? '');
+        }
+        
+        // Emplacement
+        $parts[] = '- ' . ($emplacement->Emplacement ?? '');
+        
+        return implode(' ', array_filter($parts));
     }
 
     /**
@@ -76,6 +148,22 @@ class ListeBiens extends Component
     public function getEtatsProperty()
     {
         return Etat::orderBy('Etat')->get();
+    }
+
+    /**
+     * Propriété calculée : Retourne toutes les natures juridiques
+     */
+    public function getNatureJuridiquesProperty()
+    {
+        return NatureJuridique::orderBy('NatJur')->get();
+    }
+
+    /**
+     * Propriété calculée : Retourne toutes les sources de financement
+     */
+    public function getSourceFinancementsProperty()
+    {
+        return SourceFinancement::orderBy('SourceFin')->get();
     }
 
     /**
@@ -119,10 +207,42 @@ class ListeBiens extends Component
         $this->search = '';
         $this->filterDesignation = '';
         $this->filterCategorie = '';
+        $this->filterLocalisation = '';
+        $this->filterAffectation = '';
         $this->filterEmplacement = '';
         $this->filterEtat = '';
+        $this->filterNatJur = '';
+        $this->filterSF = '';
+        $this->filterDateAcquisition = '';
         $this->selectedBiens = [];
         $this->resetPage();
+    }
+
+    /**
+     * Réinitialise les filtres dépendants quand la localisation change
+     */
+    public function updatedFilterLocalisation($value): void
+    {
+        // Réinitialiser l'affectation et l'emplacement si la localisation change
+        $this->filterAffectation = '';
+        $this->filterEmplacement = '';
+        $this->resetPage();
+        
+        // Déclencher un événement pour réinitialiser Select2
+        $this->dispatch('filters-updated');
+    }
+
+    /**
+     * Réinitialise les filtres dépendants quand l'affectation change
+     */
+    public function updatedFilterAffectation($value): void
+    {
+        // Réinitialiser l'emplacement si l'affectation change
+        $this->filterEmplacement = '';
+        $this->resetPage();
+        
+        // Déclencher un événement pour réinitialiser Select2
+        $this->dispatch('filters-updated');
     }
 
     /**
@@ -223,7 +343,21 @@ class ListeBiens extends Component
             $query->where('idCategorie', $this->filterCategorie);
         }
 
-        // Filtre par emplacement
+        // Filtre hiérarchique par localisation
+        if (!empty($this->filterLocalisation)) {
+            $query->whereHas('emplacement', function ($q) {
+                $q->where('idLocalisation', $this->filterLocalisation);
+            });
+        }
+
+        // Filtre hiérarchique par affectation
+        if (!empty($this->filterAffectation)) {
+            $query->whereHas('emplacement', function ($q) {
+                $q->where('idAffectation', $this->filterAffectation);
+            });
+        }
+
+        // Filtre par emplacement (prioritaire sur les filtres hiérarchiques)
         if (!empty($this->filterEmplacement)) {
             $query->where('idEmplacement', $this->filterEmplacement);
         }
@@ -231,6 +365,21 @@ class ListeBiens extends Component
         // Filtre par état
         if (!empty($this->filterEtat)) {
             $query->where('idEtat', $this->filterEtat);
+        }
+
+        // Filtre par nature juridique
+        if (!empty($this->filterNatJur)) {
+            $query->where('idNatJur', $this->filterNatJur);
+        }
+
+        // Filtre par source de financement
+        if (!empty($this->filterSF)) {
+            $query->where('idSF', $this->filterSF);
+        }
+
+        // Filtre par année d'acquisition
+        if (!empty($this->filterDateAcquisition)) {
+            $query->where('DateAcquisition', (int)$this->filterDateAcquisition);
         }
 
         // Tri

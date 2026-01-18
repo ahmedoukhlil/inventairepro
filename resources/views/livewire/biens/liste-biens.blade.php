@@ -82,95 +82,152 @@
                 x-show="open"
                 x-collapse
                 class="border-t border-gray-200 p-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                    {{-- Recherche globale --}}
-                    <div class="lg:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Recherche globale
-                        </label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
+                <div class="space-y-4">
+                    {{-- Première ligne : Recherche globale et filtres principaux --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {{-- Recherche globale --}}
+                        <div class="lg:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Recherche globale
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <input 
+                                    type="text"
+                                    wire:model.live.debounce.300ms="search"
+                                    placeholder="NumOrdre, code, désignation..."
+                                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                             </div>
-                            <input 
-                                type="text"
-                                wire:model.live.debounce.300ms="search"
-                                placeholder="NumOrdre, code, désignation..."
-                                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+
+                        {{-- Filtre Désignation --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Désignation
+                            </label>
+                            <select 
+                                wire:model.live="filterDesignation"
+                                class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="">Toutes les désignations</option>
+                                @foreach($this->designations as $designation)
+                                    <option value="{{ $designation->id }}">
+                                        {{ $designation->designation }}
+                                        @if($designation->categorie)
+                                            ({{ $designation->categorie->Categorie }})
+                                        @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Filtre Catégorie --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Catégorie
+                            </label>
+                            <select 
+                                wire:model.live="filterCategorie"
+                                class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="">Toutes les catégories</option>
+                                @foreach($this->categories as $categorie)
+                                    <option value="{{ $categorie->idCategorie }}">{{ $categorie->Categorie }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
 
-                    {{-- Filtre Désignation --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Désignation
-                        </label>
-                        <select 
-                            wire:model.live="filterDesignation"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option value="">Toutes les désignations</option>
-                            @foreach($this->designations as $designation)
-                                <option value="{{ $designation->id }}">{{ $designation->designation }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    {{-- Deuxième ligne : Filtres hiérarchiques Localisation → Affectation → Emplacement --}}
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                            <svg class="w-4 h-4 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            Filtrage hiérarchique par emplacement
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {{-- Filtre Localisation --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Localisation
+                                </label>
+                                <select 
+                                    wire:model.live="filterLocalisation"
+                                    class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white">
+                                    <option value="">Toutes les localisations</option>
+                                    @foreach($this->localisations as $localisation)
+                                        <option value="{{ $localisation->idLocalisation }}">
+                                            {{ $localisation->Localisation }}
+                                            @if($localisation->CodeLocalisation)
+                                                ({{ $localisation->CodeLocalisation }})
+                                            @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                    {{-- Filtre Catégorie --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Catégorie
-                        </label>
-                        <select 
-                            wire:model.live="filterCategorie"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option value="">Toutes les catégories</option>
-                            @foreach($this->categories as $categorie)
-                                <option value="{{ $categorie->idCategorie }}">{{ $categorie->Categorie }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                            {{-- Filtre Affectation --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Affectation
+                                    @if($filterLocalisation)
+                                        <span class="text-xs text-gray-500 font-normal">(filtrée)</span>
+                                    @endif
+                                </label>
+                                <select 
+                                    wire:model.live="filterAffectation"
+                                    class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white {{ empty($filterLocalisation) && !empty($filterAffectation) ? 'border-yellow-300 bg-yellow-50' : '' }}"
+                                    @if(empty($filterLocalisation) && !empty($filterAffectation)) title="Sélectionnez d'abord une localisation pour un meilleur filtrage" @endif>
+                                    <option value="">Toutes les affectations</option>
+                                    @foreach($this->affectations as $affectation)
+                                        <option value="{{ $affectation->idAffectation }}">
+                                            {{ $affectation->Affectation }}
+                                            @if($affectation->CodeAffectation)
+                                                ({{ $affectation->CodeAffectation }})
+                                            @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @if(empty($filterLocalisation) && !empty($filterAffectation))
+                                    <p class="mt-1 text-xs text-yellow-600">
+                                        Sélectionnez une localisation pour filtrer les affectations disponibles
+                                    </p>
+                                @endif
+                            </div>
 
-                    {{-- Filtre État --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            État
-                        </label>
-                        <select 
-                            wire:model.live="filterEtat"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option value="">Tous les états</option>
-                            @foreach($this->etats as $etat)
-                                <option value="{{ $etat->idEtat }}">{{ $etat->Etat }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    {{-- Filtre Emplacement (niveau le plus bas) - Déplacé en bas, aligné avec État --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Emplacement
-                        </label>
-                        <div class="flex gap-2">
-                            <select 
-                                wire:model.live="filterEmplacement"
-                                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                <option value="">Tous les emplacements</option>
-                                @foreach($this->emplacements as $localisation => $emplacementsGroupe)
-                                    <optgroup label="{{ $localisation }}">
-                                        @foreach($emplacementsGroupe as $emplacement)
+                            {{-- Filtre Emplacement --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Emplacement
+                                    @if($filterLocalisation || $filterAffectation)
+                                        <span class="text-xs text-gray-500 font-normal">(filtré)</span>
+                                    @endif
+                                </label>
+                                <div class="flex flex-col gap-2">
+                                    <select 
+                                        wire:model.live="filterEmplacement"
+                                        class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white {{ (empty($filterLocalisation) && empty($filterAffectation)) && !empty($filterEmplacement) ? 'border-yellow-300 bg-yellow-50' : '' }}"
+                                        @if((empty($filterLocalisation) && empty($filterAffectation)) && !empty($filterEmplacement)) title="Utilisez les filtres Localisation et Affectation pour un meilleur filtrage" @endif>
+                                        <option value="">Tous les emplacements</option>
+                                        @foreach($this->emplacements as $emplacement)
                                             <option value="{{ $emplacement->idEmplacement }}">
-                                                └─ {{ $emplacement->Emplacement }}
-                                                @if($emplacement->CodeEmplacement)
-                                                    ({{ $emplacement->CodeEmplacement }})
-                                                @endif
+                                                {{ $emplacement->display_name ?? $emplacement->Emplacement }}
                                             </option>
                                         @endforeach
-                                    </optgroup>
-                                @endforeach
-                            </select>
-                            @if($filterEmplacement)
+                                    </select>
+                                    @if((empty($filterLocalisation) && empty($filterAffectation)) && !empty($filterEmplacement))
+                                        <p class="text-xs text-yellow-600">
+                                            Utilisez les filtres Localisation et Affectation pour affiner votre recherche
+                                        </p>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        @if($filterEmplacement)
+                            <div class="mt-3 pt-3 border-t border-gray-200">
                                 <form 
                                     action="{{ route('biens.imprimer-etiquettes-par-emplacement') }}" 
                                     method="POST" 
@@ -179,21 +236,84 @@
                                     <input type="hidden" name="idEmplacement" value="{{ $filterEmplacement }}">
                                     <button 
                                         type="submit"
-                                        class="inline-flex items-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                        class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
                                         title="Imprimer toutes les étiquettes de cet emplacement (33 par page A4)">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                         </svg>
-                                        Imprimer
+                                        Imprimer les étiquettes de cet emplacement
                                     </button>
                                 </form>
-                            @endif
-                        </div>
-                        @if($filterEmplacement)
-                            <p class="mt-1 text-xs text-gray-500">
-                                Cliquez sur "Imprimer" pour générer un PDF avec toutes les étiquettes de cet emplacement (format: 33 étiquettes par page A4)
-                            </p>
+                                <p class="mt-2 text-xs text-gray-500">
+                                    <svg class="w-4 h-4 inline-block mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Format: 33 étiquettes par page A4
+                                </p>
+                            </div>
                         @endif
+                    </div>
+
+                    {{-- Troisième ligne : Autres filtres --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {{-- Filtre État --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                État
+                            </label>
+                            <select 
+                                wire:model.live="filterEtat"
+                                class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="">Tous les états</option>
+                                @foreach($this->etats as $etat)
+                                    <option value="{{ $etat->idEtat }}">{{ $etat->Etat }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Filtre Nature Juridique --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Nature Juridique
+                            </label>
+                            <select 
+                                wire:model.live="filterNatJur"
+                                class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="">Toutes les natures juridiques</option>
+                                @foreach($this->natureJuridiques as $natJur)
+                                    <option value="{{ $natJur->idNatJur }}">{{ $natJur->NatJur }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Filtre Source de Financement --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Source de Financement
+                            </label>
+                            <select 
+                                wire:model.live="filterSF"
+                                class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="">Toutes les sources de financement</option>
+                                @foreach($this->sourceFinancements as $sf)
+                                    <option value="{{ $sf->idSF }}">{{ $sf->SourceFin }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Filtre Année d'acquisition --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Année d'acquisition
+                            </label>
+                            <input 
+                                type="number"
+                                wire:model.live.debounce.300ms="filterDateAcquisition"
+                                min="1900"
+                                max="{{ now()->year + 1 }}"
+                                placeholder="Ex: {{ now()->year }}"
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
                     </div>
                 </div>
 
@@ -374,7 +494,7 @@
                                     </svg>
                                     <h3 class="mt-2 text-sm font-medium text-gray-900">Aucun bien trouvé</h3>
                                     <p class="mt-1 text-sm text-gray-500">
-                                        @if($search || $filterDesignation || $filterCategorie || $filterEmplacement || $filterEtat)
+                                        @if($search || $filterDesignation || $filterCategorie || $filterLocalisation || $filterAffectation || $filterEmplacement || $filterEtat || $filterNatJur || $filterSF || $filterDateAcquisition)
                                             Essayez de modifier vos critères de recherche.
                                         @else
                                             Commencez par créer une nouvelle immobilisation.
@@ -444,6 +564,164 @@
             {{ session('warning') }}
         </div>
     @endif
+
+    {{-- Select2 pour les champs de recherche --}}
+    @push('styles')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        .select2-container--default .select2-search--inline .select2-search__field {
+            margin-top: 0;
+            padding: 0;
+        }
+        .select2-container--default .select2-results__option--highlighted[aria-selected] {
+            background-color: #4f46e5;
+            color: white;
+        }
+    </style>
+    @endpush
+
+    @push('scripts')
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialiser Select2 sur tous les selects avec la classe select2-search
+            function initSelect2() {
+                $('.select2-search').each(function() {
+                    var $select = $(this);
+                    
+                    // Vérifier si Select2 est déjà initialisé
+                    if ($select.hasClass('select2-hidden-accessible')) {
+                        $select.select2('destroy');
+                    }
+                    
+                    $select.select2({
+                        theme: 'default',
+                        width: '100%',
+                        placeholder: function() {
+                            return $select.find('option[value=""]').text() || 'Rechercher...';
+                        },
+                        language: {
+                            noResults: function() {
+                                return "Aucun résultat trouvé";
+                            },
+                            searching: function() {
+                                return "Recherche en cours...";
+                            }
+                        },
+                        minimumResultsForSearch: 0, // Toujours afficher la recherche, même avec peu d'éléments
+                        allowClear: true, // Permet de vider la sélection
+                        dropdownAutoWidth: false,
+                        closeOnSelect: true,
+                        // Améliorer la recherche
+                        matcher: function(params, data) {
+                            // Si la recherche est vide, afficher tous les résultats
+                            if ($.trim(params.term) === '') {
+                                return data;
+                            }
+                            
+                            // Recherche insensible à la casse
+                            var term = params.term.toLowerCase();
+                            var text = data.text.toLowerCase();
+                            
+                            // Rechercher dans le texte complet
+                            if (text.indexOf(term) > -1) {
+                                return data;
+                            }
+                            
+                            // Si c'est un optgroup, vérifier les enfants
+                            if (data.children) {
+                                var match = false;
+                                $.each(data.children, function(idx, child) {
+                                    if (child.text.toLowerCase().indexOf(term) > -1) {
+                                        match = true;
+                                        return false;
+                                    }
+                                });
+                                return match ? data : null;
+                            }
+                            
+                            return null;
+                        }
+                    });
+
+                    // Synchroniser Select2 avec Livewire
+                    $select.on('change', function(e) {
+                        var wireModel = $select.attr('wire:model') || $select.attr('wire:model.defer') || $select.attr('wire:model.live');
+                        if (wireModel) {
+                            var propertyName = wireModel.replace('wire:model.defer=', '').replace('wire:model=', '').replace('wire:model.live=', '');
+                            var value = $select.val();
+                            // Utiliser @this pour mettre à jour la propriété Livewire
+                            @this.set(propertyName, value || '');
+                        }
+                    });
+                });
+            }
+
+            // Initialiser au chargement
+            initSelect2();
+
+            // Réinitialiser après les mises à jour Livewire (quand les listes changent)
+            document.addEventListener('livewire:update', function() {
+                setTimeout(function() {
+                    // Détruire tous les Select2 existants
+                    $('.select2-search').each(function() {
+                        if ($(this).hasClass('select2-hidden-accessible')) {
+                            $(this).select2('destroy');
+                        }
+                    });
+                    // Réinitialiser
+                    initSelect2();
+                }, 150);
+            });
+
+            // Écouter l'événement personnalisé pour réinitialiser Select2 quand les filtres changent
+            Livewire.on('filters-updated', function() {
+                setTimeout(function() {
+                    // Détruire tous les Select2 existants
+                    $('.select2-search').each(function() {
+                        if ($(this).hasClass('select2-hidden-accessible')) {
+                            $(this).select2('destroy');
+                        }
+                    });
+                    // Réinitialiser
+                    initSelect2();
+                }, 200);
+            });
+
+            // Réinitialiser après les erreurs de validation
+            document.addEventListener('livewire:error', function() {
+                setTimeout(function() {
+                    $('.select2-search').each(function() {
+                        if ($(this).hasClass('select2-hidden-accessible')) {
+                            $(this).select2('destroy');
+                        }
+                    });
+                    initSelect2();
+                }, 150);
+            });
+
+            // Réinitialiser après les mises à jour de propriétés Livewire
+            Livewire.hook('message.processed', (message, component) => {
+                setTimeout(function() {
+                    // Vérifier si les selects ont changé (nouvelles options)
+                    $('.select2-search').each(function() {
+                        var $select = $(this);
+                        if ($select.hasClass('select2-hidden-accessible')) {
+                            var currentValue = $select.val();
+                            $select.select2('destroy');
+                            initSelect2();
+                            // Restaurer la valeur si elle existe toujours
+                            if (currentValue && $select.find('option[value="' + currentValue + '"]').length) {
+                                $select.val(currentValue).trigger('change');
+                            }
+                        }
+                    });
+                }, 100);
+            });
+        });
+    </script>
+    @endpush
 
 </div>
 
