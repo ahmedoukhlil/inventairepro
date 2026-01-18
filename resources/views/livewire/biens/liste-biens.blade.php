@@ -615,236 +615,162 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialiser Select2 sur tous les selects avec la classe select2-search
-            function initSelect2() {
-                $('.select2-search').each(function() {
-                    var $select = $(this);
-                    
-                    // Vérifier si Select2 est déjà initialisé
-                    if ($select.hasClass('select2-hidden-accessible')) {
-                        $select.select2('destroy');
-                    }
-                    
-                    $select.select2({
-                        theme: 'default',
-                        width: '100%',
-                        placeholder: function() {
-                            return $select.find('option[value=""]').text() || 'Rechercher...';
-                        },
-                        language: {
-                            noResults: function() {
-                                return "Aucun résultat trouvé";
-                            },
-                            searching: function() {
-                                return "Recherche en cours...";
-                            }
-                        },
-                        minimumResultsForSearch: 0, // Toujours afficher la recherche, même avec peu d'éléments
-                        allowClear: true, // Permet de vider la sélection
-                        dropdownAutoWidth: false,
-                        closeOnSelect: true, // Fermer automatiquement après sélection
-                        dropdownParent: $(document.body), // Attacher le dropdown au body pour éviter les problèmes de z-index
-                        // Limiter la hauteur du dropdown pour permettre le scroll
-                        dropdownCssClass: 'select2-dropdown-scrollable',
-                        // Empêcher Select2 de bloquer le scroll
-                        selectOnClose: false,
-                        // Améliorer la recherche
-                        matcher: function(params, data) {
-                            // Si la recherche est vide, afficher tous les résultats
-                            if ($.trim(params.term) === '') {
-                                return data;
-                            }
-                            
-                            // Recherche insensible à la casse
-                            var term = params.term.toLowerCase();
-                            var text = data.text.toLowerCase();
-                            
-                            // Rechercher dans le texte complet
-                            if (text.indexOf(term) > -1) {
-                                return data;
-                            }
-                            
-                            // Si c'est un optgroup, vérifier les enfants
-                            if (data.children) {
-                                var match = false;
-                                $.each(data.children, function(idx, child) {
-                                    if (child.text.toLowerCase().indexOf(term) > -1) {
-                                        match = true;
-                                        return false;
-                                    }
-                                });
-                                return match ? data : null;
-                            }
-                            
-                            return null;
-                        }
-                    });
-                    
-                    // Fermer TOUS les dropdowns Select2 quand on clique en dehors
-                    $(document).on('click.select2-close', function(e) {
-                        if (!$(e.target).closest('.select2-container').length) {
-                            $('.select2-search').each(function() {
-                                if ($(this).hasClass('select2-hidden-accessible')) {
-                                    $(this).select2('close');
-                                }
-                            });
-                            // Restaurer le scroll
-                            $('html, body').css('overflow-y', 'auto');
-                            $('.select2-dropdown').hide();
-                        }
-                    });
-                    
-                    // Permettre le scroll même avec le dropdown ouvert
-                    $(window).on('wheel.select2-scroll touchmove.select2-scroll', function(e) {
-                        // Ne pas fermer le dropdown lors du scroll, juste permettre le scroll
-                        $('html, body').css('overflow-y', 'auto');
-                    });
-
-                    // Gérer l'ouverture du dropdown - permettre le scroll
-                    $select.on('select2:open', function() {
-                        // S'assurer que le body peut scroller
-                        $('body').addClass('select2-dropdown-open');
-                        $('html, body').css('overflow-y', 'auto');
-                        
-                        // Fermer le dropdown quand on appuie sur Escape
-                        $(document).one('keydown.select2-close', function(e) {
-                            if (e.key === 'Escape' || e.keyCode === 27) {
-                                $select.select2('close');
-                            }
-                        });
-                    });
-                    
-                    // Gérer la fermeture du dropdown - restaurer le scroll normal
-                    $select.on('select2:close', function() {
-                        $('body').removeClass('select2-dropdown-open');
-                        // Forcer la fermeture complète
-                        $('.select2-dropdown').hide();
-                    });
-
-                    // Fermer le dropdown AVANT la sélection (plus efficace)
-                    $select.on('select2:selecting', function(e) {
-                        // Fermer immédiatement et forcer le scroll
-                        $select.select2('close');
-                        $('html, body').css('overflow-y', 'auto');
-                    });
-
-                    // Synchroniser Select2 avec Livewire et fermer le dropdown
-                    $select.on('change', function(e) {
-                        var wireModel = $select.attr('wire:model') || $select.attr('wire:model.defer') || $select.attr('wire:model.live');
-                        if (wireModel) {
-                            var propertyName = wireModel.replace('wire:model.defer=', '').replace('wire:model=', '').replace('wire:model.live=', '');
-                            var value = $select.val();
-                            // Fermer le dropdown immédiatement et forcer le scroll
-                            $select.select2('close');
-                            $('html, body').css('overflow-y', 'auto');
-                            $('.select2-dropdown').hide();
-                            // Utiliser @this pour mettre à jour la propriété Livewire
-                            @this.set(propertyName, value || '');
-                        }
-                    });
-                    
-                    // Fermer le dropdown après sélection d'une option (double sécurité)
-                    $select.on('select2:select', function(e) {
-                        var $select2 = $(this);
-                        // Fermer immédiatement
-                        $select2.select2('close');
-                        $('html, body').css('overflow-y', 'auto');
-                        $('.select2-dropdown').hide();
-                    });
-                });
-            }
-
-            // Initialiser au chargement
-            initSelect2();
-
-            // Fonction pour fermer tous les dropdowns Select2 et restaurer le scroll
-            function closeAllSelect2() {
+        (function() {
+            'use strict';
+            
+            // Fonction pour forcer le scroll et fermer tous les dropdowns
+            function forceScrollAndCloseDropdowns() {
+                // Fermer tous les dropdowns
                 $('.select2-search').each(function() {
                     if ($(this).hasClass('select2-hidden-accessible')) {
                         try {
                             $(this).select2('close');
                         } catch(e) {
-                            // Ignorer les erreurs si le dropdown n'est pas ouvert
+                            // Ignorer les erreurs
                         }
                     }
                 });
-                // Forcer la fermeture de tous les dropdowns et restaurer le scroll
-                $('.select2-dropdown').hide();
-                $('html, body').css('overflow-y', 'auto');
+                // Cacher tous les dropdowns
+                $('.select2-dropdown').hide().remove();
+                // Forcer le scroll
+                $('html, body').css({
+                    'overflow-y': 'auto',
+                    'overflow-x': 'hidden',
+                    'position': 'relative'
+                });
                 $('body').removeClass('select2-dropdown-open');
+                // Supprimer tout overlay Select2
+                $('.select2-container--open').removeClass('select2-container--open');
             }
-
-            // Réinitialiser après les mises à jour Livewire (quand les listes changent)
-            document.addEventListener('livewire:update', function() {
-                // Fermer tous les dropdowns immédiatement
-                closeAllSelect2();
-                
-                setTimeout(function() {
-                    // Détruire tous les Select2 existants
-                    $('.select2-search').each(function() {
-                        if ($(this).hasClass('select2-hidden-accessible')) {
-                            $(this).select2('destroy');
-                        }
-                    });
-                    // Réinitialiser
-                    initSelect2();
-                }, 150);
-            });
-
-            // Écouter l'événement personnalisé pour réinitialiser Select2 quand les filtres changent
-            Livewire.on('filters-updated', function() {
-                // Fermer tous les dropdowns immédiatement
-                closeAllSelect2();
-                
-                setTimeout(function() {
-                    // Détruire tous les Select2 existants
-                    $('.select2-search').each(function() {
-                        if ($(this).hasClass('select2-hidden-accessible')) {
-                            $(this).select2('destroy');
-                        }
-                    });
-                    // Réinitialiser
-                    initSelect2();
-                }, 200);
-            });
             
-            // Fermer tous les dropdowns avant chaque requête Livewire
-            Livewire.hook('message.sent', function() {
-                closeAllSelect2();
-            });
-
-            // Réinitialiser après les erreurs de validation
-            document.addEventListener('livewire:error', function() {
-                setTimeout(function() {
-                    $('.select2-search').each(function() {
-                        if ($(this).hasClass('select2-hidden-accessible')) {
-                            $(this).select2('destroy');
-                        }
-                    });
-                    initSelect2();
-                }, 150);
-            });
-
-            // Réinitialiser après les mises à jour de propriétés Livewire
-            Livewire.hook('message.processed', (message, component) => {
-                setTimeout(function() {
-                    // Vérifier si les selects ont changé (nouvelles options)
+            document.addEventListener('DOMContentLoaded', function() {
+                // Gestionnaires d'événements globaux (une seule fois)
+                $(document).off('click.select2-close').on('click.select2-close', function(e) {
+                    if (!$(e.target).closest('.select2-container').length) {
+                        forceScrollAndCloseDropdowns();
+                    }
+                });
+                
+                // Permettre le scroll même avec dropdown ouvert
+                $(window).off('scroll.select2-scroll wheel.select2-scroll touchmove.select2-scroll').on('scroll.select2-scroll wheel.select2-scroll touchmove.select2-scroll', function() {
+                    $('html, body').css('overflow-y', 'auto');
+                });
+                
+                // Initialiser Select2 sur tous les selects avec la classe select2-search
+                function initSelect2() {
                     $('.select2-search').each(function() {
                         var $select = $(this);
+                        
+                        // Vérifier si Select2 est déjà initialisé
                         if ($select.hasClass('select2-hidden-accessible')) {
-                            var currentValue = $select.val();
                             $select.select2('destroy');
-                            initSelect2();
-                            // Restaurer la valeur si elle existe toujours
-                            if (currentValue && $select.find('option[value="' + currentValue + '"]').length) {
-                                $select.val(currentValue).trigger('change');
-                            }
                         }
+                        
+                        $select.select2({
+                            theme: 'default',
+                            width: '100%',
+                            placeholder: function() {
+                                return $select.find('option[value=""]').text() || 'Rechercher...';
+                            },
+                            language: {
+                                noResults: function() {
+                                    return "Aucun résultat trouvé";
+                                },
+                                searching: function() {
+                                    return "Recherche en cours...";
+                                }
+                            },
+                            minimumResultsForSearch: 0,
+                            allowClear: true,
+                            dropdownAutoWidth: false,
+                            closeOnSelect: true,
+                            dropdownParent: $(document.body),
+                            dropdownCssClass: 'select2-dropdown-scrollable',
+                            selectOnClose: false,
+                            matcher: function(params, data) {
+                                if ($.trim(params.term) === '') {
+                                    return data;
+                                }
+                                var term = params.term.toLowerCase();
+                                var text = data.text.toLowerCase();
+                                if (text.indexOf(term) > -1) {
+                                    return data;
+                                }
+                                if (data.children) {
+                                    var match = false;
+                                    $.each(data.children, function(idx, child) {
+                                        if (child.text.toLowerCase().indexOf(term) > -1) {
+                                            match = true;
+                                            return false;
+                                        }
+                                    });
+                                    return match ? data : null;
+                                }
+                                return null;
+                            }
+                        });
+                        
+                        // Gérer l'ouverture - permettre le scroll
+                        $select.off('select2:open').on('select2:open', function() {
+                            $('html, body').css('overflow-y', 'auto');
+                            $('body').addClass('select2-dropdown-open');
+                        });
+                        
+                        // Gérer la fermeture - restaurer le scroll
+                        $select.off('select2:close').on('select2:close', function() {
+                            forceScrollAndCloseDropdowns();
+                        });
+                        
+                        // Fermer AVANT la sélection
+                        $select.off('select2:selecting').on('select2:selecting', function(e) {
+                            var $self = $(this);
+                            setTimeout(function() {
+                                $self.select2('close');
+                                forceScrollAndCloseDropdowns();
+                            }, 10);
+                        });
+                        
+                        // Synchroniser avec Livewire et fermer
+                        $select.off('change.select2-livewire').on('change.select2-livewire', function(e) {
+                            var wireModel = $select.attr('wire:model') || $select.attr('wire:model.defer') || $select.attr('wire:model.live');
+                            if (wireModel) {
+                                var propertyName = wireModel.replace('wire:model.defer=', '').replace('wire:model=', '').replace('wire:model.live=', '');
+                                var value = $select.val();
+                                // Fermer immédiatement
+                                forceScrollAndCloseDropdowns();
+                                // Mettre à jour Livewire
+                                @this.set(propertyName, value || '');
+                            }
+                        });
+                        
+                        // Fermer après sélection (double sécurité)
+                        $select.off('select2:select').on('select2:select', function(e) {
+                            var $self = $(this);
+                            setTimeout(function() {
+                                $self.select2('close');
+                                forceScrollAndCloseDropdowns();
+                            }, 50);
+                        });
                     });
-                }, 100);
+                }
+
+                // Initialiser au chargement
+                initSelect2();
+                
+                // Réinitialiser après les erreurs de validation
+                document.addEventListener('livewire:error', function() {
+                    forceScrollAndCloseDropdowns();
+                    setTimeout(function() {
+                        $('.select2-search').each(function() {
+                            if ($(this).hasClass('select2-hidden-accessible')) {
+                                $(this).select2('destroy');
+                            }
+                        });
+                        initSelect2();
+                    }, 150);
+                });
             });
-        });
+        })();
     </script>
     @endpush
 
