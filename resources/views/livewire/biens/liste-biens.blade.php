@@ -81,7 +81,8 @@
             <div 
                 x-show="open"
                 x-collapse
-                class="border-t border-gray-200 p-4">
+                class="border-t border-gray-200 p-4"
+                style="overflow: visible !important;">
                 <div class="space-y-4">
                     {{-- Première ligne : Recherche globale et filtres principaux --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -109,20 +110,15 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Désignation
                             </label>
-                            <select 
+                            <livewire:components.searchable-select
                                 wire:model.live="filterDesignation"
-                                class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                data-placeholder="Toutes les désignations">
-                                <option value="">Toutes les désignations</option>
-                                @foreach($this->designations as $designation)
-                                    <option value="{{ $designation->id }}">
-                                        {{ $designation->designation }}
-                                        @if($designation->categorie)
-                                            ({{ $designation->categorie->Categorie }})
-                                        @endif
-                                    </option>
-                                @endforeach
-                            </select>
+                                :options="$this->designations->map(fn($d) => [
+                                    'value' => (string)$d->id,
+                                    'text' => $d->designation . ($d->categorie ? ' (' . $d->categorie->Categorie . ')' : '')
+                                ])->prepend(['value' => '', 'text' => 'Toutes les désignations'])->toArray()"
+                                placeholder="Toutes les désignations"
+                                :key="'filter-designation'"
+                            />
                         </div>
 
                         {{-- Filtre Catégorie --}}
@@ -130,15 +126,15 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Catégorie
                             </label>
-                            <select 
+                            <livewire:components.searchable-select
                                 wire:model.live="filterCategorie"
-                                class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                data-placeholder="Toutes les catégories">
-                                <option value="">Toutes les catégories</option>
-                                @foreach($this->categories as $categorie)
-                                    <option value="{{ $categorie->idCategorie }}">{{ $categorie->Categorie }}</option>
-                                @endforeach
-                            </select>
+                                :options="$this->categories->map(fn($c) => [
+                                    'value' => (string)$c->idCategorie,
+                                    'text' => $c->Categorie
+                                ])->prepend(['value' => '', 'text' => 'Toutes les catégories'])->toArray()"
+                                placeholder="Toutes les catégories"
+                                :key="'filter-categorie'"
+                            />
                         </div>
                     </div>
 
@@ -156,45 +152,42 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">
                                     Localisation
                                 </label>
-                                <select 
+                                <livewire:components.searchable-select
                                     wire:model.live="filterLocalisation"
-                                    class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white"
-                                    data-placeholder="Toutes les localisations">
-                                    <option value="">Toutes les localisations</option>
-                                    @foreach($this->localisations as $localisation)
-                                        <option value="{{ $localisation->idLocalisation }}">
-                                            {{ $localisation->Localisation }}
-                                            @if($localisation->CodeLocalisation)
-                                                ({{ $localisation->CodeLocalisation }})
-                                            @endif
-                                        </option>
-                                    @endforeach
-                                </select>
+                                    :options="$this->localisations->map(fn($l) => [
+                                        'value' => (string)$l->idLocalisation,
+                                        'text' => $l->Localisation . ($l->CodeLocalisation ? ' (' . $l->CodeLocalisation . ')' : '')
+                                    ])->prepend(['value' => '', 'text' => 'Toutes les localisations'])->toArray()"
+                                    placeholder="Toutes les localisations"
+                                    :key="'filter-localisation'"
+                                />
                             </div>
 
                             {{-- Filtre Affectation --}}
-                            <div>
+                            <div class="relative">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">
                                     Affectation
                                     @if($filterLocalisation)
                                         <span class="text-xs text-gray-500 font-normal">(filtrée)</span>
                                     @endif
+                                    <span wire:loading wire:target="filterLocalisation" class="text-xs text-indigo-600 ml-2">
+                                        <svg class="inline w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </span>
                                 </label>
-                                <select 
+                                <livewire:components.searchable-select
                                     wire:model.live="filterAffectation"
-                                    class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white {{ empty($filterLocalisation) && !empty($filterAffectation) ? 'border-yellow-300 bg-yellow-50' : '' }}"
-                                    data-placeholder="Toutes les affectations"
-                                    @if(empty($filterLocalisation) && !empty($filterAffectation)) title="Sélectionnez d'abord une localisation pour un meilleur filtrage" @endif>
-                                    <option value="">Toutes les affectations</option>
-                                    @foreach($this->affectations as $affectation)
-                                        <option value="{{ $affectation->idAffectation }}">
-                                            {{ $affectation->Affectation }}
-                                            @if($affectation->CodeAffectation)
-                                                ({{ $affectation->CodeAffectation }})
-                                            @endif
-                                        </option>
-                                    @endforeach
-                                </select>
+                                    :options="$this->affectations->map(fn($a) => [
+                                        'value' => (string)$a->idAffectation,
+                                        'text' => $a->Affectation . ($a->CodeAffectation ? ' (' . $a->CodeAffectation . ')' : '')
+                                    ])->prepend(['value' => '', 'text' => 'Toutes les affectations'])->toArray()"
+                                    placeholder="Toutes les affectations"
+                                    :disabled="empty($filterLocalisation)"
+                                    :container-class="empty($filterLocalisation) && !empty($filterAffectation) ? 'ring-2 ring-yellow-300' : ''"
+                                    :key="'filter-affectation-' . $filterLocalisation"
+                                />
                                 @if(empty($filterLocalisation) && !empty($filterAffectation))
                                     <p class="mt-1 text-xs text-yellow-600">
                                         Sélectionnez une localisation pour filtrer les affectations disponibles
@@ -203,26 +196,31 @@
                             </div>
 
                             {{-- Filtre Emplacement --}}
-                            <div>
+                            <div class="relative">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">
                                     Emplacement
                                     @if($filterLocalisation || $filterAffectation)
                                         <span class="text-xs text-gray-500 font-normal">(filtré)</span>
                                     @endif
+                                    <span wire:loading wire:target="filterLocalisation, filterAffectation" class="text-xs text-indigo-600 ml-2">
+                                        <svg class="inline w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </span>
                                 </label>
                                 <div class="flex flex-col gap-2">
-                                    <select 
+                                    <livewire:components.searchable-select
                                         wire:model.live="filterEmplacement"
-                                        class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white {{ (empty($filterLocalisation) && empty($filterAffectation)) && !empty($filterEmplacement) ? 'border-yellow-300 bg-yellow-50' : '' }}"
-                                        data-placeholder="Tous les emplacements"
-                                        @if((empty($filterLocalisation) && empty($filterAffectation)) && !empty($filterEmplacement)) title="Utilisez les filtres Localisation et Affectation pour un meilleur filtrage" @endif>
-                                        <option value="">Tous les emplacements</option>
-                                        @foreach($this->emplacements as $emplacement)
-                                            <option value="{{ $emplacement->idEmplacement }}">
-                                                {{ $emplacement->display_name ?? $emplacement->Emplacement }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                        :options="$this->emplacements->map(fn($e) => [
+                                            'value' => (string)$e->idEmplacement,
+                                            'text' => $e->display_name ?? $e->Emplacement
+                                        ])->prepend(['value' => '', 'text' => 'Tous les emplacements'])->toArray()"
+                                        placeholder="Tous les emplacements"
+                                        :disabled="empty($filterLocalisation) && empty($filterAffectation)"
+                                        :container-class="(empty($filterLocalisation) && empty($filterAffectation)) && !empty($filterEmplacement) ? 'ring-2 ring-yellow-300' : ''"
+                                        :key="'filter-emplacement-' . $filterLocalisation . '-' . $filterAffectation"
+                                    />
                                     @if((empty($filterLocalisation) && empty($filterAffectation)) && !empty($filterEmplacement))
                                         <p class="text-xs text-yellow-600">
                                             Utilisez les filtres Localisation et Affectation pour affiner votre recherche
@@ -266,15 +264,15 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 État
                             </label>
-                            <select 
+                            <livewire:components.searchable-select
                                 wire:model.live="filterEtat"
-                                class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                data-placeholder="Tous les états">
-                                <option value="">Tous les états</option>
-                                @foreach($this->etats as $etat)
-                                    <option value="{{ $etat->idEtat }}">{{ $etat->Etat }}</option>
-                                @endforeach
-                            </select>
+                                :options="$this->etats->map(fn($e) => [
+                                    'value' => (string)$e->idEtat,
+                                    'text' => $e->Etat
+                                ])->prepend(['value' => '', 'text' => 'Tous les états'])->toArray()"
+                                placeholder="Tous les états"
+                                :key="'filter-etat'"
+                            />
                         </div>
 
                         {{-- Filtre Nature Juridique --}}
@@ -282,15 +280,15 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Nature Juridique
                             </label>
-                            <select 
+                            <livewire:components.searchable-select
                                 wire:model.live="filterNatJur"
-                                class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                data-placeholder="Toutes les natures juridiques">
-                                <option value="">Toutes les natures juridiques</option>
-                                @foreach($this->natureJuridiques as $natJur)
-                                    <option value="{{ $natJur->idNatJur }}">{{ $natJur->NatJur }}</option>
-                                @endforeach
-                            </select>
+                                :options="$this->natureJuridiques->map(fn($n) => [
+                                    'value' => (string)$n->idNatJur,
+                                    'text' => $n->NatJur
+                                ])->prepend(['value' => '', 'text' => 'Toutes les natures juridiques'])->toArray()"
+                                placeholder="Toutes les natures juridiques"
+                                :key="'filter-natjur'"
+                            />
                         </div>
 
                         {{-- Filtre Source de Financement --}}
@@ -298,15 +296,15 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Source de Financement
                             </label>
-                            <select 
+                            <livewire:components.searchable-select
                                 wire:model.live="filterSF"
-                                class="tomselect block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                data-placeholder="Toutes les sources de financement">
-                                <option value="">Toutes les sources de financement</option>
-                                @foreach($this->sourceFinancements as $sf)
-                                    <option value="{{ $sf->idSF }}">{{ $sf->SourceFin }}</option>
-                                @endforeach
-                            </select>
+                                :options="$this->sourceFinancements->map(fn($s) => [
+                                    'value' => (string)$s->idSF,
+                                    'text' => $s->SourceFin
+                                ])->prepend(['value' => '', 'text' => 'Toutes les sources de financement'])->toArray()"
+                                placeholder="Toutes les sources de financement"
+                                :key="'filter-sf'"
+                            />
                         </div>
 
                         {{-- Filtre Année d'acquisition --}}
@@ -572,126 +570,6 @@
             {{ session('warning') }}
         </div>
     @endif
-
-    {{-- TomSelect CSS & JS --}}
-    @push('styles')
-    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
-    <style>
-        /* Personnalisation TomSelect pour s'aligner avec Tailwind */
-        .ts-wrapper .ts-control {
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            padding: 0.5rem 0.75rem;
-            min-height: 2.5rem;
-        }
-        .ts-wrapper .ts-control:focus {
-            border-color: #6366f1;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-        .ts-wrapper .ts-dropdown {
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            z-index: 10000;
-        }
-        .ts-wrapper .ts-dropdown .option.active {
-            background-color: #6366f1;
-            color: white;
-        }
-        .ts-wrapper.single .ts-control {
-            background-color: white;
-        }
-        /* S'assurer que TomSelect ne bloque pas le scroll */
-        body {
-            overflow-y: auto !important;
-        }
-    </style>
-    @endpush
-
-    @push('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            let tomSelectInstances = {};
-
-            // Fonction pour initialiser TomSelect
-            function initTomSelect() {
-                // Détruire les instances existantes
-                Object.values(tomSelectInstances).forEach(instance => {
-                    if (instance && instance.destroy) {
-                        instance.destroy();
-                    }
-                });
-                tomSelectInstances = {};
-
-                // Initialiser sur tous les selects avec la classe 'tomselect'
-                document.querySelectorAll('.tomselect').forEach((el) => {
-                    if (el.tomselect) {
-                        el.tomselect.destroy();
-                    }
-
-                    const selectId = el.id || el.getAttribute('wire:model.live') || Math.random().toString(36).substr(2, 9);
-                    
-                    tomSelectInstances[selectId] = new TomSelect(el, {
-                        plugins: ['clear_button'],
-                        allowEmptyOption: true,
-                        placeholder: el.getAttribute('data-placeholder') || 'Sélectionner...',
-                        onInitialize: function() {
-                            const value = el.value;
-                            if (value) {
-                                this.setValue(value, true);
-                            }
-                        },
-                        onChange: function(value) {
-                            // Synchroniser avec Livewire
-                            const wireModel = el.getAttribute('wire:model.live') || 
-                                            el.getAttribute('wire:model') || 
-                                            el.getAttribute('wire:model.defer');
-                            
-                            if (wireModel) {
-                                // Mettre à jour l'élément select original
-                                el.value = value || '';
-                                
-                                // Déclencher l'événement pour Livewire
-                                el.dispatchEvent(new Event('change', { bubbles: true }));
-                                
-                                // Mettre à jour via Livewire
-                                const component = Livewire.find(el.closest('[wire\\:id]').getAttribute('wire:id'));
-                                if (component) {
-                                    component.set(wireModel, value || '');
-                                }
-                            }
-                        },
-                        onDropdownOpen: function() {
-                            // S'assurer que le scroll reste activé
-                            document.body.style.overflowY = 'auto';
-                        },
-                        onDropdownClose: function() {
-                            // S'assurer que le scroll reste activé
-                            document.body.style.overflowY = 'auto';
-                        }
-                    });
-                });
-            }
-
-            // Initialiser au chargement
-            initTomSelect();
-
-            // Réinitialiser après les mises à jour Livewire
-            document.addEventListener('livewire:update', function() {
-                setTimeout(() => initTomSelect(), 100);
-            });
-
-            // Écouter l'événement filters-updated si vous l'utilisez
-            if (typeof Livewire !== 'undefined') {
-                Livewire.on('filters-updated', function() {
-                    setTimeout(() => initTomSelect(), 100);
-                });
-            }
-        });
-    </script>
-    @endpush
 
 </div>
 
