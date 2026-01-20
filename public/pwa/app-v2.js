@@ -197,6 +197,14 @@ class AuthManager {
 
 class ScannerManager {
     static async startQRScanner() {
+        // Vérifier que jsQR est disponible
+        if (typeof jsQR === 'undefined') {
+            console.error('[Scanner] jsQR n\'est pas chargé');
+            HapticFeedback.error();
+            UI.showToast('❌ Erreur: Bibliothèque QR code non chargée. Rechargez la page.', 'error');
+            return;
+        }
+
         const container = document.getElementById('scanner-container');
         container.innerHTML = `
             <video id="qr-video" class="w-full h-full object-cover" autoplay playsinline muted></video>
@@ -218,18 +226,40 @@ class ScannerManager {
             const video = document.getElementById('qr-video');
             video.srcObject = stream;
 
-            AppState.scannerActive = true;
-            HapticFeedback.light();
-            this.detectQRCode(video);
+            // Attendre que la vidéo soit prête
+            video.addEventListener('loadedmetadata', () => {
+                console.log('[Scanner] Caméra prête:', video.videoWidth, 'x', video.videoHeight);
+                AppState.scannerActive = true;
+                HapticFeedback.light();
+                this.detectQRCode(video);
+            });
 
         } catch (error) {
             console.error('[Scanner] Erreur caméra:', error);
             HapticFeedback.error();
-            UI.showToast('❌ Impossible d\'accéder à la caméra', 'error');
+            
+            let errorMessage = '❌ Impossible d\'accéder à la caméra';
+            if (error.name === 'NotAllowedError') {
+                errorMessage = '❌ Permission caméra refusée. Autorisez l\'accès dans les paramètres.';
+            } else if (error.name === 'NotFoundError') {
+                errorMessage = '❌ Aucune caméra trouvée';
+            } else if (error.name === 'NotReadableError') {
+                errorMessage = '❌ Caméra déjà utilisée par une autre application';
+            }
+            
+            UI.showToast(errorMessage, 'error');
         }
     }
 
     static detectQRCode(video) {
+        // Vérifier que jsQR est disponible
+        if (typeof jsQR === 'undefined') {
+            console.error('[Scanner] jsQR n\'est pas chargé');
+            HapticFeedback.error();
+            UI.showToast('❌ Erreur: Bibliothèque QR code non chargée', 'error');
+            return;
+        }
+
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
 
@@ -241,12 +271,19 @@ class ScannerManager {
                 canvas.height = video.videoHeight;
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                try {
+                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                        inversionAttempts: 'dontInvert',
+                    });
 
-                if (code && code.data) {
-                    this.handleQRCodeDetected(code.data);
-                    return;
+                    if (code && code.data) {
+                        console.log('[Scanner] QR Code détecté:', code.data);
+                        this.handleQRCodeDetected(code.data);
+                        return;
+                    }
+                } catch (error) {
+                    console.error('[Scanner] Erreur lors du scan:', error);
                 }
             }
 
@@ -257,16 +294,21 @@ class ScannerManager {
     }
 
     static async handleQRCodeDetected(data) {
+        console.log('[Scanner] QR Code détecté:', data);
+        
         // Format attendu: EMP-{id}
         const match = data.match(/^EMP-(\d+)$/);
         
         if (!match) {
+            console.warn('[Scanner] Format QR Code invalide:', data);
             HapticFeedback.warning();
-            UI.showToast('⚠️ QR Code non reconnu', 'warning');
+            UI.showToast(`⚠️ QR Code non reconnu: ${data}. Format attendu: EMP-{id}`, 'warning');
             return;
         }
 
-        const idEmplacement = match[1];
+        const idEmplacement = parseInt(match[1], 10);
+        console.log('[Scanner] ID Emplacement extrait:', idEmplacement);
+        
         this.stopScanner();
         
         HapticFeedback.success();
@@ -274,6 +316,7 @@ class ScannerManager {
 
         try {
             const response = await API.request(`/emplacements/${idEmplacement}/biens`);
+            console.log('[Scanner] Réponse API:', response);
             
             AppState.currentEmplacement = response.emplacement;
             AppState.biensAttendus = response.biens;
@@ -284,6 +327,7 @@ class ScannerManager {
             BarcodeScannerManager.startBarcodeScanner();
 
         } catch (error) {
+            console.error('[Scanner] Erreur API:', error);
             HapticFeedback.error();
             UI.showToast('❌ Erreur: ' + error.message, 'error');
         }
