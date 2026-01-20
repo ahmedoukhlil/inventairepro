@@ -4,7 +4,7 @@ namespace App\Livewire\Inventaires;
 
 use App\Models\Inventaire;
 use App\Models\InventaireLocalisation;
-use App\Models\Localisation;
+use App\Models\LocalisationImmo;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -20,6 +20,7 @@ class DemarrerInventaire extends Component
     public $assignerLocalisations = true;
     public $localisationsSelectionnees = [];
     public $assignations = []; // [localisation_id => user_id]
+    public $agentGlobalSelect = ''; // Pour le select global d'assignation
 
     /**
      * Étape actuelle du wizard (1, 2, ou 3)
@@ -69,14 +70,21 @@ class DemarrerInventaire extends Component
     }
 
     /**
-     * Propriété calculée : Retourne toutes les localisations actives
+     * Propriété calculée : Retourne toutes les localisations avec leurs emplacements et immobilisations
      */
     public function getLocalisationsProperty()
     {
-        return Localisation::where('actif', true)
-            ->withCount('biens')
-            ->orderBy('code')
-            ->get();
+        return LocalisationImmo::with(['emplacements' => function ($query) {
+                $query->withCount('immobilisations');
+            }])
+            ->orderBy('Localisation')
+            ->get()
+            ->map(function ($localisation) {
+                // Compter le nombre total d'immobilisations via les emplacements
+                $localisation->biens_count = $localisation->emplacements
+                    ->sum('immobilisations_count');
+                return $localisation;
+            });
     }
 
     /**
@@ -85,9 +93,47 @@ class DemarrerInventaire extends Component
     public function getAgentsProperty()
     {
         return User::whereIn('role', ['agent', 'admin'])
-            ->where('actif', true)
-            ->orderBy('name')
+            ->orderBy('users')
             ->get();
+    }
+
+    /**
+     * Options pour SearchableSelect : Années disponibles
+     */
+    public function getAnneeOptionsProperty()
+    {
+        return collect($this->anneesDisponibles)
+            ->map(function ($annee) {
+                return [
+                    'value' => (string)$annee,
+                    'text' => (string)$annee,
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
+     * Options pour SearchableSelect : Agents
+     */
+    public function getAgentOptionsProperty()
+    {
+        $options = [[
+            'value' => '',
+            'text' => 'Sélectionner un agent',
+        ]];
+
+        $agents = User::whereIn('role', ['agent', 'admin'])
+            ->orderBy('users')
+            ->get()
+            ->map(function ($agent) {
+                return [
+                    'value' => (string)$agent->idUser,
+                    'text' => $agent->users . ' (' . $agent->role_name . ')',
+                ];
+            })
+            ->toArray();
+
+        return array_merge($options, $agents);
     }
 
     /**
@@ -100,6 +146,7 @@ class DemarrerInventaire extends Component
 
     /**
      * Propriété calculée : Retourne le nombre total de biens attendus dans les localisations sélectionnées
+     * Compte via la hiérarchie : Localisation → Emplacements → Immobilisations
      */
     public function getTotalBiensAttendusProperty(): int
     {
@@ -107,23 +154,32 @@ class DemarrerInventaire extends Component
             return 0;
         }
 
-        return Localisation::whereIn('id', $this->localisationsSelectionnees)
-            ->withCount('biens')
-            ->get()
-            ->sum('biens_count');
+        $total = 0;
+        foreach ($this->localisationsSelectionnees as $localisationId) {
+            $localisation = LocalisationImmo::find($localisationId);
+            if ($localisation) {
+                // Compter les immobilisations via les emplacements
+                $total += $localisation->emplacements()
+                    ->withCount('immobilisations')
+                    ->get()
+                    ->sum('immobilisations_count');
+            }
+        }
+        
+        return $total;
     }
 
     /**
      * Propriété calculée : Retourne la valeur totale des biens dans les localisations sélectionnées
+     * Note: Cette méthode retourne 0 car les immobilisations (Gesimmo) n'ont pas de champ valeur_acquisition
+     * Si nécessaire, cette logique devra être adaptée selon la structure réelle de la table gesimmo
      */
     public function getValeurTotaleProperty(): float
     {
-        if (empty($this->localisationsSelectionnees)) {
-            return 0;
-        }
-
-        return \App\Models\Bien::whereIn('localisation_id', $this->localisationsSelectionnees)
-            ->sum('valeur_acquisition');
+        // Les immobilisations sont dans la table gesimmo et sont liées via emplacement
+        // Si vous avez besoin de calculer une valeur, il faudra adapter cette méthode
+        // selon les colonnes disponibles dans la table gesimmo
+        return 0.0;
     }
 
     /**
@@ -144,7 +200,7 @@ class DemarrerInventaire extends Component
             'date_debut' => 'required|date|after_or_equal:today',
             'observation' => 'nullable|string|max:1000',
             'localisationsSelectionnees' => 'required|array|min:1',
-            'localisationsSelectionnees.*' => 'exists:localisations,id',
+            'localisationsSelectionnees.*' => 'exists:localisation,idLocalisation',
         ];
     }
 
@@ -208,7 +264,7 @@ class DemarrerInventaire extends Component
      */
     public function selectToutesLocalisations(): void
     {
-        $this->localisationsSelectionnees = $this->localisations->pluck('id')->toArray();
+        $this->localisationsSelectionnees = $this->localisations->pluck('idLocalisation')->toArray();
     }
 
     /**
@@ -234,6 +290,17 @@ class DemarrerInventaire extends Component
             } else {
                 unset($this->assignations[$localisationId]);
             }
+        }
+    }
+
+    /**
+     * Réagit au changement de l'agent global
+     */
+    public function updatedAgentGlobalSelect($value): void
+    {
+        if ($value) {
+            $this->assignerAgentGlobal($value);
+            $this->agentGlobalSelect = ''; // Réinitialiser après assignation
         }
     }
 
@@ -305,10 +372,15 @@ class DemarrerInventaire extends Component
 
             // Créer les InventaireLocalisation pour chaque localisation sélectionnée
             foreach ($this->localisationsSelectionnees as $localisationId) {
-                $localisation = Localisation::find($localisationId);
+                $localisation = LocalisationImmo::find($localisationId);
                 
                 if ($localisation) {
-                    $nombreBiensAttendus = $localisation->biens()->count();
+                    // Compter les immobilisations via les emplacements
+                    $nombreBiensAttendus = $localisation->emplacements()
+                        ->withCount('immobilisations')
+                        ->get()
+                        ->sum('immobilisations_count');
+                    
                     $userId = $this->assignations[$localisationId] ?? null;
 
                     InventaireLocalisation::create([

@@ -63,9 +63,8 @@ class AuthController extends Controller
             ]);
         }
 
-        // Vérifier que l'utilisateur a le rôle approprié (agent, admin, superuser, immobilisation)
-        $allowedRoles = ['agent', 'admin', 'superuser', 'immobilisation'];
-        if (!in_array($user->role, $allowedRoles)) {
+        // Vérifier que l'utilisateur a le rôle approprié (agent ou admin)
+        if (!in_array($user->role, ['agent', 'admin'])) {
             return response()->json([
                 'message' => 'Accès non autorisé pour ce type de compte.'
             ], 403);

@@ -58,10 +58,11 @@ class InventaireScan extends Model
 
     /**
      * Relation avec la localisation réelle (où le bien a été trouvé)
+     * Utilise LocalisationImmo car c'est la table utilisée pour les inventaires
      */
     public function localisationReelle(): BelongsTo
     {
-        return $this->belongsTo(Localisation::class, 'localisation_reelle_id');
+        return $this->belongsTo(LocalisationImmo::class, 'localisation_reelle_id', 'idLocalisation');
     }
 
     /**
@@ -69,7 +70,7 @@ class InventaireScan extends Model
      */
     public function agent(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id', 'idUser');
     }
 
     /**

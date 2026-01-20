@@ -45,11 +45,57 @@ class ListeEmplacements extends Component
     }
 
     /**
+     * Options pour SearchableSelect : Localisations
+     */
+    public function getLocalisationOptionsProperty()
+    {
+        $options = [[
+            'value' => '',
+            'text' => 'Toutes',
+        ]];
+
+        $localisations = LocalisationImmo::orderBy('Localisation')
+            ->get()
+            ->map(function ($localisation) {
+                return [
+                    'value' => (string)$localisation->idLocalisation,
+                    'text' => ($localisation->CodeLocalisation ? $localisation->CodeLocalisation . ' - ' : '') . $localisation->Localisation,
+                ];
+            })
+            ->toArray();
+
+        return array_merge($options, $localisations);
+    }
+
+    /**
      * Propriété calculée : Retourne toutes les affectations
      */
     public function getAffectationsProperty()
     {
         return Affectation::orderBy('Affectation')->get();
+    }
+
+    /**
+     * Options pour SearchableSelect : Affectations
+     */
+    public function getAffectationOptionsProperty()
+    {
+        $options = [[
+            'value' => '',
+            'text' => 'Toutes',
+        ]];
+
+        $affectations = Affectation::orderBy('Affectation')
+            ->get()
+            ->map(function ($affectation) {
+                return [
+                    'value' => (string)$affectation->idAffectation,
+                    'text' => ($affectation->CodeAffectation ? $affectation->CodeAffectation . ' - ' : '') . $affectation->Affectation,
+                ];
+            })
+            ->toArray();
+
+        return array_merge($options, $affectations);
     }
 
     /**

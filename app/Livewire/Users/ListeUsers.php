@@ -15,9 +15,8 @@ class ListeUsers extends Component
      * Propriétés publiques pour les filtres et la recherche
      */
     public $search = '';
-    public $filterRole = 'all'; // all, admin, agent
-    public $filterActif = 'all'; // all, actif, inactif
-    public $sortField = 'name';
+    public $filterRole = 'all'; // all, admin, agent, superuser, immobilisation, stock
+    public $sortField = 'users';
     public $sortDirection = 'asc';
     public $perPage = 20;
     public $selectedUsers = [];
@@ -37,7 +36,6 @@ class ListeUsers extends Component
     {
         $this->search = '';
         $this->filterRole = 'all';
-        $this->filterActif = 'all';
         $this->selectedUsers = [];
         $this->resetPage();
     }
@@ -76,36 +74,11 @@ class ListeUsers extends Component
         if (count($this->selectedUsers) === $this->getUsersQuery()->count()) {
             $this->selectedUsers = [];
         } else {
-            $this->selectedUsers = $this->getUsersQuery()->pluck('id')->toArray();
+            $this->selectedUsers = $this->getUsersQuery()->pluck('idUser')->toArray();
         }
     }
 
-    /**
-     * Activer/désactiver un utilisateur
-     */
-    public function toggleActif($userId): void
-    {
-        $user = User::findOrFail($userId);
-        
-        // Empêcher de désactiver le dernier admin actif
-        if ($user->role === 'admin' && $user->actif) {
-            $activeAdminsCount = User::where('role', 'admin')
-                ->where('actif', true)
-                ->where('id', '!=', $userId)
-                ->count();
-            
-            if ($activeAdminsCount === 0) {
-                session()->flash('error', 'Impossible de désactiver le dernier administrateur actif.');
-                return;
-            }
-        }
-
-        $user->update(['actif' => !$user->actif]);
-        
-        session()->flash('success', $user->actif 
-            ? "L'utilisateur {$user->name} a été activé." 
-            : "L'utilisateur {$user->name} a été désactivé.");
-    }
+    // Note: La table users n'a pas de colonne 'actif', cette fonctionnalité n'est pas disponible
 
     /**
      * Supprimer un utilisateur
@@ -162,12 +135,7 @@ class ListeUsers extends Component
             $query->where('role', $this->filterRole);
         }
 
-        // Filtre par statut actif
-        if ($this->filterActif === 'actif') {
-            $query->where('actif', true);
-        } elseif ($this->filterActif === 'inactif') {
-            $query->where('actif', false);
-        }
+        // Note: La table users n'a pas de colonne 'actif', ce filtre a été supprimé
 
         // Tri
         $query->orderBy($this->sortField, $this->sortDirection);
@@ -192,8 +160,6 @@ class ListeUsers extends Component
             'total' => User::count(),
             'admins' => User::where('role', 'admin')->count(),
             'agents' => User::where('role', 'agent')->count(),
-            'actifs' => User::where('actif', true)->count(),
-            'inactifs' => User::where('actif', false)->count(),
         ];
     }
 

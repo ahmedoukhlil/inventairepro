@@ -73,7 +73,7 @@ class InventaireController extends Controller
      */
     public function mesLocalisations(Request $request, Inventaire $inventaire)
     {
-        $userId = $request->user()->id;
+        $userId = $request->user()->idUser;
 
         $localisations = InventaireLocalisation::where('inventaire_id', $inventaire->id)
             ->where(function ($query) use ($userId) {
@@ -94,13 +94,9 @@ class InventaireController extends Controller
                     'nombre_biens_scannes' => $invLoc->nombre_biens_scannes,
                     'user_id' => $invLoc->user_id,
                     'localisation' => [
-                        'id' => $invLoc->localisation->id,
-                        'code' => $invLoc->localisation->code,
-                        'designation' => $invLoc->localisation->designation,
-                        'batiment' => $invLoc->localisation->batiment,
-                        'etage' => $invLoc->localisation->etage,
-                        'service_rattache' => $invLoc->localisation->service_rattache,
-                        'responsable' => $invLoc->localisation->responsable,
+                        'idLocalisation' => $invLoc->localisation->idLocalisation,
+                        'Localisation' => $invLoc->localisation->Localisation,
+                        'CodeLocalisation' => $invLoc->localisation->CodeLocalisation,
                     ]
                 ];
             });
@@ -121,8 +117,8 @@ class InventaireController extends Controller
     {
         // Valider les données
         $validated = $request->validate([
-            'localisation_id' => 'required|exists:localisations,id',
-            'user_id' => 'required|exists:users,id',
+            'localisation_id' => 'required|exists:localisation,idLocalisation',
+            'user_id' => 'required|exists:users,idUser',
         ]);
 
         // Vérifier que l'inventaire est en_cours ou en_preparation
@@ -141,7 +137,7 @@ class InventaireController extends Controller
         }
 
         // Vérifier que l'utilisateur correspond à celui authentifié
-        if ($validated['user_id'] != $request->user()->id) {
+        if ($validated['user_id'] != $request->user()->idUser) {
             return response()->json([
                 'message' => 'Non autorisé'
             ], 403);
@@ -229,7 +225,7 @@ class InventaireController extends Controller
         }
 
         // Vérifier que l'utilisateur est celui qui scanne
-        if ($inventaireLocalisation->user_id != $request->user()->id) {
+        if ($inventaireLocalisation->user_id != $request->user()->idUser) {
             return response()->json([
                 'message' => 'Vous n\'êtes pas assigné à cette localisation'
             ], 403);
@@ -295,11 +291,9 @@ class InventaireController extends Controller
             'nombre_biens_scannes' => $invLoc->nombre_biens_scannes,
             'user_id' => $invLoc->user_id,
             'localisation' => [
-                'id' => $invLoc->localisation->id,
-                'code' => $invLoc->localisation->code,
-                'designation' => $invLoc->localisation->designation,
-                'batiment' => $invLoc->localisation->batiment,
-                'etage' => $invLoc->localisation->etage,
+                'idLocalisation' => $invLoc->localisation->idLocalisation,
+                'Localisation' => $invLoc->localisation->Localisation,
+                'CodeLocalisation' => $invLoc->localisation->CodeLocalisation,
             ]
         ];
     }

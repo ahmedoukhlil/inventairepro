@@ -120,18 +120,15 @@
                         <label for="idLocalisation" class="block text-sm font-medium text-gray-700 mb-1">
                             Localisation <span class="text-red-500">*</span>
                         </label>
-                        <select 
-                            id="idLocalisation"
-                            wire:model="idLocalisation"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idLocalisation') border-red-300 @enderror"
-                            wire:loading.attr="disabled">
-                            <option value="">Sélectionnez une localisation</option>
-                            @foreach($this->localisations as $localisation)
-                                <option value="{{ $localisation->idLocalisation }}">
-                                    {{ $localisation->Localisation }} @if($localisation->CodeLocalisation)({{ $localisation->CodeLocalisation }})@endif
-                                </option>
-                            @endforeach
-                        </select>
+                        <livewire:components.searchable-select
+                            wire:model.live="idLocalisation"
+                            :options="$this->localisationOptions"
+                            placeholder="Sélectionner une localisation"
+                            search-placeholder="Rechercher une localisation..."
+                            no-results-text="Aucune localisation trouvée"
+                            :allow-clear="true"
+                            name="idLocalisation"
+                        />
                         @error('idLocalisation')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -142,18 +139,22 @@
                         <label for="idAffectation" class="block text-sm font-medium text-gray-700 mb-1">
                             Affectation <span class="text-red-500">*</span>
                         </label>
-                        <select 
-                            id="idAffectation"
-                            wire:model="idAffectation"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idAffectation') border-red-300 @enderror"
-                            wire:loading.attr="disabled">
-                            <option value="">Sélectionnez une affectation</option>
-                            @foreach($this->affectations as $affectation)
-                                <option value="{{ $affectation->idAffectation }}">
-                                    {{ $affectation->Affectation }} @if($affectation->CodeAffectation)({{ $affectation->CodeAffectation }})@endif
-                                </option>
-                            @endforeach
-                        </select>
+                        @if(empty($idLocalisation))
+                            <div class="block w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-500 text-sm italic">
+                                Sélectionnez d'abord une localisation
+                            </div>
+                        @else
+                            <livewire:components.searchable-select
+                                wire:key="affectation-{{ $idLocalisation }}"
+                                wire:model="idAffectation"
+                                :options="$this->affectationOptions"
+                                placeholder="Sélectionner une affectation"
+                                search-placeholder="Rechercher une affectation..."
+                                no-results-text="Aucune affectation pour cette localisation"
+                                :allow-clear="true"
+                                name="idAffectation"
+                            />
+                        @endif
                         @error('idAffectation')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror

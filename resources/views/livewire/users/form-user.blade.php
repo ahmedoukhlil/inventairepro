@@ -58,72 +58,22 @@
                     </h2>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {{-- Nom --}}
+                        {{-- Nom d'utilisateur --}}
                         <div class="md:col-span-2">
-                            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
-                                Nom complet <span class="text-red-500">*</span>
+                            <label for="users" class="block text-sm font-medium text-gray-700 mb-1">
+                                Nom d'utilisateur <span class="text-red-500">*</span>
                             </label>
                             <input 
                                 type="text"
-                                id="name"
-                                wire:model="name"
-                                placeholder="Ex: Jean Dupont"
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('name') border-red-300 @enderror"
+                                id="users"
+                                wire:model="users"
+                                placeholder="Ex: jdupont"
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('users') border-red-300 @enderror"
                                 wire:loading.attr="disabled">
-                            @error('name')
+                            @error('users')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
-                        </div>
-
-                        {{-- Email --}}
-                        <div class="md:col-span-2">
-                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
-                                Adresse email <span class="text-red-500">*</span>
-                            </label>
-                            <input 
-                                type="email"
-                                id="email"
-                                wire:model="email"
-                                placeholder="Ex: jean.dupont@example.com"
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('email') border-red-300 @enderror"
-                                wire:loading.attr="disabled">
-                            @error('email')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        {{-- Téléphone --}}
-                        <div>
-                            <label for="telephone" class="block text-sm font-medium text-gray-700 mb-1">
-                                Téléphone
-                            </label>
-                            <input 
-                                type="text"
-                                id="telephone"
-                                wire:model="telephone"
-                                placeholder="Ex: +222 45 67 89 01"
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('telephone') border-red-300 @enderror"
-                                wire:loading.attr="disabled">
-                            @error('telephone')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        {{-- Service --}}
-                        <div>
-                            <label for="service" class="block text-sm font-medium text-gray-700 mb-1">
-                                Service
-                            </label>
-                            <input 
-                                type="text"
-                                id="service"
-                                wire:model="service"
-                                placeholder="Ex: Direction Générale"
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('service') border-red-300 @enderror"
-                                wire:loading.attr="disabled">
-                            @error('service')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
+                            <p class="mt-1 text-xs text-gray-500">Nom d'utilisateur unique pour la connexion</p>
                         </div>
                     </div>
                 </div>
@@ -137,34 +87,34 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {{-- Mot de passe --}}
                         <div>
-                            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="mdp" class="block text-sm font-medium text-gray-700 mb-1">
                                 Mot de passe @if(!$isEdit)<span class="text-red-500">*</span>@else<span class="text-gray-400">(laisser vide pour ne pas modifier)</span>@endif
                             </label>
                             <input 
                                 type="password"
-                                id="password"
-                                wire:model="password"
-                                placeholder="Minimum 8 caractères"
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('password') border-red-300 @enderror"
+                                id="mdp"
+                                wire:model="mdp"
+                                placeholder="Mot de passe"
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('mdp') border-red-300 @enderror"
                                 wire:loading.attr="disabled">
-                            @error('password')
+                            @error('mdp')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
 
                         {{-- Confirmation mot de passe --}}
                         <div>
-                            <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="mdp_confirmation" class="block text-sm font-medium text-gray-700 mb-1">
                                 Confirmer le mot de passe @if(!$isEdit)<span class="text-red-500">*</span>@endif
                             </label>
                             <input 
                                 type="password"
-                                id="password_confirmation"
-                                wire:model="password_confirmation"
+                                id="mdp_confirmation"
+                                wire:model="mdp_confirmation"
                                 placeholder="Répétez le mot de passe"
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('password_confirmation') border-red-300 @enderror"
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('mdp_confirmation') border-red-300 @enderror"
                                 wire:loading.attr="disabled">
-                            @error('password_confirmation')
+                            @error('mdp_confirmation')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
@@ -177,20 +127,21 @@
                         Rôle et statut
                     </h2>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 gap-6">
                         {{-- Rôle --}}
                         <div>
                             <label for="role" class="block text-sm font-medium text-gray-700 mb-1">
                                 Rôle <span class="text-red-500">*</span>
                             </label>
-                            <select 
-                                id="role"
+                            <livewire:components.searchable-select
                                 wire:model="role"
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('role') border-red-300 @enderror"
-                                wire:loading.attr="disabled">
-                                <option value="agent">Agent</option>
-                                <option value="admin">Administrateur</option>
-                            </select>
+                                :options="$this->roleOptions"
+                                placeholder="Sélectionner un rôle"
+                                search-placeholder="Rechercher un rôle..."
+                                no-results-text="Aucun rôle trouvé"
+                                :allow-clear="false"
+                                name="role"
+                            />
                             @error('role')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -200,25 +151,6 @@
                             </p>
                         </div>
 
-                        {{-- Statut actif --}}
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Statut
-                            </label>
-                            <div class="mt-2">
-                                <label class="inline-flex items-center">
-                                    <input 
-                                        type="checkbox"
-                                        wire:model="actif"
-                                        class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                        wire:loading.attr="disabled">
-                                    <span class="ml-2 text-sm text-gray-700">Utilisateur actif</span>
-                                </label>
-                            </div>
-                            <p class="mt-1 text-xs text-gray-500">
-                                Les utilisateurs inactifs ne peuvent pas se connecter à l'application.
-                            </p>
-                        </div>
                     </div>
                 </div>
 

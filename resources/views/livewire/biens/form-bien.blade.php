@@ -58,21 +58,15 @@
                         <label for="idDesignation" class="block text-sm font-medium text-gray-700 mb-1">
                             Désignation <span class="text-red-500">*</span>
                         </label>
-                        <select 
-                            id="idDesignation"
+                        <livewire:components.searchable-select
                             wire:model.live="idDesignation"
-                            class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idDesignation') border-red-300 @enderror"
-                            wire:loading.attr="disabled">
-                            <option value="">Sélectionnez une désignation</option>
-                            @foreach($this->designations as $designation)
-                                <option value="{{ $designation->id }}">
-                                    {{ $designation->designation }}
-                                    @if($designation->categorie)
-                                        ({{ $designation->categorie->Categorie }})
-                                    @endif
-                                </option>
-                            @endforeach
-                        </select>
+                            :options="$this->designationOptions"
+                            placeholder="Sélectionner une désignation"
+                            search-placeholder="Rechercher une désignation..."
+                            no-results-text="Aucune désignation trouvée"
+                            :allow-clear="true"
+                            name="idDesignation"
+                        />
                         @error('idDesignation')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -86,17 +80,17 @@
                                 <span class="text-xs text-gray-500 font-normal ml-2">(automatiquement remplie)</span>
                             @endif
                         </label>
-                        <select 
-                            id="idCategorie"
-                            wire:model.defer="idCategorie"
-                            class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idCategorie') border-red-300 @enderror {{ $idDesignation ? 'bg-gray-50' : '' }}"
-                            wire:loading.attr="disabled"
-                            @if($idDesignation) disabled @endif>
-                            <option value="">Sélectionnez une catégorie</option>
-                            @foreach($this->categories as $categorie)
-                                <option value="{{ $categorie->idCategorie }}">{{ $categorie->Categorie }}</option>
-                            @endforeach
-                        </select>
+                        <livewire:components.searchable-select
+                            wire:key="categorie-{{ $idDesignation }}"
+                            wire:model="idCategorie"
+                            :options="$this->categorieOptions"
+                            placeholder="Sélectionner une catégorie"
+                            search-placeholder="Rechercher une catégorie..."
+                            no-results-text="Aucune catégorie trouvée"
+                            :allow-clear="!$idDesignation"
+                            :disabled="!!$idDesignation"
+                            name="idCategorie"
+                        />
                         @error('idCategorie')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -112,17 +106,61 @@
                         <label for="idEtat" class="block text-sm font-medium text-gray-700 mb-1">
                             État <span class="text-red-500">*</span>
                         </label>
-                        <select 
-                            id="idEtat"
-                            wire:model.defer="idEtat"
-                            class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idEtat') border-red-300 @enderror"
-                            wire:loading.attr="disabled">
-                            <option value="">Sélectionnez un état</option>
-                            @foreach($this->etats as $etat)
-                                <option value="{{ $etat->idEtat }}">{{ $etat->Etat }}</option>
-                            @endforeach
-                        </select>
+                        <livewire:components.searchable-select
+                            wire:model="idEtat"
+                            :options="$this->etatOptions"
+                            placeholder="Sélectionner un état"
+                            search-placeholder="Rechercher un état..."
+                            no-results-text="Aucun état trouvé"
+                            :allow-clear="true"
+                            name="idEtat"
+                        />
                         @error('idEtat')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Localisation --}}
+                    <div>
+                        <label for="idLocalisation" class="block text-sm font-medium text-gray-700 mb-1">
+                            Localisation <span class="text-red-500">*</span>
+                        </label>
+                        <livewire:components.searchable-select
+                            wire:model.live="idLocalisation"
+                            :options="$this->localisationOptions"
+                            placeholder="Sélectionner une localisation"
+                            search-placeholder="Rechercher une localisation..."
+                            no-results-text="Aucune localisation trouvée"
+                            :allow-clear="true"
+                            name="idLocalisation"
+                        />
+                        @error('idLocalisation')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Affectation --}}
+                    <div>
+                        <label for="idAffectation" class="block text-sm font-medium text-gray-700 mb-1">
+                            Affectation <span class="text-red-500">*</span>
+                        </label>
+                        @if(empty($idLocalisation))
+                            <div class="block w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-500 text-sm italic">
+                                Sélectionnez d'abord une localisation
+                            </div>
+                        @else
+                            <livewire:components.searchable-select
+                                wire:key="affectation-{{ $idLocalisation }}"
+                                wire:model.live="idAffectation"
+                                :options="$this->affectationOptions"
+                                placeholder="Sélectionner une affectation"
+                                search-placeholder="Rechercher une affectation..."
+                                no-results-text="Aucune affectation pour cette localisation"
+                                :allow-clear="true"
+                                name="idAffectation"
+                            />
+                        @endif
+                        @error('idAffectation')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
@@ -132,18 +170,22 @@
                         <label for="idEmplacement" class="block text-sm font-medium text-gray-700 mb-1">
                             Emplacement <span class="text-red-500">*</span>
                         </label>
-                        <select 
-                            id="idEmplacement"
-                            wire:model.defer="idEmplacement"
-                            class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idEmplacement') border-red-300 @enderror"
-                            wire:loading.attr="disabled">
-                            <option value="">Sélectionnez un emplacement</option>
-                            @foreach($this->emplacements as $emplacement)
-                                <option value="{{ $emplacement->idEmplacement }}">
-                                    {{ $emplacement->display_name ?? $emplacement->Emplacement }}
-                                </option>
-                            @endforeach
-                        </select>
+                        @if(empty($idLocalisation) || empty($idAffectation))
+                            <div class="block w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-500 text-sm italic">
+                                Sélectionnez d'abord une localisation et une affectation
+                            </div>
+                        @else
+                            <livewire:components.searchable-select
+                                wire:key="emplacement-{{ $idLocalisation }}-{{ $idAffectation }}"
+                                wire:model="idEmplacement"
+                                :options="$this->emplacementOptions"
+                                placeholder="Sélectionner un emplacement"
+                                search-placeholder="Rechercher un emplacement..."
+                                no-results-text="Aucun emplacement pour cette affectation"
+                                :allow-clear="true"
+                                name="idEmplacement"
+                            />
+                        @endif
                         @error('idEmplacement')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -154,16 +196,15 @@
                         <label for="idNatJur" class="block text-sm font-medium text-gray-700 mb-1">
                             Nature Juridique <span class="text-red-500">*</span>
                         </label>
-                        <select 
-                            id="idNatJur"
-                            wire:model.defer="idNatJur"
-                            class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idNatJur') border-red-300 @enderror"
-                            wire:loading.attr="disabled">
-                            <option value="">Sélectionnez une nature juridique</option>
-                            @foreach($this->natureJuridiques as $natJur)
-                                <option value="{{ $natJur->idNatJur }}">{{ $natJur->NatJur }}</option>
-                            @endforeach
-                        </select>
+                        <livewire:components.searchable-select
+                            wire:model="idNatJur"
+                            :options="$this->natureJuridiqueOptions"
+                            placeholder="Sélectionner une nature juridique"
+                            search-placeholder="Rechercher une nature juridique..."
+                            no-results-text="Aucune nature juridique trouvée"
+                            :allow-clear="true"
+                            name="idNatJur"
+                        />
                         @error('idNatJur')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -174,16 +215,15 @@
                         <label for="idSF" class="block text-sm font-medium text-gray-700 mb-1">
                             Source de Financement <span class="text-red-500">*</span>
                         </label>
-                        <select 
-                            id="idSF"
-                            wire:model.defer="idSF"
-                            class="select2-search block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('idSF') border-red-300 @enderror"
-                            wire:loading.attr="disabled">
-                            <option value="">Sélectionnez une source de financement</option>
-                            @foreach($this->sourceFinancements as $sf)
-                                <option value="{{ $sf->idSF }}">{{ $sf->SourceFin }}</option>
-                            @endforeach
-                        </select>
+                        <livewire:components.searchable-select
+                            wire:model="idSF"
+                            :options="$this->sourceFinancementOptions"
+                            placeholder="Sélectionner une source de financement"
+                            search-placeholder="Rechercher une source de financement..."
+                            no-results-text="Aucune source de financement trouvée"
+                            :allow-clear="true"
+                            name="idSF"
+                        />
                         @error('idSF')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror

@@ -72,14 +72,14 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Localisation
                         </label>
-                        <select 
+                        <livewire:components.searchable-select
                             wire:model.live="filterLocalisation"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option value="">Toutes</option>
-                            @foreach($this->localisations as $localisation)
-                                <option value="{{ $localisation->idLocalisation }}">{{ $localisation->Localisation }}</option>
-                            @endforeach
-                        </select>
+                            :options="$this->localisationOptions"
+                            placeholder="Toutes"
+                            search-placeholder="Rechercher une localisation..."
+                            no-results-text="Aucune localisation trouvée"
+                            :allow-clear="true"
+                        />
                     </div>
 
                     {{-- Filtre Affectation --}}
@@ -87,14 +87,14 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Affectation
                         </label>
-                        <select 
+                        <livewire:components.searchable-select
                             wire:model.live="filterAffectation"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option value="">Toutes</option>
-                            @foreach($this->affectations as $affectation)
-                                <option value="{{ $affectation->idAffectation }}">{{ $affectation->Affectation }}</option>
-                            @endforeach
-                        </select>
+                            :options="$this->affectationOptions"
+                            placeholder="Toutes"
+                            search-placeholder="Rechercher une affectation..."
+                            no-results-text="Aucune affectation trouvée"
+                            :allow-clear="true"
+                        />
                     </div>
                 </div>
 
@@ -152,7 +152,10 @@
                         @forelse($emplacements as $emplacement)
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-gray-900">{{ $emplacement->Emplacement }}</div>
+                                    <a href="{{ route('emplacements.show', $emplacement) }}" 
+                                       class="text-sm font-medium text-indigo-600 hover:text-indigo-900 transition-colors">
+                                        {{ $emplacement->Emplacement }}
+                                    </a>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">{{ $emplacement->CodeEmplacement ?? '-' }}</div>
@@ -170,6 +173,16 @@
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end gap-2">
+                                        {{-- Voir QR Code (toujours visible) --}}
+                                        <a 
+                                            href="{{ route('emplacements.show', $emplacement) }}"
+                                            class="text-indigo-600 hover:text-indigo-900 transition-colors"
+                                            title="Voir QR Code">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                            </svg>
+                                        </a>
+
                                         @if($isAdmin)
                                             <a 
                                                 href="{{ route('emplacements.edit', $emplacement) }}"

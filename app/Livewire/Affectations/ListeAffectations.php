@@ -4,6 +4,7 @@ namespace App\Livewire\Affectations;
 
 use App\Models\Affectation;
 use App\Models\Emplacement;
+use App\Models\LocalisationImmo;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Layout;
@@ -20,6 +21,7 @@ class ListeAffectations extends Component
      * Propriétés publiques pour les filtres et la recherche
      */
     public $search = '';
+    public $filterLocalisation = '';
     public $sortField = 'Affectation';
     public $sortDirection = 'asc';
     public $perPage = 20;
@@ -48,11 +50,43 @@ class ListeAffectations extends Component
     }
 
     /**
+     * Propriété calculée : Retourne la liste des localisations
+     */
+    public function getLocalisationsProperty()
+    {
+        return LocalisationImmo::orderBy('Localisation')->get();
+    }
+
+    /**
+     * Options pour SearchableSelect : Localisations
+     */
+    public function getLocalisationOptionsProperty()
+    {
+        $options = [[
+            'value' => '',
+            'text' => 'Toutes les localisations',
+        ]];
+
+        $localisations = LocalisationImmo::orderBy('Localisation')
+            ->get()
+            ->map(function ($localisation) {
+                return [
+                    'value' => (string)$localisation->idLocalisation,
+                    'text' => ($localisation->CodeLocalisation ? $localisation->CodeLocalisation . ' - ' : '') . $localisation->Localisation,
+                ];
+            })
+            ->toArray();
+
+        return array_merge($options, $localisations);
+    }
+
+    /**
      * Réinitialise tous les filtres
      */
     public function resetFilters(): void
     {
         $this->search = '';
+        $this->filterLocalisation = '';
         $this->selectedAffectations = [];
         $this->resetPage();
     }
@@ -98,13 +132,21 @@ class ListeAffectations extends Component
      */
     protected function getAffectationsQuery()
     {
-        $query = Affectation::withCount('emplacements');
+        $query = Affectation::withCount('emplacements')
+            ->with(['localisation', 'emplacements.localisation']);
 
         // Recherche globale
         if (!empty($this->search)) {
             $query->where(function ($q) {
                 $q->where('Affectation', 'like', '%' . $this->search . '%')
                     ->orWhere('CodeAffectation', 'like', '%' . $this->search . '%');
+            });
+        }
+
+        // Filtre par localisation
+        if (!empty($this->filterLocalisation)) {
+            $query->whereHas('emplacements', function ($q) {
+                $q->where('idLocalisation', $this->filterLocalisation);
             });
         }
 

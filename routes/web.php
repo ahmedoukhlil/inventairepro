@@ -3,6 +3,7 @@
 use App\Http\Controllers\BienController;
 use App\Http\Controllers\InventaireController;
 use App\Http\Controllers\LocalisationController;
+use App\Http\Controllers\QRCodeEmplacementController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -114,6 +115,9 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
             // Création d'un emplacement
             Route::get('/create', \App\Livewire\Emplacements\FormEmplacement::class)->name('create');
             
+            // Détails d'un emplacement (avec QR code)
+            Route::get('/{emplacement}', \App\Livewire\Emplacements\DetailEmplacement::class)->name('show');
+            
             // Édition d'un emplacement
             Route::get('/{emplacement}/edit', \App\Livewire\Emplacements\FormEmplacement::class)->name('edit');
         });
@@ -154,6 +158,28 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
             
             // Édition d'une désignation
             Route::get('/{designation}/edit', \App\Livewire\Designations\FormDesignation::class)->name('edit');
+        });
+
+        /*
+        |------------------------------------------------------------------
+        | QR Codes des Emplacements (Pour PWA Scanner)
+        |------------------------------------------------------------------
+        |
+        | Génération des QR codes pour scanner les emplacements via la PWA
+        |
+        */
+        Route::prefix('qrcodes/emplacements')->name('qrcodes.')->group(function () {
+            // Page principale de génération des QR codes
+            Route::get('/', [QRCodeEmplacementController::class, 'index'])->name('emplacements');
+            
+            // Générer un QR code SVG pour un emplacement
+            Route::get('/{idEmplacement}/generate', [QRCodeEmplacementController::class, 'generate'])->name('generate');
+            
+            // Télécharger PDF de tous les QR codes (avec filtres)
+            Route::get('/pdf', [QRCodeEmplacementController::class, 'downloadPdf'])->name('emplacements.pdf');
+            
+            // Imprimer les QR codes sélectionnés
+            Route::post('/print', [QRCodeEmplacementController::class, 'printSelected'])->name('print-selected');
         });
 
         /*

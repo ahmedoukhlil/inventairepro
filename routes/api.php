@@ -101,6 +101,28 @@ Route::prefix('v1')->group(function () {
 
         /*
         |------------------------------------------------------------------
+        | Emplacements API (Nouveau Workflow)
+        |------------------------------------------------------------------
+        |
+        | Routes pour le nouveau workflow : scan par emplacement
+        |
+        */
+        Route::prefix('emplacements')->name('api.emplacements.')->group(function () {
+            // Récupérer tous les biens affectés à un emplacement
+            Route::get('/{idEmplacement}/biens', [ScanController::class, 'getBiensByEmplacement'])
+                ->name('biens');
+            
+            // Enregistrer un scan pour un emplacement
+            Route::post('/{idEmplacement}/scan', [ScanController::class, 'storeScanEmplacement'])
+                ->name('scan');
+            
+            // Terminer le scan d'un emplacement et calculer les écarts
+            Route::post('/{idEmplacement}/terminer', [ScanController::class, 'terminerScanEmplacement'])
+                ->name('terminer');
+        });
+
+        /*
+        |------------------------------------------------------------------
         | Biens API
         |------------------------------------------------------------------
         |

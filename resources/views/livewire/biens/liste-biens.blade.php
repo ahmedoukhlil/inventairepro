@@ -179,14 +179,14 @@
                                 </label>
                                 <livewire:components.searchable-select
                                     wire:model.live="filterAffectation"
-                                    :options="$this->affectations->map(fn($a) => [
-                                        'value' => (string)$a->idAffectation,
-                                        'text' => $a->Affectation . ($a->CodeAffectation ? ' (' . $a->CodeAffectation . ')' : '')
-                                    ])->prepend(['value' => '', 'text' => 'Toutes les affectations'])->toArray()"
+                                    :options="$this->affectationOptions"
                                     placeholder="Toutes les affectations"
+                                    search-placeholder="Rechercher une affectation..."
+                                    no-results-text="Aucune affectation trouvée"
+                                    :allow-clear="true"
                                     :disabled="empty($filterLocalisation)"
                                     :container-class="empty($filterLocalisation) && !empty($filterAffectation) ? 'ring-2 ring-yellow-300' : ''"
-                                    :key="'filter-affectation-' . $filterLocalisation"
+                                    wire:key="filter-affectation-{{ $filterLocalisation }}"
                                 />
                                 @if(empty($filterLocalisation) && !empty($filterAffectation))
                                     <p class="mt-1 text-xs text-yellow-600">
@@ -212,14 +212,14 @@
                                 <div class="flex flex-col gap-2">
                                     <livewire:components.searchable-select
                                         wire:model.live="filterEmplacement"
-                                        :options="$this->emplacements->map(fn($e) => [
-                                            'value' => (string)$e->idEmplacement,
-                                            'text' => $e->display_name ?? $e->Emplacement
-                                        ])->prepend(['value' => '', 'text' => 'Tous les emplacements'])->toArray()"
+                                        :options="$this->emplacementOptions"
                                         placeholder="Tous les emplacements"
+                                        search-placeholder="Rechercher un emplacement..."
+                                        no-results-text="Aucun emplacement trouvé"
+                                        :allow-clear="true"
                                         :disabled="empty($filterLocalisation) && empty($filterAffectation)"
                                         :container-class="(empty($filterLocalisation) && empty($filterAffectation)) && !empty($filterEmplacement) ? 'ring-2 ring-yellow-300' : ''"
-                                        :key="'filter-emplacement-' . $filterLocalisation . '-' . $filterAffectation"
+                                        wire:key="filter-emplacement-{{ $filterLocalisation }}-{{ $filterAffectation }}"
                                     />
                                     @if((empty($filterLocalisation) && empty($filterAffectation)) && !empty($filterEmplacement))
                                         <p class="text-xs text-yellow-600">

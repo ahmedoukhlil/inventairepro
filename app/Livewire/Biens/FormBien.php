@@ -7,6 +7,8 @@ use App\Models\Designation;
 use App\Models\Categorie;
 use App\Models\Etat;
 use App\Models\Emplacement;
+use App\Models\LocalisationImmo;
+use App\Models\Affectation;
 use App\Models\NatureJuridique;
 use App\Models\SourceFinancement;
 use Illuminate\Support\Facades\Auth;
@@ -30,6 +32,8 @@ class FormBien extends Component
     public $idDesignation = '';
     public $idCategorie = '';
     public $idEtat = '';
+    public $idLocalisation = ''; // Pour le filtrage hiérarchique
+    public $idAffectation = ''; // Pour le filtrage hiérarchique
     public $idEmplacement = '';
     public $idNatJur = '';
     public $idSF = '';
@@ -50,6 +54,39 @@ class FormBien extends Component
             }
         } else {
             $this->idCategorie = '';
+        }
+    }
+
+    /**
+     * Réagit au changement de localisation
+     * Réinitialise l'affectation et l'emplacement
+     */
+    public function updatedIdLocalisation($value)
+    {
+        // Vérifier si l'affectation actuelle appartient toujours à la nouvelle localisation
+        if (!empty($this->idAffectation)) {
+            $affectation = Affectation::find($this->idAffectation);
+            if (!$affectation || $affectation->idLocalisation != $value) {
+                $this->idAffectation = '';
+                $this->idEmplacement = '';
+            }
+        } else {
+            $this->idEmplacement = '';
+        }
+    }
+
+    /**
+     * Réagit au changement d'affectation
+     * Réinitialise l'emplacement
+     */
+    public function updatedIdAffectation($value)
+    {
+        // Vérifier si l'emplacement actuel appartient toujours à la nouvelle affectation
+        if (!empty($this->idEmplacement)) {
+            $emplacement = Emplacement::find($this->idEmplacement);
+            if (!$emplacement || $emplacement->idAffectation != $value) {
+                $this->idEmplacement = '';
+            }
         }
     }
 
@@ -90,6 +127,23 @@ class FormBien extends Component
     }
 
     /**
+     * Options pour SearchableSelect : Désignations
+     */
+    public function getDesignationOptionsProperty()
+    {
+        return Designation::with('categorie')
+            ->orderBy('designation')
+            ->get()
+            ->map(function ($designation) {
+                return [
+                    'value' => (string)$designation->id,
+                    'text' => $designation->designation . ($designation->categorie ? ' (' . $designation->categorie->Categorie . ')' : ''),
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
      * Propriété calculée : Retourne toutes les catégories
      */
     public function getCategoriesProperty()
@@ -98,11 +152,83 @@ class FormBien extends Component
     }
 
     /**
+     * Options pour SearchableSelect : Catégories
+     */
+    public function getCategorieOptionsProperty()
+    {
+        return Categorie::orderBy('Categorie')
+            ->get()
+            ->map(function ($categorie) {
+                return [
+                    'value' => (string)$categorie->idCategorie,
+                    'text' => $categorie->Categorie,
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
      * Propriété calculée : Retourne tous les états
      */
     public function getEtatsProperty()
     {
         return Etat::orderBy('Etat')->get();
+    }
+
+    /**
+     * Options pour SearchableSelect : États
+     */
+    public function getEtatOptionsProperty()
+    {
+        return Etat::orderBy('Etat')
+            ->get()
+            ->map(function ($etat) {
+                return [
+                    'value' => (string)$etat->idEtat,
+                    'text' => $etat->Etat,
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
+     * Options pour SearchableSelect : Localisations
+     */
+    public function getLocalisationOptionsProperty()
+    {
+        return LocalisationImmo::orderBy('Localisation')
+            ->get()
+            ->map(function ($localisation) {
+                return [
+                    'value' => (string)$localisation->idLocalisation,
+                    'text' => ($localisation->CodeLocalisation ? $localisation->CodeLocalisation . ' - ' : '') . $localisation->Localisation,
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
+     * Options pour SearchableSelect : Affectations
+     * Filtrées selon la localisation sélectionnée
+     */
+    public function getAffectationOptionsProperty()
+    {
+        $query = Affectation::orderBy('Affectation');
+        
+        // Filtrer par localisation si une localisation est sélectionnée
+        if (!empty($this->idLocalisation)) {
+            $query->where('idLocalisation', $this->idLocalisation);
+        }
+        
+        return $query
+            ->get()
+            ->map(function ($affectation) {
+                return [
+                    'value' => (string)$affectation->idAffectation,
+                    'text' => ($affectation->CodeAffectation ? $affectation->CodeAffectation . ' - ' : '') . $affectation->Affectation,
+                ];
+            })
+            ->toArray();
     }
 
     /**
@@ -119,6 +245,36 @@ class FormBien extends Component
                 $emplacement->display_name = $this->getEmplacementDisplayName($emplacement);
                 return $emplacement;
             });
+    }
+
+    /**
+     * Options pour SearchableSelect : Emplacements
+     * Filtrés selon la localisation et l'affectation sélectionnées
+     */
+    public function getEmplacementOptionsProperty()
+    {
+        $query = Emplacement::with(['localisation', 'affectation'])
+            ->orderBy('Emplacement');
+        
+        // Filtrer par localisation si sélectionnée
+        if (!empty($this->idLocalisation)) {
+            $query->where('idLocalisation', $this->idLocalisation);
+        }
+        
+        // Filtrer par affectation si sélectionnée
+        if (!empty($this->idAffectation)) {
+            $query->where('idAffectation', $this->idAffectation);
+        }
+        
+        return $query
+            ->get()
+            ->map(function ($emplacement) {
+                return [
+                    'value' => (string)$emplacement->idEmplacement,
+                    'text' => ($emplacement->CodeEmplacement ? $emplacement->CodeEmplacement . ' - ' : '') . $emplacement->Emplacement,
+                ];
+            })
+            ->toArray();
     }
     
     /**
@@ -156,11 +312,43 @@ class FormBien extends Component
     }
 
     /**
+     * Options pour SearchableSelect : Natures juridiques
+     */
+    public function getNatureJuridiqueOptionsProperty()
+    {
+        return NatureJuridique::orderBy('NatJur')
+            ->get()
+            ->map(function ($natJur) {
+                return [
+                    'value' => (string)$natJur->idNatJur,
+                    'text' => $natJur->NatJur,
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
      * Propriété calculée : Retourne toutes les sources de financement
      */
     public function getSourceFinancementsProperty()
     {
         return SourceFinancement::orderBy('SourceFin')->get();
+    }
+
+    /**
+     * Options pour SearchableSelect : Sources de financement
+     */
+    public function getSourceFinancementOptionsProperty()
+    {
+        return SourceFinancement::orderBy('SourceFin')
+            ->get()
+            ->map(function ($sourceFin) {
+                return [
+                    'value' => (string)$sourceFin->idSF,
+                    'text' => $sourceFin->SourceFin,
+                ];
+            })
+            ->toArray();
     }
 
     /**

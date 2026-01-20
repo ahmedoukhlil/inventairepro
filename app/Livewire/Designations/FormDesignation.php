@@ -72,6 +72,22 @@ class FormDesignation extends Component
     }
 
     /**
+     * Options pour SearchableSelect : Catégories
+     */
+    public function getCategorieOptionsProperty()
+    {
+        return Categorie::orderBy('Categorie')
+            ->get()
+            ->map(function ($categorie) {
+                return [
+                    'value' => (string)$categorie->idCategorie,
+                    'text' => $categorie->Categorie,
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
      * Génère une suggestion de code basée sur le nom
      */
     public function generateCodeSuggestion()

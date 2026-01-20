@@ -85,15 +85,15 @@
                             <label for="annee" class="block text-sm font-medium text-gray-700 mb-1">
                                 Année de l'inventaire <span class="text-red-500">*</span>
                             </label>
-                            <select 
-                                id="annee"
-                                wire:model.blur="annee"
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('annee') border-red-300 @enderror">
-                                <option value="">Sélectionner une année</option>
-                                @foreach($this->anneesDisponibles as $anneeDispo)
-                                    <option value="{{ $anneeDispo }}">{{ $anneeDispo }}</option>
-                                @endforeach
-                            </select>
+                            <livewire:components.searchable-select
+                                wire:model="annee"
+                                :options="$this->anneeOptions"
+                                placeholder="Sélectionner une année"
+                                search-placeholder="Rechercher une année..."
+                                no-results-text="Aucune année disponible"
+                                :allow-clear="true"
+                                name="annee"
+                            />
                             @error('annee')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -171,43 +171,38 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         @foreach($this->localisations as $localisation)
                             @php
-                                $estSelectionnee = in_array($localisation->id, $localisationsSelectionnees);
+                                $estSelectionnee = in_array($localisation->idLocalisation, $localisationsSelectionnees);
                             @endphp
                             <div 
-                                wire:click="toggleLocalisation({{ $localisation->id }})"
+                                wire:click="toggleLocalisation({{ $localisation->idLocalisation }})"
                                 class="relative p-4 border-2 rounded-lg cursor-pointer transition-all {{ $estSelectionnee ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white hover:border-gray-300' }}">
                                 <div class="flex items-start">
                                     <input 
                                         type="checkbox"
                                         wire:model.live="localisationsSelectionnees"
-                                        value="{{ $localisation->id }}"
+                                        value="{{ $localisation->idLocalisation }}"
                                         class="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
                                     <div class="ml-3 flex-1">
                                         <div class="flex items-center justify-between">
-                                            <h3 class="text-sm font-medium text-gray-900">{{ $localisation->code }}</h3>
+                                            <h3 class="text-sm font-medium text-gray-900">
+                                                {{ $localisation->CodeLocalisation ? $localisation->CodeLocalisation . ' - ' : '' }}{{ $localisation->Localisation }}
+                                            </h3>
                                         </div>
-                                        <p class="mt-1 text-sm text-gray-600">{{ $localisation->designation }}</p>
                                         <div class="mt-2 flex items-center gap-2 text-xs text-gray-500">
-                                            @if($localisation->batiment)
-                                                <span class="flex items-center">
-                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                                    </svg>
-                                                    {{ $localisation->batiment }}
-                                                </span>
-                                            @endif
-                                            @if($localisation->etage !== null)
-                                                <span class="flex items-center">
-                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                                                    </svg>
-                                                    Étage {{ $localisation->etage }}
-                                                </span>
-                                            @endif
+                                            @php
+                                                $affectationsCount = $localisation->emplacements()->distinct('idAffectation')->count('idAffectation');
+                                                $emplacementsCount = $localisation->emplacements()->count();
+                                            @endphp
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                                {{ $affectationsCount }} affectation(s)
+                                            </span>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                {{ $emplacementsCount }} emplacement(s)
+                                            </span>
                                         </div>
                                         <div class="mt-2">
                                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                                                {{ $localisation->biens_count }} immobilisation(s)
+                                                {{ $localisation->biens_count ?? 0 }} immobilisation(s)
                                             </span>
                                         </div>
                                     </div>
@@ -245,19 +240,18 @@
                             <div class="flex items-end gap-2">
                                 <div class="flex-1">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Assigner un agent</label>
-                                    <select 
-                                        id="agent-global-select"
-                                        wire:change="assignerAgentGlobal($event.target.value)"
-                                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                        <option value="">Sélectionner un agent</option>
-                                        @foreach($this->agents as $agent)
-                                            <option value="{{ $agent->id }}">{{ $agent->name }} ({{ $agent->role_name }})</option>
-                                        @endforeach
-                                    </select>
+                                    <livewire:components.searchable-select
+                                        wire:model="agentGlobalSelect"
+                                        :options="$this->agentOptions"
+                                        placeholder="Sélectionner un agent"
+                                        search-placeholder="Rechercher un agent..."
+                                        no-results-text="Aucun agent trouvé"
+                                        :allow-clear="true"
+                                    />
                                 </div>
                                 <button 
                                     type="button"
-                                    onclick="const select = document.getElementById('agent-global-select'); if(select && select.value) { select.dispatchEvent(new Event('change')); }"
+                                    wire:click="assignerAgentGlobal({{ $agentGlobalSelect }})"
                                     class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">
                                     Assigner aux non assignées
                                 </button>
@@ -276,28 +270,39 @@
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    @foreach($this->localisations->whereIn('id', $localisationsSelectionnees) as $localisation)
+                                    @foreach($this->localisations->whereIn('idLocalisation', $localisationsSelectionnees) as $localisation)
                                         <tr>
                                             <td class="px-4 py-3 whitespace-nowrap">
-                                                <div class="text-sm font-medium text-gray-900">{{ $localisation->code }}</div>
-                                                <div class="text-xs text-gray-500">{{ $localisation->designation }}</div>
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    {{ $localisation->CodeLocalisation ? $localisation->CodeLocalisation . ' - ' : '' }}{{ $localisation->Localisation }}
+                                                </div>
+                                                <div class="text-xs text-gray-500 mt-1">
+                                                    @php
+                                                        $affectationsCount = $localisation->emplacements()->distinct('idAffectation')->count('idAffectation');
+                                                        $emplacementsCount = $localisation->emplacements()->count();
+                                                    @endphp
+                                                    {{ $affectationsCount }} affectation(s) • {{ $emplacementsCount }} emplacement(s)
+                                                </div>
                                             </td>
                                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                                {{ $localisation->biens_count }}
+                                                {{ $localisation->biens_count ?? 0 }}
                                             </td>
                                             <td class="px-4 py-3 whitespace-nowrap">
-                                                <select 
-                                                    wire:change="assignerAgent({{ $localisation->id }}, $event.target.value)"
-                                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                                    <option value="">Non assigné</option>
-                                                    @foreach($this->agents as $agent)
-                                                        <option 
-                                                            value="{{ $agent->id }}"
-                                                            {{ isset($assignations[$localisation->id]) && $assignations[$localisation->id] == $agent->id ? 'selected' : '' }}>
-                                                            {{ $agent->name }} ({{ $agent->role_name }})
-                                                        </option>
-                                                    @endforeach
-                                                </select>
+                                                @php
+                                                    $agentOptionsWithEmpty = array_merge([['value' => '', 'text' => 'Non assigné']], array_filter($this->agentOptions, fn($opt) => $opt['value'] !== ''));
+                                                    $currentAgentId = isset($assignations[$localisation->idLocalisation]) ? (string)$assignations[$localisation->idLocalisation] : '';
+                                                @endphp
+                                                <livewire:components.searchable-select
+                                                    wire:key="agent-select-{{ $localisation->idLocalisation }}"
+                                                    :value="$currentAgentId"
+                                                    :options="$agentOptionsWithEmpty"
+                                                    placeholder="Non assigné"
+                                                    search-placeholder="Rechercher un agent..."
+                                                    no-results-text="Aucun agent trouvé"
+                                                    :allow-clear="true"
+                                                    x-on:option-selected.window="$wire.assignerAgent({{ $localisation->idLocalisation }}, $event.detail.value)"
+                                                    x-on:option-cleared.window="$wire.assignerAgent({{ $localisation->idLocalisation }}, '')"
+                                                />
                                             </td>
                                         </tr>
                                     @endforeach

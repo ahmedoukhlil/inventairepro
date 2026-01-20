@@ -172,9 +172,8 @@ class User extends Authenticatable
     public function getRoleNameAttribute(): string
     {
         return match($this->role) {
-            'admin', 'superuser' => 'Administrateur',
-            'agent', 'immobilisation' => 'Agent',
-            'stock' => 'Stock',
+            'admin' => 'Administrateur',
+            'agent' => 'Agent',
             default => 'Non défini',
         };
     }
@@ -185,28 +184,27 @@ class User extends Authenticatable
 
     /**
      * Vérifie si l'utilisateur est administrateur
-     * Accepte 'admin' et 'superuser' comme administrateurs
      */
     public function isAdmin(): bool
     {
-        return in_array($this->role, ['admin', 'superuser']);
+        return $this->role === 'admin';
     }
 
     /**
      * Vérifie si l'utilisateur est agent
-     * Accepte 'agent' et 'immobilisation' comme agents
      */
     public function isAgent(): bool
     {
-        return in_array($this->role, ['agent', 'immobilisation']);
+        return $this->role === 'agent';
     }
 
     /**
      * Vérifie si l'utilisateur peut gérer les inventaires
+     * Admin et Agent peuvent gérer les inventaires
      */
     public function canManageInventaire(): bool
     {
-        return in_array($this->role, ['admin', 'superuser', 'agent', 'immobilisation']);
+        return in_array($this->role, ['admin', 'agent']);
     }
 
     /**

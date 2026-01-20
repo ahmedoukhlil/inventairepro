@@ -43,11 +43,11 @@ class InventaireLocalisation extends Model
     }
 
     /**
-     * Relation avec la localisation
+     * Relation avec la localisation (LocalisationImmo)
      */
     public function localisation(): BelongsTo
     {
-        return $this->belongsTo(Localisation::class);
+        return $this->belongsTo(LocalisationImmo::class, 'localisation_id', 'idLocalisation');
     }
 
     /**
@@ -55,7 +55,7 @@ class InventaireLocalisation extends Model
      */
     public function agent(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id', 'idUser');
     }
 
     /**
@@ -157,10 +157,21 @@ class InventaireLocalisation extends Model
 
     /**
      * Calcule et met à jour le nombre de biens attendus dans la localisation
+     * Compte via la hiérarchie : LocalisationImmo → Emplacements → Immobilisations
      */
     public function calculerBiensAttendus(): int
     {
-        $nombreBiens = $this->localisation->biens()->count();
+        $localisation = $this->localisation; // LocalisationImmo
+        
+        if (!$localisation) {
+            return 0;
+        }
+        
+        // Compter les immobilisations via les emplacements
+        $nombreBiens = $localisation->emplacements()
+            ->withCount('immobilisations')
+            ->get()
+            ->sum('immobilisations_count');
         
         $this->update(['nombre_biens_attendus' => $nombreBiens]);
         

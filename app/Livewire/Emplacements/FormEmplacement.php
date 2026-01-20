@@ -78,11 +78,68 @@ class FormEmplacement extends Component
     }
 
     /**
+     * Propriété calculée : Options pour SearchableSelect (localisations)
+     */
+    public function getLocalisationOptionsProperty()
+    {
+        return LocalisationImmo::orderBy('Localisation')
+            ->get()
+            ->map(function ($localisation) {
+                return [
+                    'value' => (string)$localisation->idLocalisation,
+                    'text' => ($localisation->CodeLocalisation ? $localisation->CodeLocalisation . ' - ' : '') . $localisation->Localisation,
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
      * Propriété calculée : Retourne toutes les affectations
      */
     public function getAffectationsProperty()
     {
         return Affectation::orderBy('Affectation')->get();
+    }
+
+    /**
+     * Propriété calculée : Options pour SearchableSelect (affectations)
+     * Filtre les affectations selon la localisation sélectionnée
+     */
+    public function getAffectationOptionsProperty()
+    {
+        $query = Affectation::orderBy('Affectation');
+        
+        // Filtrer par localisation si une localisation est sélectionnée
+        if (!empty($this->idLocalisation)) {
+            $query->where('idLocalisation', $this->idLocalisation);
+        }
+        
+        return $query
+            ->get()
+            ->map(function ($affectation) {
+                return [
+                    'value' => (string)$affectation->idAffectation,
+                    'text' => ($affectation->CodeAffectation ? $affectation->CodeAffectation . ' - ' : '') . $affectation->Affectation,
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
+     * Réagit au changement de localisation
+     * Réinitialise l'affectation quand la localisation change
+     */
+    public function updatedIdLocalisation($value)
+    {
+        // Vérifier si l'affectation actuelle appartient toujours à la nouvelle localisation
+        if (!empty($this->idAffectation)) {
+            $affectation = Affectation::find($this->idAffectation);
+            
+            // Si l'affectation n'appartient pas à la nouvelle localisation, la réinitialiser
+            if (!$affectation || $affectation->idLocalisation != $value) {
+                $this->idAffectation = '';
+            }
+        }
     }
 
     /**

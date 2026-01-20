@@ -1,13 +1,14 @@
 {
-  "name": "Inventaire Scanner",
-  "short_name": "Scanner",
-  "description": "Application de scan pour inventaire immobilier",
-  "start_url": "/pwa/index.html",
+  "name": "Inventaire Pro - Scanner v2",
+  "short_name": "Scanner v2",
+  "description": "Application de scan par emplacement pour inventaire immobilier",
+  "start_url": "/pwa/index-v2.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4F46E5",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "scope": "/pwa/",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/images/icons/icon-144x144.png",

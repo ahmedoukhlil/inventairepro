@@ -3,6 +3,7 @@
 namespace App\Livewire\Affectations;
 
 use App\Models\Affectation;
+use App\Models\LocalisationImmo;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -27,6 +28,7 @@ class FormAffectation extends Component
      */
     public $Affectation = '';
     public $CodeAffectation = '';
+    public $idLocalisation = '';
 
     /**
      * Initialisation du composant
@@ -59,36 +61,48 @@ class FormAffectation extends Component
                 $this->affectationId = $affectation->idAffectation;
                 $this->Affectation = $affectation->Affectation;
                 $this->CodeAffectation = $affectation->CodeAffectation ?? '';
+                $this->idLocalisation = $affectation->idLocalisation ?? '';
             }
+        } else {
+            // Mode création : générer automatiquement le code
+            $this->generateCodeAuto();
         }
     }
 
     /**
-     * Génère une suggestion de code automatiquement
+     * Génère automatiquement un code d'affectation unique
      */
-    public function generateCodeSuggestion()
+    public function generateCodeAuto()
     {
         // Compter les affectations existantes pour générer un numéro unique
         $count = Affectation::count() + 1;
-        
-        // Générer un code basé sur le nom de l'affectation
-        $prefix = 'AFF';
-        if (!empty($this->Affectation)) {
-            // Extraire les premières lettres du nom
-            $words = explode(' ', $this->Affectation);
-            $initials = '';
-            foreach ($words as $word) {
-                if (!empty($word)) {
-                    $initials .= strtoupper(substr($word, 0, 1));
-                }
-            }
-            if (strlen($initials) > 0) {
-                $prefix = substr($initials, 0, 3);
-            }
-        }
-        
-        $this->CodeAffectation = $prefix . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+        $this->CodeAffectation = 'AFF-' . str_pad($count, 3, '0', STR_PAD_LEFT);
     }
+
+    /**
+     * Propriété calculée : Retourne la liste des localisations
+     */
+    public function getLocalisationsProperty()
+    {
+        return LocalisationImmo::orderBy('Localisation')->get();
+    }
+
+    /**
+     * Propriété calculée : Options pour SearchableSelect (localisations)
+     */
+    public function getLocalisationOptionsProperty()
+    {
+        return LocalisationImmo::orderBy('Localisation')
+            ->get()
+            ->map(function ($localisation) {
+                return [
+                    'value' => (string)$localisation->idLocalisation,
+                    'text' => ($localisation->CodeLocalisation ? $localisation->CodeLocalisation . ' - ' : '') . $localisation->Localisation,
+                ];
+            })
+            ->toArray();
+    }
+
 
     /**
      * Propriété calculée : Vérifie si on est en mode édition
@@ -106,6 +120,7 @@ class FormAffectation extends Component
         return [
             'Affectation' => 'required|string|max:255',
             'CodeAffectation' => 'nullable|string|max:255',
+            'idLocalisation' => 'required|exists:localisation,idLocalisation',
         ];
     }
 
@@ -118,6 +133,8 @@ class FormAffectation extends Component
             'Affectation.required' => 'L\'affectation est obligatoire.',
             'Affectation.max' => 'L\'affectation ne peut pas dépasser 255 caractères.',
             'CodeAffectation.max' => 'Le code d\'affectation ne peut pas dépasser 255 caractères.',
+            'idLocalisation.required' => 'La localisation est obligatoire.',
+            'idLocalisation.exists' => 'La localisation sélectionnée n\'existe pas.',
         ];
     }
 
@@ -143,6 +160,7 @@ class FormAffectation extends Component
             $data = [
                 'Affectation' => trim($validated['Affectation']),
                 'CodeAffectation' => $validated['CodeAffectation'] ?? null,
+                'idLocalisation' => $validated['idLocalisation'],
             ];
 
             if ($this->isEdit && $this->affectation) {
@@ -154,6 +172,21 @@ class FormAffectation extends Component
                 // Mode création : créer une nouvelle affectation
                 try {
                     DB::beginTransaction();
+                    
+                    // Générer un code unique si nécessaire
+                    if (empty($data['CodeAffectation'])) {
+                        $count = Affectation::count() + 1;
+                        $data['CodeAffectation'] = 'AFF-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+                    }
+                    
+                    // Vérifier l'unicité du code
+                    $attempts = 0;
+                    while (Affectation::where('CodeAffectation', $data['CodeAffectation'])->exists() && $attempts < 10) {
+                        $count++;
+                        $data['CodeAffectation'] = 'AFF-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+                        $attempts++;
+                    }
+                    
                     $affectation = Affectation::create($data);
                     DB::commit();
                     
@@ -175,11 +208,12 @@ class FormAffectation extends Component
 
             // Invalider le cache des statistiques
             \Illuminate\Support\Facades\Cache::forget('emplacements_total_count');
+            \Illuminate\Support\Facades\Cache::forget('affectations_total_count');
 
             session()->flash('success', $message);
 
-            // Rediriger vers la liste (à créer si nécessaire) ou le dashboard
-            return $this->redirect(route('dashboard'), navigate: true);
+            // Rediriger vers la liste des affectations
+            return $this->redirect(route('affectations.index'), navigate: true);
         } catch (\Illuminate\Validation\ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {
@@ -193,11 +227,11 @@ class FormAffectation extends Component
     }
 
     /**
-     * Annule et redirige vers le dashboard
+     * Annule et redirige vers la liste des affectations
      */
     public function cancel()
     {
-        return redirect()->route('dashboard');
+        return redirect()->route('affectations.index');
     }
 
     /**

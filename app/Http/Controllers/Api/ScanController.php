@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Inventaire;
 use App\Models\InventaireScan;
 use App\Models\Bien;
+use App\Models\Emplacement;
+use App\Models\Gesimmo;
 use App\Services\InventaireService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -324,5 +326,202 @@ class ScanController extends Controller
         return response()->json([
             'scans' => $scans
         ]);
+    }
+
+    /**
+     * NOUVEAU WORKFLOW: Récupérer tous les biens d'un emplacement
+     * 
+     * @param int $idEmplacement
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getBiensByEmplacement($idEmplacement)
+    {
+        // Vérifier que l'emplacement existe
+        $emplacement = Emplacement::with(['localisation', 'affectation'])
+            ->find($idEmplacement);
+
+        if (!$emplacement) {
+            return response()->json([
+                'message' => 'Emplacement non trouvé'
+            ], 404);
+        }
+
+        // Récupérer tous les biens de cet emplacement
+        $biens = Gesimmo::where('idEmplacement', $idEmplacement)
+            ->with([
+                'designation',
+                'categorie',
+                'etat',
+                'emplacement',
+                'natureJuridique',
+                'sourceFinancement'
+            ])
+            ->orderBy('NumOrdre')
+            ->get()
+            ->map(function ($bien) {
+                return [
+                    'num_ordre' => $bien->NumOrdre,
+                    'code_barre_128' => (string)$bien->NumOrdre, // Code-barres 128 = NumOrdre
+                    'designation' => $bien->designation->designation ?? 'N/A',
+                    'categorie' => $bien->categorie->Categorie ?? 'N/A',
+                    'etat' => $bien->etat->Etat ?? 'N/A',
+                    'date_acquisition' => $bien->DateAcquisition,
+                    'observations' => $bien->Observations,
+                ];
+            });
+
+        return response()->json([
+            'emplacement' => [
+                'id' => $emplacement->idEmplacement,
+                'code' => $emplacement->CodeEmplacement,
+                'nom' => $emplacement->Emplacement,
+                'localisation' => $emplacement->localisation ? [
+                    'id' => $emplacement->localisation->idLocalisation,
+                    'nom' => $emplacement->localisation->Localisation,
+                    'code' => $emplacement->localisation->CodeLocalisation,
+                ] : null,
+                'affectation' => $emplacement->affectation ? [
+                    'id' => $emplacement->affectation->idAffectation,
+                    'nom' => $emplacement->affectation->Affectation,
+                    'code' => $emplacement->affectation->CodeAffectation,
+                ] : null,
+            ],
+            'biens' => $biens,
+            'total' => $biens->count(),
+        ], 200);
+    }
+
+    /**
+     * NOUVEAU WORKFLOW: Enregistrer un scan pour un emplacement
+     * Le code-barres 128 contient uniquement le NumOrdre
+     * 
+     * @param Request $request
+     * @param int $idEmplacement
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function storeScanEmplacement(Request $request, $idEmplacement)
+    {
+        $validated = $request->validate([
+            'num_ordre' => 'required|integer', // Code-barres 128 = NumOrdre
+        ]);
+
+        // Vérifier que l'emplacement existe
+        $emplacement = Emplacement::find($idEmplacement);
+        if (!$emplacement) {
+            return response()->json([
+                'message' => 'Emplacement non trouvé'
+            ], 404);
+        }
+
+        // Rechercher le bien par NumOrdre (clé primaire)
+        $bien = Gesimmo::where('NumOrdre', $validated['num_ordre'])
+            ->with(['designation', 'categorie', 'etat'])
+            ->first();
+
+        if (!$bien) {
+            return response()->json([
+                'message' => 'Bien non trouvé',
+                'num_ordre' => $validated['num_ordre'],
+            ], 404);
+        }
+
+        // Vérifier si le bien appartient à cet emplacement
+        $appartient = ($bien->idEmplacement == $idEmplacement);
+
+        return response()->json([
+            'success' => true,
+            'bien' => [
+                'num_ordre' => $bien->NumOrdre,
+                'designation' => $bien->designation->designation ?? 'N/A',
+                'categorie' => $bien->categorie->Categorie ?? 'N/A',
+                'etat' => $bien->etat->Etat ?? 'N/A',
+                'appartient_emplacement' => $appartient,
+                'emplacement_actuel' => $bien->idEmplacement,
+            ],
+        ], 200);
+    }
+
+    /**
+     * NOUVEAU WORKFLOW: Terminer le scan d'un emplacement
+     * Calcule les écarts entre biens attendus et biens scannés
+     * 
+     * @param Request $request
+     * @param int $idEmplacement
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function terminerScanEmplacement(Request $request, $idEmplacement)
+    {
+        $validated = $request->validate([
+            'biens_scannes' => 'required|array',
+            'biens_scannes.*' => 'integer|exists:gesimmo,NumOrdre',
+        ]);
+
+        // Vérifier que l'emplacement existe
+        $emplacement = Emplacement::with(['localisation', 'affectation'])
+            ->find($idEmplacement);
+
+        if (!$emplacement) {
+            return response()->json([
+                'message' => 'Emplacement non trouvé'
+            ], 404);
+        }
+
+        // Récupérer tous les biens attendus
+        $biensAttendus = Gesimmo::where('idEmplacement', $idEmplacement)
+            ->with(['designation', 'categorie'])
+            ->get();
+
+        $biensAttendusList = $biensAttendus->pluck('NumOrdre')->toArray();
+        $biensScannesList = $validated['biens_scannes'];
+
+        // Calculer les écarts
+        $biensManquants = array_diff($biensAttendusList, $biensScannesList);
+        $biensEnTrop = array_diff($biensScannesList, $biensAttendusList);
+
+        // Détails des biens manquants
+        $detailsManquants = Gesimmo::whereIn('NumOrdre', $biensManquants)
+            ->with(['designation', 'categorie'])
+            ->get()
+            ->map(function ($bien) {
+                return [
+                    'num_ordre' => $bien->NumOrdre,
+                    'code_inventaire' => $bien->code_inventaire ?? "GS{$bien->NumOrdre}",
+                    'designation' => $bien->designation->designation ?? 'N/A',
+                    'categorie' => $bien->categorie->Categorie ?? 'N/A',
+                ];
+            });
+
+        // Détails des biens en trop (scannés mais pas dans cet emplacement)
+        $detailsEnTrop = Gesimmo::whereIn('NumOrdre', $biensEnTrop)
+            ->with(['designation', 'categorie', 'emplacement'])
+            ->get()
+            ->map(function ($bien) {
+                return [
+                    'num_ordre' => $bien->NumOrdre,
+                    'code_inventaire' => $bien->code_inventaire ?? "GS{$bien->NumOrdre}",
+                    'designation' => $bien->designation->designation ?? 'N/A',
+                    'categorie' => $bien->categorie->Categorie ?? 'N/A',
+                    'emplacement_reel' => $bien->emplacement ? $bien->emplacement->Emplacement : 'Inconnu',
+                ];
+            });
+
+        return response()->json([
+            'emplacement' => [
+                'id' => $emplacement->idEmplacement,
+                'nom' => $emplacement->Emplacement,
+                'code' => $emplacement->CodeEmplacement,
+            ],
+            'statistiques' => [
+                'total_attendu' => count($biensAttendusList),
+                'total_scanne' => count($biensScannesList),
+                'total_manquant' => count($biensManquants),
+                'total_en_trop' => count($biensEnTrop),
+                'taux_conformite' => count($biensAttendusList) > 0 
+                    ? round((count($biensScannesList) - count($biensEnTrop)) / count($biensAttendusList) * 100, 2) 
+                    : 0,
+            ],
+            'biens_manquants' => $detailsManquants,
+            'biens_en_trop' => $detailsEnTrop,
+        ], 200);
     }
 }

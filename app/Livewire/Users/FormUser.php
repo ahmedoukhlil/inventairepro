@@ -13,14 +13,10 @@ class FormUser extends Component
      * Propriétés publiques
      */
     public $userId = null;
-    public $name = '';
-    public $email = '';
-    public $password = '';
-    public $password_confirmation = '';
+    public $users = ''; // Nom d'utilisateur (colonne 'users' dans la table)
+    public $mdp = ''; // Mot de passe
+    public $mdp_confirmation = '';
     public $role = 'agent';
-    public $telephone = '';
-    public $service = '';
-    public $actif = true;
 
     /**
      * Mode édition ou création
@@ -43,15 +39,22 @@ class FormUser extends Component
             // Vérifier que $user est bien une instance de User
             if ($user instanceof User) {
                 $this->isEdit = true;
-                $this->userId = $user->id;
-                $this->name = $user->name;
-                $this->email = $user->email;
+                $this->userId = $user->idUser;
+                $this->users = $user->users;
                 $this->role = $user->role;
-                $this->telephone = $user->telephone ?? '';
-                $this->service = $user->service ?? '';
-                $this->actif = $user->actif;
             }
         }
+    }
+
+    /**
+     * Options pour SearchableSelect : Rôles
+     */
+    public function getRoleOptionsProperty()
+    {
+        return [
+            ['value' => 'agent', 'text' => 'Agent'],
+            ['value' => 'admin', 'text' => 'Administrateur'],
+        ];
     }
 
     /**
@@ -60,31 +63,26 @@ class FormUser extends Component
     protected function rules(): array
     {
         $rules = [
-            'name' => 'required|string|max:255',
-            'email' => [
+            'users' => [
                 'required',
                 'string',
-                'email:rfc,dns',
                 'max:255',
                 $this->isEdit 
-                    ? 'unique:users,email,' . $this->userId
-                    : 'unique:users,email',
+                    ? 'unique:users,users,' . $this->userId . ',idUser'
+                    : 'unique:users,users',
             ],
             'role' => 'required|in:admin,agent',
-            'telephone' => 'nullable|string|max:20',
-            'service' => 'nullable|string|max:255',
-            'actif' => 'boolean',
         ];
 
         // Règles pour le mot de passe
         if ($this->isEdit) {
             // En édition, le mot de passe est optionnel
-            if (!empty($this->password)) {
-                $rules['password'] = ['required', 'string', 'min:8', 'max:255', 'confirmed'];
+            if (!empty($this->mdp)) {
+                $rules['mdp'] = ['required', 'string', 'min:1', 'max:255', 'confirmed'];
             }
         } else {
             // En création, le mot de passe est obligatoire
-            $rules['password'] = ['required', 'string', 'min:8', 'max:255', 'confirmed'];
+            $rules['mdp'] = ['required', 'string', 'min:1', 'max:255', 'confirmed'];
         }
 
         return $rules;
@@ -96,20 +94,15 @@ class FormUser extends Component
     protected function messages(): array
     {
         return [
-            'name.required' => 'Le nom est obligatoire.',
-            'name.max' => 'Le nom ne peut pas dépasser 255 caractères.',
-            'email.required' => 'L\'adresse email est obligatoire.',
-            'email.email' => 'L\'adresse email doit être valide.',
-            'email.unique' => 'Cette adresse email est déjà utilisée.',
-            'email.max' => 'L\'adresse email ne peut pas dépasser 255 caractères.',
-            'password.required' => 'Le mot de passe est obligatoire.',
-            'password.min' => 'Le mot de passe doit contenir au moins 8 caractères.',
-            'password.max' => 'Le mot de passe ne peut pas dépasser 255 caractères.',
-            'password.confirmed' => 'La confirmation du mot de passe ne correspond pas.',
+            'users.required' => 'Le nom d\'utilisateur est obligatoire.',
+            'users.max' => 'Le nom d\'utilisateur ne peut pas dépasser 255 caractères.',
+            'users.unique' => 'Ce nom d\'utilisateur est déjà utilisé.',
+            'mdp.required' => 'Le mot de passe est obligatoire.',
+            'mdp.min' => 'Le mot de passe doit contenir au moins 1 caractère.',
+            'mdp.max' => 'Le mot de passe ne peut pas dépasser 255 caractères.',
+            'mdp.confirmed' => 'La confirmation du mot de passe ne correspond pas.',
             'role.required' => 'Le rôle est obligatoire.',
             'role.in' => 'Le rôle sélectionné est invalide.',
-            'telephone.max' => 'Le numéro de téléphone ne peut pas dépasser 20 caractères.',
-            'service.max' => 'Le service ne peut pas dépasser 255 caractères.',
         ];
     }
 
@@ -120,31 +113,18 @@ class FormUser extends Component
     {
         $this->validate();
 
-        // Vérifier si on peut désactiver le dernier admin actif
+        // Vérifier si on peut changer le rôle du dernier admin
         if ($this->isEdit) {
             $user = User::findOrFail($this->userId);
             
-            if ($user->role === 'admin' && $user->actif && !$this->actif) {
-                $activeAdminsCount = User::where('role', 'admin')
-                    ->where('actif', true)
-                    ->where('id', '!=', $this->userId)
-                    ->count();
-                
-                if ($activeAdminsCount === 0) {
-                    $this->addError('actif', 'Impossible de désactiver le dernier administrateur actif.');
-                    return;
-                }
-            }
-
             // Vérifier si on change le rôle d'admin vers agent
-            if ($user->role === 'admin' && $this->role === 'agent' && $user->actif) {
-                $activeAdminsCount = User::where('role', 'admin')
-                    ->where('actif', true)
-                    ->where('id', '!=', $this->userId)
+            if ($user->role === 'admin' && $this->role === 'agent') {
+                $adminsCount = User::where('role', 'admin')
+                    ->where('idUser', '!=', $this->userId)
                     ->count();
                 
-                if ($activeAdminsCount === 0) {
-                    $this->addError('role', 'Impossible de changer le rôle du dernier administrateur actif.');
+                if ($adminsCount === 0) {
+                    $this->addError('role', 'Impossible de changer le rôle du dernier administrateur.');
                     return;
                 }
             }
@@ -152,27 +132,28 @@ class FormUser extends Component
 
         // Préparer les données
         $data = [
-            'name' => $this->name,
-            'email' => $this->email,
+            'users' => $this->users,
             'role' => $this->role,
-            'telephone' => $this->telephone ?: null,
-            'service' => $this->service ?: null,
-            'actif' => $this->actif,
         ];
 
         // Ajouter le mot de passe seulement s'il est fourni
-        if (!empty($this->password)) {
-            $data['password'] = Hash::make($this->password);
+        if (!empty($this->mdp)) {
+            $data['mdp'] = $this->mdp; // Pas de hash, stockage en clair selon la structure
         }
 
         // Créer ou mettre à jour
         if ($this->isEdit) {
             $user = User::findOrFail($this->userId);
             $user->update($data);
-            session()->flash('success', "L'utilisateur {$user->name} a été modifié avec succès.");
+            session()->flash('success', "L'utilisateur {$user->users} a été modifié avec succès.");
         } else {
+            // En création, le mot de passe est obligatoire
+            if (empty($data['mdp'])) {
+                $this->addError('mdp', 'Le mot de passe est obligatoire.');
+                return;
+            }
             $user = User::create($data);
-            session()->flash('success', "L'utilisateur {$user->name} a été créé avec succès.");
+            session()->flash('success', "L'utilisateur {$user->users} a été créé avec succès.");
         }
 
         // Rediriger vers la liste

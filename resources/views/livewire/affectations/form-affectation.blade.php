@@ -11,13 +11,21 @@
                         Dashboard
                     </a>
                 </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <a href="{{ route('affectations.index') }}" class="ml-1 text-sm font-medium text-gray-700 hover:text-indigo-600 md:ml-2">Affectations</a>
+                    </div>
+                </li>
                 <li aria-current="page">
                     <div class="flex items-center">
                         <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                         </svg>
                         <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">
-                            {{ $this->isEdit ? 'Modifier' : 'Ajouter' }} une affectation
+                            {{ $this->isEdit ? 'Modifier' : 'Ajouter' }}
                         </span>
                     </div>
                 </li>
@@ -44,7 +52,26 @@
                     Identification
                 </h2>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {{-- Localisation --}}
+                    <div>
+                        <label for="idLocalisation" class="block text-sm font-medium text-gray-700 mb-1">
+                            Localisation <span class="text-red-500">*</span>
+                        </label>
+                        <livewire:components.searchable-select
+                            wire:model="idLocalisation"
+                            :options="$this->localisationOptions"
+                            placeholder="Sélectionner une localisation"
+                            search-placeholder="Rechercher une localisation..."
+                            no-results-text="Aucune localisation trouvée"
+                            :allow-clear="true"
+                            name="idLocalisation"
+                        />
+                        @error('idLocalisation')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     {{-- Affectation --}}
                     <div>
                         <label for="Affectation" class="block text-sm font-medium text-gray-700 mb-1">
@@ -69,39 +96,27 @@
                         @enderror
                     </div>
 
-                    {{-- Code Affectation --}}
+                    {{-- Code Affectation (auto-généré) --}}
                     <div>
                         <label for="CodeAffectation" class="block text-sm font-medium text-gray-700 mb-1">
                             Code d'affectation
                         </label>
-                        <div class="flex gap-2">
-                            <div class="flex-1 relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                                    </svg>
-                                </div>
-                                <input 
-                                    type="text"
-                                    id="CodeAffectation"
-                                    wire:model="CodeAffectation"
-                                    placeholder="Ex: BUR, ATEL, MAG"
-                                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('CodeAffectation') border-red-300 @enderror"
-                                    wire:loading.attr="disabled">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                                </svg>
                             </div>
-                            <button 
-                                type="button"
-                                wire:click="generateCodeSuggestion"
-                                class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                                title="Générer un code automatiquement">
-                                Auto
-                            </button>
+                            <input 
+                                type="text"
+                                id="CodeAffectation"
+                                wire:model="CodeAffectation"
+                                readonly
+                                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm bg-gray-50 text-gray-500 cursor-not-allowed sm:text-sm"
+                                title="Code généré automatiquement">
                         </div>
-                        @error('CodeAffectation')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
                         <p class="mt-1 text-xs text-gray-500">
-                            Code optionnel pour identifier l'affectation
+                            Code généré automatiquement
                         </p>
                     </div>
                 </div>

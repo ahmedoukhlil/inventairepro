@@ -25,7 +25,7 @@
             </div>
         </div>
 
-        {{-- Barre de filtres (collapsible) --}}
+        {{-- Barre de filtres --}}
         <div 
             x-data="{ open: false }"
             class="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -66,6 +66,21 @@
                                 class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                         </div>
                     </div>
+
+                    {{-- Filtre par Localisation --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Filtrer par localisation
+                        </label>
+                        <livewire:components.searchable-select
+                            wire:model.live="filterLocalisation"
+                            :options="$this->localisationOptions"
+                            placeholder="Toutes les localisations"
+                            search-placeholder="Rechercher une localisation..."
+                            no-results-text="Aucune localisation trouvée"
+                            :allow-clear="true"
+                        />
+                    </div>
                 </div>
 
                 <div class="mt-4 flex items-center justify-between">
@@ -105,6 +120,9 @@
                                 Code
                             </th>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Localisations
+                            </th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Emplacements
                             </th>
                             <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -121,6 +139,15 @@
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">{{ $affectation->CodeAffectation ?? '-' }}</div>
                                 </td>
+                                <td class="px-4 py-3">
+                                    @if($affectation->localisation)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                            {{ $affectation->localisation->CodeLocalisation ?? $affectation->localisation->Localisation }}
+                                        </span>
+                                    @else
+                                        <span class="text-sm text-gray-400">Non définie</span>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
                                         {{ $affectation->emplacements_count }}
@@ -128,6 +155,16 @@
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end gap-2">
+                                        <a 
+                                            href="{{ route('emplacements.index') }}?affectation={{ $affectation->idAffectation }}"
+                                            class="text-indigo-600 hover:text-indigo-900 transition-colors"
+                                            title="Voir les emplacements">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </a>
+
                                         @if($isAdmin)
                                             <a 
                                                 href="{{ route('affectations.edit', $affectation) }}"
@@ -153,13 +190,13 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="px-4 py-12 text-center">
+                                <td colspan="5" class="px-4 py-12 text-center">
                                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                     </svg>
                                     <h3 class="mt-2 text-sm font-medium text-gray-900">Aucune affectation trouvée</h3>
                                     <p class="mt-1 text-sm text-gray-500">
-                                        @if($search)
+                                        @if($search || $filterLocalisation)
                                             Essayez de modifier vos critères de recherche.
                                         @else
                                             Commencez par créer une nouvelle affectation.

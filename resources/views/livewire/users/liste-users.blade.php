@@ -5,7 +5,7 @@
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">Gestion des Utilisateurs</h1>
                 <p class="mt-1 text-sm text-gray-500">
-                    {{ $stats['total'] }} utilisateur(s) | {{ $stats['actifs'] }} actif(s) | {{ $stats['inactifs'] }} inactif(s)
+                    {{ $stats['total'] }} utilisateur(s) | {{ $stats['admins'] }} administrateur(s) | {{ $stats['agents'] }} agent(s)
                 </p>
             </div>
             
@@ -22,7 +22,7 @@
         </div>
 
         {{-- Statistiques --}}
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div class="flex items-center justify-between">
                     <div>
@@ -58,19 +58,6 @@
                     <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                         <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-500">Actifs</p>
-                        <p class="text-2xl font-bold text-green-600">{{ $stats['actifs'] }}</p>
-                    </div>
-                    <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
                 </div>
@@ -124,27 +111,18 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Rôle
                         </label>
-                        <select 
+                        <livewire:components.searchable-select
                             wire:model.live="filterRole"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option value="all">Tous</option>
-                            <option value="admin">Administrateur</option>
-                            <option value="agent">Agent</option>
-                        </select>
-                    </div>
-
-                    {{-- Filtre Statut --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Statut
-                        </label>
-                        <select 
-                            wire:model.live="filterActif"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option value="all">Tous</option>
-                            <option value="actif">Actifs</option>
-                            <option value="inactif">Inactifs</option>
-                        </select>
+                            :options="[
+                                ['value' => 'all', 'text' => 'Tous les rôles'],
+                                ['value' => 'admin', 'text' => 'Administrateur'],
+                                ['value' => 'agent', 'text' => 'Agent'],
+                            ]"
+                            placeholder="Tous les rôles"
+                            search-placeholder="Rechercher un rôle..."
+                            no-results-text="Aucun rôle trouvé"
+                            :allow-clear="true"
+                        />
                     </div>
                 </div>
 
@@ -202,10 +180,10 @@
                                     class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                wire:click="sortBy('name')">
+                                wire:click="sortBy('users')">
                                 <div class="flex items-center space-x-1">
-                                    <span>Nom</span>
-                                    @if($sortField === 'name')
+                                    <span>Nom d'utilisateur</span>
+                                    @if($sortField === 'users')
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7' }}" />
                                         </svg>
@@ -213,27 +191,15 @@
                                 </div>
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                wire:click="sortBy('email')">
+                                wire:click="sortBy('role')">
                                 <div class="flex items-center space-x-1">
-                                    <span>Email</span>
-                                    @if($sortField === 'email')
+                                    <span>Rôle</span>
+                                    @if($sortField === 'role')
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7' }}" />
                                         </svg>
                                     @endif
                                 </div>
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Rôle
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Service
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Téléphone
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Statut
                             </th>
                             <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Actions
@@ -246,54 +212,39 @@
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <input 
                                         type="checkbox"
-                                        wire:click="toggleSelect({{ $user->id }})"
-                                        @if(in_array($user->id, $selectedUsers)) checked @endif
+                                        wire:click="toggleSelect({{ $user->idUser }})"
+                                        @if(in_array($user->idUser, $selectedUsers)) checked @endif
                                         class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-semibold mr-3">
-                                            {{ strtoupper(substr($user->name, 0, 1)) }}
+                                            {{ strtoupper(substr($user->users, 0, 1)) }}
                                         </div>
                                         <div>
-                                            <div class="text-sm font-medium text-gray-900">{{ $user->name }}</div>
-                                            @if($user->id === auth()->id())
+                                            <div class="text-sm font-medium text-gray-900">{{ $user->users }}</div>
+                                            @if($user->idUser === auth()->id())
                                                 <div class="text-xs text-gray-500">(Vous)</div>
                                             @endif
                                         </div>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">{{ $user->email }}</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $user->role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' }}">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                        {{ $user->role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' }}">
                                         {{ $user->role_name }}
                                     </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">{{ $user->service ?? '-' }}</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">{{ $user->telephone ?? '-' }}</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <button 
-                                        wire:click="toggleActif({{ $user->id }})"
-                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors {{ $user->actif ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-100 text-gray-800 hover:bg-gray-200' }}">
-                                        {{ $user->actif ? 'Actif' : 'Inactif' }}
-                                    </button>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end space-x-2">
                                         <a 
-                                            href="{{ route('users.edit', $user) }}"
+                                            href="{{ route('users.edit', $user->idUser) }}"
                                             class="text-indigo-600 hover:text-indigo-900">
                                             Modifier
                                         </a>
-                                        @if($user->id !== auth()->id())
+                                        @if($user->idUser !== auth()->id())
                                             <button 
-                                                wire:click="delete({{ $user->id }})"
+                                                wire:click="delete({{ $user->idUser }})"
                                                 wire:confirm="Êtes-vous sûr de vouloir supprimer cet utilisateur ?"
                                                 class="text-red-600 hover:text-red-900">
                                                 Supprimer
@@ -304,7 +255,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500">
+                                <td colspan="4" class="px-6 py-8 text-center text-sm text-gray-500">
                                     Aucun utilisateur trouvé
                                 </td>
                             </tr>
