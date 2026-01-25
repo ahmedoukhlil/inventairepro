@@ -43,20 +43,33 @@ class FormSortie extends Component
     {
         if ($value) {
             $this->produitSelectionne = StockProduit::find($value);
-            $this->stockDisponible = $this->produitSelectionne->stock_actuel ?? 0;
+            if ($this->produitSelectionne) {
+                $this->stockDisponible = $this->produitSelectionne->stock_actuel ?? 0;
+                // Réinitialiser la quantité si elle dépasse le stock disponible
+                if ($this->quantite > $this->stockDisponible && $this->stockDisponible > 0) {
+                    $this->quantite = $this->stockDisponible;
+                } elseif ($this->stockDisponible <= 0) {
+                    $this->quantite = 1;
+                }
+            } else {
+                $this->stockDisponible = 0;
+            }
         } else {
             $this->produitSelectionne = null;
             $this->stockDisponible = 0;
+            $this->quantite = 1;
         }
     }
 
     protected function rules()
     {
+        $maxQuantite = $this->stockDisponible > 0 ? $this->stockDisponible : 999999;
+        
         return [
             'date_sortie' => 'required|date',
             'produit_id' => 'required|exists:stock_produits,id',
             'demandeur_id' => 'required|exists:stock_demandeurs,id',
-            'quantite' => 'required|integer|min:1|max:' . ($this->stockDisponible > 0 ? $this->stockDisponible : 999999),
+            'quantite' => ['required', 'integer', 'min:1', 'max:' . $maxQuantite],
             'observations' => 'nullable|string',
         ];
     }
@@ -118,9 +131,30 @@ class FormSortie extends Component
 
     public function save()
     {
+        // Vérifier que le produit est sélectionné
+        if (empty($this->produit_id)) {
+            session()->flash('error', 'Veuillez sélectionner un produit.');
+            return;
+        }
+
+        // Recharger le produit pour avoir les données à jour
+        $produit = StockProduit::find($this->produit_id);
+        if (!$produit) {
+            session()->flash('error', 'Produit introuvable.');
+            return;
+        }
+
+        // Mettre à jour le stock disponible
+        $this->stockDisponible = $produit->stock_actuel ?? 0;
+
         // Vérifier le stock avant validation
-        if ($this->produitSelectionne && $this->quantite > $this->stockDisponible) {
+        if ($this->quantite > $this->stockDisponible) {
             session()->flash('error', 'Stock insuffisant. Stock disponible : ' . $this->stockDisponible);
+            return;
+        }
+
+        if ($this->stockDisponible <= 0) {
+            session()->flash('error', 'Le stock est épuisé pour ce produit.');
             return;
         }
 
@@ -134,10 +168,10 @@ class FormSortie extends Component
             StockSortie::create($validated);
 
             // Recharger le produit pour vérifier l'alerte
-            $produit = StockProduit::find($this->produit_id);
+            $produit->refresh();
             $message = 'Sortie de stock enregistrée avec succès. Le stock a été mis à jour.';
             
-            if ($produit && $produit->en_alerte) {
+            if ($produit->en_alerte) {
                 $message .= ' ⚠️ ALERTE : Le stock est maintenant en dessous du seuil d\'alerte (' . $produit->stock_actuel . '/' . $produit->seuil_alerte . ').';
             }
 

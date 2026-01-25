@@ -110,16 +110,44 @@ class FormEntree extends Component
 
     public function save()
     {
+        // Vérifier que le produit est sélectionné
+        if (empty($this->produit_id)) {
+            session()->flash('error', 'Veuillez sélectionner un produit.');
+            return;
+        }
+
+        // Vérifier que le fournisseur est sélectionné
+        if (empty($this->fournisseur_id)) {
+            session()->flash('error', 'Veuillez sélectionner un fournisseur.');
+            return;
+        }
+
         $validated = $this->validate();
         
         // Ajouter l'utilisateur qui crée l'entrée
         $validated['created_by'] = auth()->user()->idUser;
 
         try {
+            // Vérifier que le produit existe
+            $produit = StockProduit::find($this->produit_id);
+            if (!$produit) {
+                session()->flash('error', 'Le produit sélectionné n\'existe plus.');
+                return;
+            }
+
             // Créer l'entrée (le stock sera mis à jour automatiquement via l'event)
             StockEntree::create($validated);
 
-            session()->flash('success', 'Entrée de stock enregistrée avec succès. Le stock a été mis à jour.');
+            // Recharger le produit pour vérifier l'alerte
+            $produit->refresh();
+            $message = 'Entrée de stock enregistrée avec succès. Le stock a été mis à jour.';
+            
+            // Si c'était la première entrée, informer l'utilisateur
+            if ($produit->stock_initial == $produit->stock_actuel && $produit->stock_initial == $validated['quantite']) {
+                $message .= ' Le stock initial a été défini à ' . $produit->stock_initial . '.';
+            }
+
+            session()->flash('success', $message);
             return redirect()->route('stock.entrees.index');
         } catch (\Exception $e) {
             session()->flash('error', 'Erreur lors de l\'enregistrement : ' . $e->getMessage());

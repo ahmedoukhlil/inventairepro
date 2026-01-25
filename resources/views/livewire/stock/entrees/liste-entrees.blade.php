@@ -45,12 +45,12 @@
                     <input type="text" 
                            wire:model.live.debounce.300ms="search" 
                            placeholder="Rechercher..."
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Produit</label>
-                    <select wire:model.live="filterProduit" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    <select wire:model.live="filterProduit" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
                         <option value="">Tous les produits</option>
                         @foreach($produits as $produit)
                             <option value="{{ $produit->id }}">{{ $produit->libelle }}</option>
@@ -60,7 +60,7 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Fournisseur</label>
-                    <select wire:model.live="filterFournisseur" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    <select wire:model.live="filterFournisseur" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
                         <option value="">Tous les fournisseurs</option>
                         @foreach($fournisseurs as $fournisseur)
                             <option value="{{ $fournisseur->id }}">{{ $fournisseur->libelle }}</option>
@@ -70,12 +70,12 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Date début</label>
-                    <input type="date" wire:model.live="dateDebut" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    <input type="date" wire:model.live="dateDebut" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Date fin</label>
-                    <input type="date" wire:model.live="dateFin" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    <input type="date" wire:model.live="dateFin" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
                 </div>
             </div>
         </div>

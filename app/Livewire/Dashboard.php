@@ -9,6 +9,7 @@ use App\Models\InventaireLocalisation;
 use App\Models\InventaireScan;
 use App\Models\Localisation;
 use App\Models\LocalisationImmo;
+use App\Models\Emplacement;
 use Carbon\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -27,6 +28,7 @@ class Dashboard extends Component
     public $progressionParService = [];
     public $biensCetteAnnee = 0;
     public $nombreBatiments = 0;
+    public $emplacementsInventories = [];
 
     public function mount()
     {
@@ -88,14 +90,11 @@ class Dashboard extends Component
             // Valeur totale du parc (on ne dispose pas de cette info dans gesimmo, donc on laisse à 0)
             $this->valeurTotale = 0;
             
-            // Inventaire en cours
+            // Dernier inventaire (peu importe le statut pour voir l'avancement)
             try {
-                $this->inventaireEnCours = Inventaire::where(function($query) {
-                    $query->where('statut', 'en_cours')
-                          ->orWhere('statut', 'en_preparation');
-                })
-                ->orderBy('annee', 'desc')
-                ->first();
+                $this->inventaireEnCours = Inventaire::orderBy('annee', 'desc')
+                    ->orderBy('created_at', 'desc')
+                    ->first();
             } catch (\Exception $e) {
                 $this->inventaireEnCours = null;
             }
@@ -238,6 +237,81 @@ class Dashboard extends Component
                 'scans_absents' => 0,
                 'scans_deteriores' => 0,
             ];
+        }
+
+        // Charger les emplacements inventoriés
+        $this->loadEmplacementsInventories();
+    }
+
+    private function loadEmplacementsInventories()
+    {
+        if (!$this->inventaireEnCours) {
+            $this->emplacementsInventories = [];
+            return;
+        }
+
+        try {
+            // Récupérer tous les scans de l'inventaire en cours avec leurs relations
+            $scans = InventaireScan::where('inventaire_id', $this->inventaireEnCours->id)
+                ->with(['gesimmo.emplacement.localisation', 'gesimmo.emplacement.affectation'])
+                ->get();
+
+            // Grouper les scans par emplacement
+            $emplacementsData = [];
+            
+            foreach ($scans as $scan) {
+                // Utiliser la relation gesimmo() qui fait le lien avec NumOrdre
+                if ($scan->gesimmo && $scan->gesimmo->emplacement) {
+                    $emplacement = $scan->gesimmo->emplacement;
+                    $emplacementId = $emplacement->idEmplacement;
+                    
+                    // Initialiser l'emplacement s'il n'existe pas encore
+                    if (!isset($emplacementsData[$emplacementId])) {
+                        // Nom de la localisation
+                        $localisationNom = 'N/A';
+                        if ($emplacement->localisation) {
+                            $code = $emplacement->localisation->CodeLocalisation ?? '';
+                            $localisationNom = ($code ? $code . ' - ' : '') . $emplacement->localisation->Localisation;
+                        }
+
+                        // Nom de l'affectation
+                        $affectationNom = $emplacement->affectation ? $emplacement->affectation->Affectation : 'N/A';
+
+                        // Nombre total de biens dans cet emplacement
+                        $totalBiens = $emplacement->immobilisations()->count();
+
+                        $emplacementsData[$emplacementId] = [
+                            'id' => $emplacement->idEmplacement,
+                            'nom' => $emplacement->Emplacement,
+                            'code' => $emplacement->CodeEmplacement ?? '',
+                            'localisation' => $localisationNom,
+                            'affectation' => $affectationNom,
+                            'biens_scannes' => 0,
+                            'total_biens' => $totalBiens,
+                        ];
+                    }
+                    
+                    // Incrémenter le compteur de biens scannés
+                    $emplacementsData[$emplacementId]['biens_scannes']++;
+                }
+            }
+
+            // Calculer la progression et formater les données
+            $this->emplacementsInventories = collect($emplacementsData)
+                ->map(function ($data) {
+                    $data['progression'] = $data['total_biens'] > 0 
+                        ? round(($data['biens_scannes'] / $data['total_biens']) * 100, 1) 
+                        : 0;
+                    return $data;
+                })
+                ->sortByDesc('biens_scannes')
+                ->values()
+                ->toArray();
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors du chargement des emplacements inventoriés: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            $this->emplacementsInventories = [];
         }
     }
 

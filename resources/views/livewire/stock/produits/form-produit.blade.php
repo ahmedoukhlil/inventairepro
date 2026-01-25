@@ -146,8 +146,8 @@
                                 <div class="text-2xl font-bold text-blue-900 mt-1">{{ number_format($produit->entrees()->sum('quantite'), 0, ',', ' ') }}</div>
                             </div>
                             <div>
-                                <div class="text-xs font-semibold text-purple-600 uppercase">Total sorties</div>
-                                <div class="text-2xl font-bold text-purple-900 mt-1">{{ number_format($produit->sorties()->sum('quantite'), 0, ',', ' ') }}</div>
+                                <div class="text-xs font-semibold text-indigo-600 uppercase">Total sorties</div>
+                                <div class="text-2xl font-bold text-indigo-900 mt-1">{{ number_format($produit->sorties()->sum('quantite'), 0, ',', ' ') }}</div>
                             </div>
                             <div>
                                 <div class="text-xs font-semibold text-green-600 uppercase">Stock actuel</div>

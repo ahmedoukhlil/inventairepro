@@ -81,7 +81,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Total sorties</p>
-                        <p class="text-3xl font-bold text-purple-600 mt-2">{{ number_format($produit->total_sorties, 0, ',', ' ') }}</p>
+                        <p class="text-3xl font-bold text-indigo-600 mt-2">{{ number_format($produit->total_sorties, 0, ',', ' ') }}</p>
                         <p class="text-xs text-gray-500 mt-1">{{ $produit->sorties()->count() }} sortie(s)</p>
                     </div>
                     <div class="text-4xl">📤</div>
@@ -225,7 +225,7 @@
                                             <div class="text-xs text-gray-500">{{ $sortie->demandeur->poste_service ?? '' }}</div>
                                         </td>
                                         <td class="px-4 py-3 text-center">
-                                            <span class="px-3 py-1 text-sm font-semibold bg-purple-100 text-purple-800 rounded-full">
+                                            <span class="px-3 py-1 text-sm font-semibold bg-indigo-100 text-indigo-800 rounded-full">
                                                 -{{ $sortie->quantite }}
                                             </span>
                                         </td>
@@ -263,12 +263,12 @@
                                             @if($mouvement['type'] === 'entree')
                                                 <span class="px-2 py-1 text-xs font-semibold bg-green-100 text-green-800 rounded">📥 Entrée</span>
                                             @else
-                                                <span class="px-2 py-1 text-xs font-semibold bg-purple-100 text-purple-800 rounded">📤 Sortie</span>
+                                                <span class="px-2 py-1 text-xs font-semibold bg-indigo-100 text-indigo-800 rounded">📤 Sortie</span>
                                             @endif
                                         </td>
                                         <td class="px-4 py-3 text-sm text-gray-900">{{ $mouvement['tiers'] }}</td>
                                         <td class="px-4 py-3 text-center">
-                                            <span class="text-sm font-semibold {{ $mouvement['type'] === 'entree' ? 'text-green-600' : 'text-purple-600' }}">
+                                            <span class="text-sm font-semibold {{ $mouvement['type'] === 'entree' ? 'text-green-600' : 'text-indigo-600' }}">
                                                 {{ $mouvement['type'] === 'entree' ? '+' : '-' }}{{ $mouvement['quantite'] }}
                                             </span>
                                         </td>

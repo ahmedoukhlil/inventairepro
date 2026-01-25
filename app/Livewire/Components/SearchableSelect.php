@@ -51,10 +51,19 @@ class SearchableSelect extends Component
         // Émettre l'événement pour notifier le parent
         $this->dispatch('option-selected', value: $optionValue);
         
-        // Si la valeur a changé, déclencher updatedValue pour que Livewire appelle updated* dans le parent
+        // Si la valeur a changé, déclencher un refresh pour synchroniser avec le parent
         if ($oldValue !== $optionValue) {
             $this->dispatch('$refresh');
         }
+    }
+
+    /**
+     * Hook appelé quand la valeur change depuis le parent
+     */
+    public function updatedValue($value)
+    {
+        // Réinitialiser la recherche quand la valeur change
+        $this->search = '';
     }
 
     /**
@@ -67,7 +76,7 @@ class SearchableSelect extends Component
         $this->search = '';
         $this->dispatch('option-cleared');
         
-        // Si la valeur a changé, déclencher updatedValue
+        // Si la valeur a changé, déclencher un refresh pour synchroniser avec le parent
         if ($oldValue !== '') {
             $this->dispatch('$refresh');
         }

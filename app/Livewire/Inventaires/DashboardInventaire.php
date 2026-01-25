@@ -173,7 +173,7 @@ class DashboardInventaire extends Component
         }
 
         // Filtre par agent
-        if ($this->filterAgent !== 'all') {
+        if ($this->filterAgent !== 'all' && !empty($this->filterAgent)) {
             $query->where('user_id', $this->filterAgent);
         }
 
@@ -191,6 +191,9 @@ class DashboardInventaire extends Component
         // Tri manuel si nécessaire (pour le code de localisation)
         if ($this->sortField === 'code') {
             $results = $results->sortBy(function ($invLoc) {
+                if (!$invLoc->localisation) {
+                    return '';
+                }
                 return $invLoc->localisation->CodeLocalisation ?? $invLoc->localisation->Localisation ?? '';
             }, SORT_REGULAR, $this->sortDirection === 'desc');
         }
@@ -208,6 +211,7 @@ class DashboardInventaire extends Component
             ->with('agent')
             ->get()
             ->pluck('agent')
+            ->filter() // Enlever les valeurs null
             ->unique('idUser')
             ->values();
     }
@@ -296,21 +300,38 @@ class DashboardInventaire extends Component
         }
 
         // Biens absents de valeur élevée (>100k MRU)
+        // Note: Les scans utilisent gesimmo, pas bien directement
         $biensAbsents = $this->inventaire->inventaireScans()
             ->where('statut_scan', 'absent')
-            ->with('bien')
+            ->with(['gesimmo', 'bien'])
             ->get()
             ->filter(function ($scan) {
-                return $scan->bien && $scan->bien->valeur_acquisition > 100000;
+                // Vérifier si c'est un bien ou un gesimmo
+                if ($scan->bien && isset($scan->bien->valeur_acquisition)) {
+                    return $scan->bien->valeur_acquisition > 100000;
+                }
+                // Pour gesimmo, on n'a pas de valeur_acquisition, donc on ignore cette alerte
+                return false;
             })
             ->take(10);
         
         foreach ($biensAbsents as $scan) {
+            $code = 'N/A';
+            $designation = 'N/A';
+            
+            if ($scan->gesimmo) {
+                $code = "GS{$scan->gesimmo->NumOrdre}";
+                $designation = $scan->gesimmo->designation->designation ?? 'N/A';
+            } elseif ($scan->bien) {
+                $code = $scan->bien->code_inventaire ?? 'N/A';
+                $designation = $scan->bien->designation ?? 'N/A';
+            }
+            
             $alertes['biens_absents_valeur_haute'][] = [
                 'bien_id' => $scan->bien_id,
-                'code' => $scan->bien->code_inventaire,
-                'designation' => $scan->bien->designation,
-                'valeur' => $scan->bien->valeur_acquisition,
+                'code' => $code,
+                'designation' => $designation,
+                'valeur' => $scan->bien->valeur_acquisition ?? 0,
             ];
         }
 
@@ -468,9 +489,17 @@ class DashboardInventaire extends Component
         }
 
         try {
+            // Convertir userId en int si ce n'est pas vide, sinon null
+            $userIdValue = !empty($userId) ? (int)$userId : null;
+            
             $invLoc->update([
-                'user_id' => $userId ?: null,
+                'user_id' => $userIdValue,
             ]);
+            
+            // Recharger les relations
+            $this->inventaire->refresh();
+            $this->inventaire->load(['inventaireLocalisations.agent']);
+            
             session()->flash('success', 'Localisation réassignée avec succès.');
         } catch (\Exception $e) {
             session()->flash('error', 'Erreur lors de la réassignation: ' . $e->getMessage());
@@ -488,6 +517,41 @@ class DashboardInventaire extends Component
             $this->sortField = $field;
             $this->sortDirection = 'asc';
         }
+    }
+
+    /**
+     * Propriété calculée : Retourne les données formatées pour le graphique de progression par localisation
+     */
+    public function getLocalisationsGraphDataProperty(): array
+    {
+        return $this->inventaireLocalisations->take(10)->map(function($loc) {
+            return [
+                'statut' => $loc->statut,
+                'nombre_biens_attendus' => $loc->nombre_biens_attendus ?? 0,
+                'nombre_biens_scannes' => $loc->nombre_biens_scannes ?? 0,
+                'localisation' => [
+                    'CodeLocalisation' => $loc->localisation->CodeLocalisation ?? null,
+                    'Localisation' => $loc->localisation->Localisation ?? 'N/A',
+                ]
+            ];
+        })->values()->toArray();
+    }
+
+    /**
+     * Propriété calculée : Retourne les données formatées pour le graphique de progression temporelle
+     */
+    public function getScansGraphDataProperty(): array
+    {
+        return $this->inventaire->inventaireScans()
+            ->orderBy('date_scan')
+            ->get()
+            ->map(function($scan) {
+                return [
+                    'date_scan' => $scan->date_scan ? $scan->date_scan->toDateTimeString() : null,
+                ];
+            })
+            ->values()
+            ->toArray();
     }
 
     /**

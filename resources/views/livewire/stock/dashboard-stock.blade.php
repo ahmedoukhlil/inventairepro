@@ -46,7 +46,7 @@
                     <div>
                         <p class="text-sm font-medium text-gray-600">Entrées (ce mois)</p>
                         <p class="text-3xl font-bold text-green-600 mt-2">{{ number_format($entreesduMois, 0, ',', ' ') }}</p>
-                        <a href="{{ route('stock.entrees.index') }}" class="text-sm text-blue-600 hover:text-blue-800 mt-2 inline-block">
+                        <a href="{{ route('stock.entrees.index') }}" class="text-sm text-green-600 hover:text-green-800 mt-2 inline-block">
                             Voir les entrées →
                         </a>
                     </div>
@@ -59,8 +59,8 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Sorties (ce mois)</p>
-                        <p class="text-3xl font-bold text-purple-600 mt-2">{{ number_format($sortiesDuMois, 0, ',', ' ') }}</p>
-                        <a href="{{ route('stock.sorties.index') }}" class="text-sm text-blue-600 hover:text-blue-800 mt-2 inline-block">
+                        <p class="text-3xl font-bold text-indigo-600 mt-2">{{ number_format($sortiesDuMois, 0, ',', ' ') }}</p>
+                        <a href="{{ route('stock.sorties.index') }}" class="text-sm text-indigo-600 hover:text-indigo-800 mt-2 inline-block">
                             Voir les sorties →
                         </a>
                     </div>
@@ -177,7 +177,7 @@
             </h3>
             <div class="space-y-3">
                 @forelse($derniersMovements as $mouvement)
-                    <div class="flex items-center justify-between p-4 {{ $mouvement['type'] === 'entree' ? 'bg-green-50' : 'bg-purple-50' }} rounded-lg">
+                    <div class="flex items-center justify-between p-4 {{ $mouvement['type'] === 'entree' ? 'bg-green-50' : 'bg-indigo-50' }} rounded-lg">
                         <div class="flex items-center flex-1">
                             <span class="text-2xl mr-3">{{ $mouvement['type'] === 'entree' ? '📥' : '📤' }}</span>
                             <div>
@@ -191,7 +191,7 @@
                             </div>
                         </div>
                         <div>
-                            <span class="px-3 py-1 text-sm font-semibold {{ $mouvement['type'] === 'entree' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800' }} rounded-full">
+                            <span class="px-3 py-1 text-sm font-semibold {{ $mouvement['type'] === 'entree' ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800' }} rounded-full">
                                 {{ $mouvement['type'] === 'entree' ? '+' : '-' }}{{ $mouvement['quantite'] }}
                             </span>
                         </div>
@@ -218,7 +218,7 @@
                         <span class="font-medium">Nouvelle entrée</span>
                     </a>
                     <a href="{{ route('stock.sorties.create') }}" 
-                       class="flex items-center justify-center px-4 py-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors">
+                       class="flex items-center justify-center px-4 py-3 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors">
                         <span class="text-2xl mr-2">📤</span>
                         <span class="font-medium">Nouvelle sortie</span>
                     </a>

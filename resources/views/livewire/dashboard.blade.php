@@ -66,25 +66,39 @@
             </a>
         </div>
 
-        <!-- Card 3 - Inventaire en cours -->
+        <!-- Card 3 - Inventaire -->
         <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6">
             <div class="flex items-center justify-between">
                 <div class="flex-1">
-                    <p class="text-sm font-medium text-gray-600">Inventaire en cours</p>
+                    <p class="text-sm font-medium text-gray-600">Dernier inventaire</p>
                     @if($inventaireEnCours)
                         <p class="text-lg font-bold text-gray-900 mt-2">Inventaire {{ $inventaireEnCours->annee }}</p>
+                        <div class="mt-2 mb-2">
+                            @if($inventaireEnCours->statut === 'en_preparation')
+                                <span class="text-xs px-2 py-1 bg-gray-100 text-gray-800 rounded-full">En préparation</span>
+                            @elseif($inventaireEnCours->statut === 'en_cours')
+                                <span class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">En cours</span>
+                            @elseif($inventaireEnCours->statut === 'termine')
+                                <span class="text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded-full">Terminé</span>
+                            @elseif($inventaireEnCours->statut === 'cloture')
+                                <span class="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Clôturé</span>
+                            @endif
+                        </div>
                         <div class="mt-3">
                             <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
                                 <span>Progression</span>
                                 <span>{{ round($statistiquesInventaire['progression'] ?? 0, 1) }}%</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                                <div class="h-2 rounded-full transition-all duration-300
+                                    {{ ($statistiquesInventaire['progression'] ?? 0) >= 100 ? 'bg-green-600' : 
+                                       (($statistiquesInventaire['progression'] ?? 0) >= 50 ? 'bg-blue-600' : 
+                                       (($statistiquesInventaire['progression'] ?? 0) > 0 ? 'bg-yellow-500' : 'bg-gray-400')) }}" 
                                      style="width: {{ $statistiquesInventaire['progression'] ?? 0 }}%"></div>
                             </div>
                         </div>
                     @else
-                        <p class="text-lg font-bold text-gray-400 mt-2">Aucun inventaire actif</p>
+                        <p class="text-lg font-bold text-gray-400 mt-2">Aucun inventaire</p>
                     @endif
                 </div>
                 <div class="text-4xl">📋</div>
@@ -122,13 +136,20 @@
                             <span class="text-sm font-normal text-gray-500">(en préparation)</span>
                         @elseif($inventaireEnCours->statut === 'en_cours')
                             <span class="text-sm font-normal text-blue-600">(en cours)</span>
+                        @elseif($inventaireEnCours->statut === 'termine')
+                            <span class="text-sm font-normal text-orange-600">(terminé)</span>
+                        @elseif($inventaireEnCours->statut === 'cloture')
+                            <span class="text-sm font-normal text-green-600">(clôturé)</span>
                         @endif
                     </h3>
-                    @if($inventaireEnCours->date_debut)
-                        <p class="text-sm text-gray-500 mt-1">
-                            Démarré le {{ \Carbon\Carbon::parse($inventaireEnCours->date_debut)->format('d/m/Y') }}
-                        </p>
-                    @endif
+                    <div class="text-sm text-gray-500 mt-1 space-y-1">
+                        @if($inventaireEnCours->date_debut)
+                            <p>Démarré le {{ \Carbon\Carbon::parse($inventaireEnCours->date_debut)->format('d/m/Y') }}</p>
+                        @endif
+                        @if($inventaireEnCours->date_fin)
+                            <p>Terminé le {{ \Carbon\Carbon::parse($inventaireEnCours->date_fin)->format('d/m/Y') }}</p>
+                        @endif
+                    </div>
                 </div>
                 <a href="{{ route('inventaires.show', $inventaireEnCours->id) }}" 
                    class="text-sm text-blue-600 hover:text-blue-800 font-medium">
@@ -279,7 +300,7 @@
 
             <!-- Graphiques -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" 
-                 @if($inventaireEnCours) wire:poll.10s="refresh" @endif>
+                 @if($inventaireEnCours && in_array($inventaireEnCours->statut, ['en_preparation', 'en_cours'])) wire:poll.10s="refresh" @endif>
                 <!-- Graphique 1 - Pie chart statuts -->
                 <div class="bg-gray-50 rounded-lg p-4">
                     <h4 class="text-sm font-semibold text-gray-700 mb-4">Répartition des statuts</h4>
@@ -291,6 +312,86 @@
                     <h4 class="text-sm font-semibold text-gray-700 mb-4">Progression par service</h4>
                     <canvas id="servicesChart" height="250"></canvas>
                 </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Section Emplacements inventoriés -->
+    @if($inventaireEnCours && !empty($emplacementsInventories))
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                        <span class="text-2xl mr-2">🏢</span>
+                        Emplacements inventoriés
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">
+                        {{ count($emplacementsInventories) }} emplacement(s) avec des biens scannés
+                    </p>
+                </div>
+                <a href="{{ route('emplacements.index') }}" 
+                   class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                    Voir tous les emplacements →
+                </a>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emplacement</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Localisation</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Affectation</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Biens scannés</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total biens</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progression</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @foreach($emplacementsInventories as $emplacement)
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-medium text-gray-900">
+                                        {{ $emplacement['nom'] }}
+                                    </div>
+                                    @if(!empty($emplacement['code']))
+                                        <div class="text-xs text-gray-500">{{ $emplacement['code'] }}</div>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-700">
+                                    {{ $emplacement['localisation'] }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-700">
+                                    {{ $emplacement['affectation'] }}
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="px-3 py-1 text-sm font-semibold bg-blue-100 text-blue-800 rounded-full">
+                                        {{ number_format($emplacement['biens_scannes'], 0, ',', ' ') }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-center text-sm text-gray-700 font-medium">
+                                    {{ number_format($emplacement['total_biens'], 0, ',', ' ') }}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center">
+                                        <div class="w-24 bg-gray-200 rounded-full h-2.5 mr-3">
+                                            <div class="h-2.5 rounded-full transition-all duration-300
+                                                {{ $emplacement['progression'] >= 100 ? 'bg-green-600' : 
+                                                   ($emplacement['progression'] >= 50 ? 'bg-blue-600' : 
+                                                   ($emplacement['progression'] > 0 ? 'bg-yellow-500' : 'bg-gray-400')) }}" 
+                                                style="width: {{ min($emplacement['progression'], 100) }}%"></div>
+                                        </div>
+                                        <span class="text-sm font-medium
+                                            {{ $emplacement['progression'] >= 100 ? 'text-green-600' : 
+                                               ($emplacement['progression'] > 0 ? 'text-gray-700' : 'text-gray-400') }}">
+                                            {{ round($emplacement['progression'], 1) }}%
+                                        </span>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
         </div>
     @endif

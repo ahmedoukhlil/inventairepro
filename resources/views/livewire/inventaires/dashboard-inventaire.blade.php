@@ -20,53 +20,8 @@
         ];
     @endphp
 
-    {{-- Indicateur de mise à jour discret et élégant --}}
-    @if(in_array($inventaire->statut, ['en_preparation', 'en_cours']))
-        <div 
-            x-data="{ 
-                updating: false,
-                lastUpdate: null,
-                init() {
-                    // Écouter les mises à jour Livewire
-                    Livewire.on('statistiques-updated', () => {
-                        this.updating = true;
-                        this.lastUpdate = new Date();
-                        setTimeout(() => {
-                            this.updating = false;
-                        }, 1500);
-                    });
-                    
-                    // Afficher un indicateur subtil lors du polling
-                    this.$watch('$wire.__instance.loading', (loading) => {
-                        if (loading && !this.updating) {
-                            this.updating = true;
-                            setTimeout(() => {
-                                this.updating = false;
-                            }, 800);
-                        }
-                    });
-                }
-            }"
-            class="fixed top-4 right-4 z-50 pointer-events-none"
-            x-show="updating"
-            x-transition:enter="transition ease-out duration-200"
-            x-transition:enter-start="opacity-0 transform scale-95 translate-y-1"
-            x-transition:enter-end="opacity-100 transform scale-100 translate-y-0"
-            x-transition:leave="transition ease-in duration-150"
-            x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-            style="display: none;">
-            <div class="bg-indigo-600/95 backdrop-blur-sm text-white px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2 text-xs font-medium">
-                <svg class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span>Actualisation...</span>
-            </div>
-        </div>
-        
-        {{-- Polling optimisé (10 secondes) pour les statistiques en temps réel --}}
-        <div wire:poll.10s="refreshStatistiques" wire:key="stats-poll-{{ $inventaire->id }}" wire:loading.class="opacity-50" class="transition-opacity duration-300"></div>
-    @endif
+    {{-- Actualisation automatique désactivée --}}
+    {{-- Le polling automatique a été complètement supprimé pour éviter les actualisations non désirées --}}
 
     {{-- Header avec breadcrumb et actions --}}
     <div class="mb-6">
@@ -108,11 +63,15 @@
                     </span>
                 </h1>
                 <p class="mt-1 text-sm text-gray-500">
-                    Du {{ $inventaire->date_debut->format('d/m/Y') }} 
-                    @if($inventaire->date_fin)
-                        au {{ $inventaire->date_fin->format('d/m/Y') }}
+                    @if($inventaire->date_debut)
+                        Du {{ $inventaire->date_debut->format('d/m/Y') }} 
+                        @if($inventaire->date_fin)
+                            au {{ $inventaire->date_fin->format('d/m/Y') }}
+                        @else
+                            - En cours...
+                        @endif
                     @else
-                        - En cours...
+                        Date de début non définie
                     @endif
                 </p>
             </div>
@@ -283,8 +242,12 @@
             <p class="text-4xl font-bold text-gray-900 mb-3">{{ $this->statistiques['duree_jours'] }}</p>
             <p class="text-xs text-gray-500">jour(s)</p>
             <p class="text-xs text-gray-400 mt-2">
-                {{ $inventaire->date_debut->format('d/m/Y') }} → 
-                {{ $inventaire->date_fin ? $inventaire->date_fin->format('d/m/Y') : 'Aujourd\'hui' }}
+                @if($inventaire->date_debut)
+                    {{ $inventaire->date_debut->format('d/m/Y') }} → 
+                    {{ $inventaire->date_fin ? $inventaire->date_fin->format('d/m/Y') : 'Aujourd\'hui' }}
+                @else
+                    Date non définie
+                @endif
             </p>
         </div>
     </div>
@@ -355,7 +318,7 @@
             <div class="grid grid-cols-3 gap-4 text-sm">
                 <div class="flex items-center justify-between">
                     <span class="text-gray-600">Début:</span>
-                    <span class="font-medium text-gray-900">{{ $inventaire->date_debut ? $inventaire->date_debut->format('d/m/Y') : 'N/A' }}</span>
+                    <span class="font-medium text-gray-900">{{ $inventaire->date_debut ? $inventaire->date_debut->format('d/m/Y') : 'Non défini' }}</span>
                 </div>
                 <div class="flex items-center justify-between">
                     <span class="text-gray-600">Scans aujourd'hui:</span>
@@ -430,7 +393,7 @@
                         class="block px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                         <option value="all">Tous les agents</option>
                         @foreach($this->agents as $agent)
-                            <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                            <option value="{{ $agent->idUser }}">{{ $agent->users ?? $agent->name ?? 'N/A' }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -464,27 +427,56 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($this->inventaireLocalisations as $invLoc)
                         @php
-                            $progression = $invLoc->nombre_biens_attendus > 0 
+                            $progression = $invLoc->progression ?? ($invLoc->nombre_biens_attendus > 0 
                                 ? round(($invLoc->nombre_biens_scannes / $invLoc->nombre_biens_attendus) * 100, 1) 
-                                : 0;
-                            $conformite = $invLoc->taux_conformite;
+                                : 0);
+                            $conformite = $invLoc->taux_conformite ?? 0;
                         @endphp
-                        <tr class="hover:bg-gray-50">
+                        <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-4 py-3 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">{{ $invLoc->localisation->CodeLocalisation ?? $invLoc->localisation->Localisation ?? 'N/A' }}</div>
+                                @if($invLoc->localisation)
+                                    <div class="text-sm font-medium text-gray-900">
+                                        {{ $invLoc->localisation->CodeLocalisation ?? 'N/A' }}
+                                    </div>
+                                @else
+                                    <div class="text-sm font-medium text-red-600">Localisation introuvable</div>
+                                @endif
                             </td>
                             <td class="px-4 py-3">
-                                <div class="text-sm text-gray-900">{{ $invLoc->localisation->Localisation ?? 'N/A' }}</div>
+                                @if($invLoc->localisation)
+                                    <div class="text-sm text-gray-900">{{ $invLoc->localisation->Localisation ?? 'N/A' }}</div>
+                                @else
+                                    <div class="text-sm text-red-600">N/A</div>
+                                @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 @if(isset($statutsLoc[$invLoc->statut]))
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statutsLoc[$invLoc->statut]['color'] }}">
+                                        @if(isset($statutsLoc[$invLoc->statut]['icon']))
+                                            @if($statutsLoc[$invLoc->statut]['icon'] === 'clock')
+                                                ⏳
+                                            @elseif($statutsLoc[$invLoc->statut]['icon'] === 'play')
+                                                🔄
+                                            @elseif($statutsLoc[$invLoc->statut]['icon'] === 'check')
+                                                ✅
+                                            @endif
+                                        @endif
                                         {{ $statutsLoc[$invLoc->statut]['label'] }}
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        {{ ucfirst(str_replace('_', ' ', $invLoc->statut ?? 'N/A')) }}
                                     </span>
                                 @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                {{ $invLoc->nombre_biens_scannes }}/{{ $invLoc->nombre_biens_attendus }}
+                                <span class="font-semibold {{ $invLoc->nombre_biens_scannes > 0 ? 'text-blue-600' : 'text-gray-500' }}">
+                                    {{ number_format($invLoc->nombre_biens_scannes ?? 0, 0, ',', ' ') }}
+                                </span>
+                                <span class="text-gray-400">/</span>
+                                <span class="text-gray-700">
+                                    {{ number_format($invLoc->nombre_biens_attendus ?? 0, 0, ',', ' ') }}
+                                </span>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <div class="flex items-center">
@@ -497,41 +489,55 @@
                                 </div>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
-                                <span class="text-sm font-medium text-gray-900">{{ round($conformite, 1) }}%</span>
+                                @php
+                                    $conformiteColor = $conformite >= 90 ? 'text-green-600' : ($conformite >= 70 ? 'text-yellow-600' : ($conformite > 0 ? 'text-orange-600' : 'text-gray-400'));
+                                @endphp
+                                <span class="text-sm font-medium {{ $conformiteColor }}">{{ number_format($conformite, 1) }}%</span>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
-                                @if($invLoc->agent)
-                                    <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                                            <span class="text-xs font-medium text-indigo-600">{{ substr($invLoc->agent->name, 0, 1) }}</span>
+                                <div class="space-y-2">
+                                    @if($invLoc->agent)
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                                                <span class="text-xs font-medium text-indigo-600">{{ strtoupper(substr($invLoc->agent->users ?? 'N', 0, 1)) }}</span>
+                                            </div>
+                                            <div class="ml-2">
+                                                <div class="text-sm font-medium text-gray-900">{{ $invLoc->agent->users ?? 'N/A' }}</div>
+                                            </div>
                                         </div>
-                                        <div class="ml-2">
-                                            <div class="text-sm font-medium text-gray-900">{{ $invLoc->agent->name }}</div>
-                                        </div>
-                                    </div>
-                                @else
-                                    <span class="text-sm text-gray-400">Non assigné</span>
-                                @endif
-                                @if($isAdmin)
-                                    <select 
-                                        wire:change="reassignerLocalisation({{ $invLoc->id }}, $event.target.value)"
-                                        class="mt-1 block w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500">
-                                        <option value="">Réassigner...</option>
-                                        @foreach($this->agents as $agent)
-                                            <option value="{{ $agent->id }}" {{ $invLoc->user_id == $agent->id ? 'selected' : '' }}>
-                                                {{ $agent->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                @endif
+                                    @else
+                                        <span class="text-sm text-gray-400 italic">Non assigné</span>
+                                    @endif
+                                    @if($isAdmin)
+                                        <select 
+                                            wire:change="reassignerLocalisation({{ $invLoc->id }}, $event.target.value)"
+                                            class="mt-1 block w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500">
+                                            <option value="">Réassigner...</option>
+                                            @foreach($this->agents as $agent)
+                                                <option value="{{ $agent->idUser }}" {{ $invLoc->user_id == $agent->idUser ? 'selected' : '' }}>
+                                                    {{ $agent->users ?? 'N/A' }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    @endif
+                                </div>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                                 @if($invLoc->date_debut_scan && $invLoc->date_fin_scan)
-                                    {{ round($invLoc->date_debut_scan->diffInHours($invLoc->date_fin_scan), 1) }}h
+                                    @php
+                                        $heures = $invLoc->date_debut_scan->diffInHours($invLoc->date_fin_scan);
+                                        $jours = floor($heures / 24);
+                                        $heuresRestantes = $heures % 24;
+                                    @endphp
+                                    @if($jours > 0)
+                                        {{ $jours }}j {{ $heuresRestantes }}h
+                                    @else
+                                        {{ $heures }}h
+                                    @endif
                                 @elseif($invLoc->date_debut_scan)
-                                    En cours...
+                                    <span class="text-blue-600 font-medium">En cours...</span>
                                 @else
-                                    -
+                                    <span class="text-gray-400">-</span>
                                 @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
@@ -743,7 +749,7 @@
             // Graphique 2 : Progression par localisation (Bar Chart amélioré)
             const ctxProgLoc = document.getElementById('chart-progression-loc');
             if (ctxProgLoc) {
-                const invLocs = @json($this->inventaireLocalisations->take(10));
+                const invLocs = @json($this->localisationsGraphData);
                 const progressionData = invLocs.map(loc => {
                     const total = loc.nombre_biens_attendus || 1;
                     return Math.round((loc.nombre_biens_scannes / total) * 100);
@@ -752,7 +758,7 @@
                 chartProgLoc = new Chart(ctxProgLoc, {
                     type: 'bar',
                     data: {
-                        labels: invLocs.map(loc => loc.localisation.code),
+                        labels: invLocs.map(loc => loc.localisation?.CodeLocalisation ?? loc.localisation?.Localisation ?? 'N/A'),
                         datasets: [{
                             label: 'Progression (%)',
                             data: progressionData,
@@ -793,7 +799,7 @@
                                     title: function(context) {
                                         const index = context[0].dataIndex;
                                         const loc = invLocs[index];
-                                        return loc.localisation.designation || loc.localisation.code;
+                                        return loc.localisation?.Localisation ?? loc.localisation?.CodeLocalisation ?? 'N/A';
                                     },
                                     label: function(context) {
                                         const index = context.dataIndex;
@@ -849,8 +855,8 @@
             // Graphique 3 : Progression temporelle (Line Chart amélioré)
             const ctxTemp = document.getElementById('chart-progression-temporelle');
             if (ctxTemp) {
-                const scans = @json($this->inventaire->inventaireScans()->orderBy('date_scan')->get());
-                const objectif = {{ $this->statistiques['total_biens_attendus'] }};
+                const scans = @json($this->scansGraphData);
+                const objectif = {{ $this->statistiques['total_biens_attendus'] ?? 0 }};
                 
                 // Grouper les scans par date et calculer le cumul correct
                 const scansParDate = {};
@@ -1020,17 +1026,17 @@
             
             // Fonction pour mettre à jour les graphiques de manière élégante
             function updateCharts() {
-                // Les graphiques seront mis à jour automatiquement via wire:poll
-                // qui recharge les données, et on utilise wire:key pour forcer le re-render
+                // Les graphiques seront mis à jour manuellement si nécessaire
+                // L'actualisation automatique est désactivée
             }
             
-            // Écouter les événements Livewire pour mettre à jour les graphiques
-            document.addEventListener('livewire:init', () => {
-                Livewire.on('statistiques-updated', () => {
-                    // Les graphiques seront recréés automatiquement lors du re-render
-                    // grâce aux wire:key sur les éléments
-                });
-            });
+            // Écouter les événements Livewire pour mettre à jour les graphiques (désactivé)
+            // document.addEventListener('livewire:init', () => {
+            //     Livewire.on('statistiques-updated', () => {
+            //         // Les graphiques seront recréés automatiquement lors du re-render
+            //         // grâce aux wire:key sur les éléments
+            //     });
+            // });
         });
     </script>
 
