@@ -60,6 +60,18 @@ class FormEntree extends Component
     }
 
     /**
+     * Propriété calculée : Produit sélectionné pour affichage
+     */
+    public function getProduitSelectionneProperty()
+    {
+        if (empty($this->produit_id)) {
+            return null;
+        }
+
+        return StockProduit::with(['categorie', 'magasin'])->find($this->produit_id);
+    }
+
+    /**
      * Options pour le select Produits
      */
     public function getProduitOptionsProperty()

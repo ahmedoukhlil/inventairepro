@@ -186,10 +186,17 @@ class StockProduit extends Model
 
     /**
      * Ajoute du stock (lors d'une entrée)
+     * Si stock_initial est 0, la première entrée définit le stock initial
      */
     public function ajouterStock(int $quantite): bool
     {
         $this->stock_actuel += $quantite;
+        
+        // Si c'est la première entrée (stock_initial = 0), définir le stock initial
+        if ($this->stock_initial == 0) {
+            $this->stock_initial = $this->stock_actuel;
+        }
+        
         return $this->save();
     }
 

@@ -47,6 +47,50 @@
                         :key="'produit-select'"
                     />
                     @error('produit_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+
+                    @if($this->produitSelectionne)
+                        <div class="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <h4 class="text-sm font-semibold text-gray-900 mb-2">Informations du produit</h4>
+                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                    <span class="text-gray-600">Stock actuel :</span>
+                                    <span class="font-semibold text-gray-900 ml-2">{{ number_format($this->produitSelectionne->stock_actuel, 0, ',', ' ') }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-600">Stock initial :</span>
+                                    <span class="font-semibold text-gray-900 ml-2">
+                                        @if($this->produitSelectionne->stock_initial == 0)
+                                            <span class="text-orange-600">Non défini</span>
+                                        @else
+                                            {{ number_format($this->produitSelectionne->stock_initial, 0, ',', ' ') }}
+                                        @endif
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-600">Seuil d'alerte :</span>
+                                    <span class="font-semibold text-gray-900 ml-2">{{ number_format($this->produitSelectionne->seuil_alerte, 0, ',', ' ') }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-600">Magasin :</span>
+                                    <span class="font-semibold text-gray-900 ml-2">{{ $this->produitSelectionne->magasin->magasin ?? 'N/A' }}</span>
+                                </div>
+                            </div>
+                            @if($this->produitSelectionne->stock_initial == 0)
+                                <div class="mt-3 bg-blue-50 border border-blue-200 rounded p-2">
+                                    <p class="text-xs text-blue-800">
+                                        <strong>⚠️ Première entrée :</strong> Cette entrée définira le <strong>stock initial</strong> du produit.
+                                    </p>
+                                </div>
+                            @endif
+                            @if($this->produitSelectionne->en_alerte)
+                                <div class="mt-2 bg-red-50 border border-red-200 rounded p-2">
+                                    <p class="text-xs text-red-800">
+                                        <strong>⚠️ Alerte :</strong> Le stock est en dessous du seuil d'alerte !
+                                    </p>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
                 </div>
 
                 <div>

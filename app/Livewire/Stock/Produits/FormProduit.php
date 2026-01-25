@@ -21,8 +21,6 @@ class FormProduit extends Component
     public $libelle = '';
     public $categorie_id = '';
     public $magasin_id = '';
-    public $stock_initial = 0;
-    public $stock_actuel = 0;
     public $seuil_alerte = 10;
     public $descriptif = '';
     public $stockage = '';
@@ -41,8 +39,6 @@ class FormProduit extends Component
             $this->libelle = $this->produit->libelle;
             $this->categorie_id = $this->produit->categorie_id;
             $this->magasin_id = $this->produit->magasin_id;
-            $this->stock_initial = $this->produit->stock_initial;
-            $this->stock_actuel = $this->produit->stock_actuel;
             $this->seuil_alerte = $this->produit->seuil_alerte;
             $this->descriptif = $this->produit->descriptif ?? '';
             $this->stockage = $this->produit->stockage ?? '';
@@ -56,8 +52,6 @@ class FormProduit extends Component
             'libelle' => 'required|string|max:255',
             'categorie_id' => 'required|exists:stock_categories,id',
             'magasin_id' => 'required|exists:stock_magasins,id',
-            'stock_initial' => 'required|integer|min:0',
-            'stock_actuel' => 'required|integer|min:0',
             'seuil_alerte' => 'required|integer|min:0',
             'descriptif' => 'nullable|string',
             'stockage' => 'nullable|string|max:255',
@@ -73,12 +67,6 @@ class FormProduit extends Component
             'categorie_id.exists' => 'La catégorie sélectionnée n\'existe pas.',
             'magasin_id.required' => 'Le magasin est obligatoire.',
             'magasin_id.exists' => 'Le magasin sélectionné n\'existe pas.',
-            'stock_initial.required' => 'Le stock initial est obligatoire.',
-            'stock_initial.integer' => 'Le stock initial doit être un nombre entier.',
-            'stock_initial.min' => 'Le stock initial ne peut pas être négatif.',
-            'stock_actuel.required' => 'Le stock actuel est obligatoire.',
-            'stock_actuel.integer' => 'Le stock actuel doit être un nombre entier.',
-            'stock_actuel.min' => 'Le stock actuel ne peut pas être négatif.',
             'seuil_alerte.required' => 'Le seuil d\'alerte est obligatoire.',
             'seuil_alerte.integer' => 'Le seuil d\'alerte doit être un nombre entier.',
             'seuil_alerte.min' => 'Le seuil d\'alerte ne peut pas être négatif.',
@@ -126,18 +114,18 @@ class FormProduit extends Component
         $validated = $this->validate();
 
         if ($this->produit) {
-            // En mode édition, ne pas modifier stock_actuel ici
-            // Il sera modifié uniquement via les entrées/sorties
-            $validated['stock_actuel'] = $this->produit->stock_actuel;
-            
+            // En mode édition, ne pas modifier stock_initial ni stock_actuel
+            // Ils sont gérés uniquement via les entrées/sorties
             $this->produit->update($validated);
             session()->flash('success', 'Produit modifié avec succès.');
         } else {
-            // En création, stock_actuel = stock_initial
-            $validated['stock_actuel'] = $validated['stock_initial'];
+            // En création, initialiser stock_initial et stock_actuel à 0
+            // Le stock sera ajouté via les opérations d'entrée
+            $validated['stock_initial'] = 0;
+            $validated['stock_actuel'] = 0;
             
             StockProduit::create($validated);
-            session()->flash('success', 'Produit créé avec succès.');
+            session()->flash('success', 'Produit créé avec succès. Vous pouvez maintenant ajouter le stock initial via une opération d\'entrée.');
         }
 
         return redirect()->route('stock.produits.index');

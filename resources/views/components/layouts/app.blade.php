@@ -84,7 +84,7 @@
             </div>
 
             <!-- Navigation -->
-            <nav class="flex-1 overflow-y-auto py-4 px-3">
+            <nav class="flex-1 overflow-y-auto py-4 px-3" x-data="{ openMenu: '{{ request()->routeIs('biens.*') || request()->routeIs('localisations.*') || request()->routeIs('affectations.*') || request()->routeIs('emplacements.*') || request()->routeIs('designations.*') ? 'immobilisations' : (request()->routeIs('stock.*') ? 'stock' : '') }}' }">
                 <ul class="space-y-1">
                     <!-- Dashboard -->
                     <li>
@@ -100,21 +100,22 @@
                     @auth
                         @if(auth()->user()->canManageInventaire())
                             <!-- IMMOBILISATIONS - Menu avec sous-menus -->
-                            <li x-data="{ open: {{ request()->routeIs('biens.*') || request()->routeIs('localisations.*') || request()->routeIs('affectations.*') || request()->routeIs('emplacements.*') || request()->routeIs('designations.*') ? 'true' : 'false' }} }">
-                                <button @click="open = !open" 
-                                        class="w-full flex items-center justify-between px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('biens.*') || request()->routeIs('localisations.*') || request()->routeIs('affectations.*') || request()->routeIs('emplacements.*') || request()->routeIs('designations.*') ? 'bg-gray-700 text-white' : '' }}">
+                            <li>
+                                <button @click="openMenu = (openMenu === 'immobilisations') ? '' : 'immobilisations'" 
+                                        class="w-full flex items-center justify-between px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
+                                        :class="{ 'bg-gray-700 text-white': openMenu === 'immobilisations' }">
                                     <div class="flex items-center">
                                         <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                                         </svg>
                                         <span>Immobilisations</span>
                                     </div>
-                                    <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': openMenu === 'immobilisations' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                     </svg>
                                 </button>
                                 
-                                <ul x-show="open" x-transition class="mt-2 space-y-1 pl-4">
+                                <ul x-show="openMenu === 'immobilisations'" x-transition class="mt-2 space-y-1 pl-4">
                                     <!-- Liste des Immobilisations -->
                                     <li>
                                         <a href="{{ route('biens.index') }}" 
@@ -151,45 +152,56 @@
                                         </a>
                                     </li>
 
-                                    <!-- Paramètres -->
-                                    <li class="pt-2 mt-2 border-t border-gray-700">
-                                        <div class="px-4 py-1 text-xs font-semibold text-gray-500 uppercase">Paramètres</div>
-                                    </li>
+                                    <!-- Paramètres - Accordéon -->
+                                    <li class="pt-2 mt-2 border-t border-gray-700" x-data="{ open: false }">
+                                        <button @click="open = !open" 
+                                                class="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors">
+                                            <div class="flex items-center">
+                                                <span class="mr-2">⚙️</span>
+                                                <span class="text-xs font-semibold uppercase">Paramètres</span>
+                                            </div>
+                                            <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                            </svg>
+                                        </button>
+                                        
+                                        <ul x-show="open" x-transition class="mt-1 space-y-1 pl-4">
+                                            <!-- Localisations -->
+                                            <li>
+                                                <a href="{{ route('localisations.index') }}" 
+                                                   class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('localisations.*') ? 'bg-gray-700 text-white' : '' }}">
+                                                    <span class="mr-2">📍</span>
+                                                    <span>Localisations</span>
+                                                </a>
+                                            </li>
 
-                                    <!-- Localisations -->
-                                    <li>
-                                        <a href="{{ route('localisations.index') }}" 
-                                           class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('localisations.*') ? 'bg-gray-700 text-white' : '' }}">
-                                            <span class="mr-2">📍</span>
-                                            <span>Localisations</span>
-                                        </a>
-                                    </li>
+                                            <!-- Affectations -->
+                                            <li>
+                                                <a href="{{ route('affectations.index') }}" 
+                                                   class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('affectations.*') ? 'bg-gray-700 text-white' : '' }}">
+                                                    <span class="mr-2">🏢</span>
+                                                    <span>Affectations</span>
+                                                </a>
+                                            </li>
 
-                                    <!-- Affectations -->
-                                    <li>
-                                        <a href="{{ route('affectations.index') }}" 
-                                           class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('affectations.*') ? 'bg-gray-700 text-white' : '' }}">
-                                            <span class="mr-2">🏢</span>
-                                            <span>Affectations</span>
-                                        </a>
-                                    </li>
+                                            <!-- Emplacements -->
+                                            <li>
+                                                <a href="{{ route('emplacements.index') }}" 
+                                                   class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('emplacements.*') ? 'bg-gray-700 text-white' : '' }}">
+                                                    <span class="mr-2">🏠</span>
+                                                    <span>Emplacements</span>
+                                                </a>
+                                            </li>
 
-                                    <!-- Emplacements -->
-                                    <li>
-                                        <a href="{{ route('emplacements.index') }}" 
-                                           class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('emplacements.*') ? 'bg-gray-700 text-white' : '' }}">
-                                            <span class="mr-2">🏠</span>
-                                            <span>Emplacements</span>
-                                        </a>
-                                    </li>
-
-                                    <!-- Désignations -->
-                                    <li>
-                                        <a href="{{ route('designations.index') }}" 
-                                           class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('designations.*') ? 'bg-gray-700 text-white' : '' }}">
-                                            <span class="mr-2">📝</span>
-                                            <span>Désignations</span>
-                                        </a>
+                                            <!-- Désignations -->
+                                            <li>
+                                                <a href="{{ route('designations.index') }}" 
+                                                   class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('designations.*') ? 'bg-gray-700 text-white' : '' }}">
+                                                    <span class="mr-2">📝</span>
+                                                    <span>Désignations</span>
+                                                </a>
+                                            </li>
+                                        </ul>
                                     </li>
                                 </ul>
                             </li>
@@ -208,21 +220,22 @@
 
                         <!-- STOCK - Menu avec sous-menus -->
                         @if(auth()->check() && auth()->user()->canAccessStock())
-                            <li x-data="{ open: {{ request()->routeIs('stock.*') ? 'true' : 'false' }} }">
-                                <button @click="open = !open" 
-                                        class="w-full flex items-center justify-between px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('stock.*') ? 'bg-gray-700 text-white' : '' }}">
+                            <li>
+                                <button @click="openMenu = (openMenu === 'stock') ? '' : 'stock'" 
+                                        class="w-full flex items-center justify-between px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
+                                        :class="{ 'bg-gray-700 text-white': openMenu === 'stock' }">
                                     <div class="flex items-center">
                                         <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                                         </svg>
                                         <span>Stock</span>
                                     </div>
-                                    <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': openMenu === 'stock' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                     </svg>
                                 </button>
                                 
-                                <ul x-show="open" x-transition class="mt-2 space-y-1 pl-4">
+                                <ul x-show="openMenu === 'stock'" x-transition class="mt-2 space-y-1 pl-4">
                                     <!-- Dashboard Stock -->
                                     <li>
                                         <a href="{{ route('stock.dashboard') }}" 
@@ -261,42 +274,53 @@
                                         </a>
                                     </li>
 
-                                    <!-- Paramètres (Admin + Admin_stock) -->
+                                    <!-- Paramètres (Admin + Admin_stock) - Accordéon -->
                                     @if(auth()->check() && auth()->user()->canManageStock())
-                                        <li class="pt-2 mt-2 border-t border-gray-700">
-                                            <div class="px-4 py-1 text-xs font-semibold text-gray-500 uppercase">Paramètres</div>
-                                        </li>
-                                        
-                                        <li>
-                                            <a href="{{ route('stock.magasins.index') }}" 
-                                               class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('stock.magasins.*') ? 'bg-gray-700 text-white' : '' }}">
-                                                <span class="mr-2">🏪</span>
-                                                <span>Magasins</span>
-                                            </a>
-                                        </li>
+                                        <li class="pt-2 mt-2 border-t border-gray-700" x-data="{ open: false }">
+                                            <button @click="open = !open" 
+                                                    class="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors">
+                                                <div class="flex items-center">
+                                                    <span class="mr-2">⚙️</span>
+                                                    <span class="text-xs font-semibold uppercase">Paramètres</span>
+                                                </div>
+                                                <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                </svg>
+                                            </button>
+                                            
+                                            <ul x-show="open" x-transition class="mt-1 space-y-1 pl-4">
+                                                <li>
+                                                    <a href="{{ route('stock.magasins.index') }}" 
+                                                       class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('stock.magasins.*') ? 'bg-gray-700 text-white' : '' }}">
+                                                        <span class="mr-2">🏪</span>
+                                                        <span>Magasins</span>
+                                                    </a>
+                                                </li>
 
-                                        <li>
-                                            <a href="{{ route('stock.categories.index') }}" 
-                                               class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('stock.categories.*') ? 'bg-gray-700 text-white' : '' }}">
-                                                <span class="mr-2">🏷️</span>
-                                                <span>Catégories</span>
-                                            </a>
-                                        </li>
+                                                <li>
+                                                    <a href="{{ route('stock.categories.index') }}" 
+                                                       class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('stock.categories.*') ? 'bg-gray-700 text-white' : '' }}">
+                                                        <span class="mr-2">🏷️</span>
+                                                        <span>Catégories</span>
+                                                    </a>
+                                                </li>
 
-                                        <li>
-                                            <a href="{{ route('stock.fournisseurs.index') }}" 
-                                               class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('stock.fournisseurs.*') ? 'bg-gray-700 text-white' : '' }}">
-                                                <span class="mr-2">🏢</span>
-                                                <span>Fournisseurs</span>
-                                            </a>
-                                        </li>
+                                                <li>
+                                                    <a href="{{ route('stock.fournisseurs.index') }}" 
+                                                       class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('stock.fournisseurs.*') ? 'bg-gray-700 text-white' : '' }}">
+                                                        <span class="mr-2">🏢</span>
+                                                        <span>Fournisseurs</span>
+                                                    </a>
+                                                </li>
 
-                                        <li>
-                                            <a href="{{ route('stock.demandeurs.index') }}" 
-                                               class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('stock.demandeurs.*') ? 'bg-gray-700 text-white' : '' }}">
-                                                <span class="mr-2">👤</span>
-                                                <span>Demandeurs</span>
-                                            </a>
+                                                <li>
+                                                    <a href="{{ route('stock.demandeurs.index') }}" 
+                                                       class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('stock.demandeurs.*') ? 'bg-gray-700 text-white' : '' }}">
+                                                        <span class="mr-2">👤</span>
+                                                        <span>Demandeurs</span>
+                                                    </a>
+                                                </li>
+                                            </ul>
                                         </li>
                                     @endif
                                 </ul>
@@ -365,12 +389,12 @@
                             >
                                 <div class="flex items-center space-x-2">
                                     <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                                        {{ strtoupper(substr(auth()->user()->users ?? 'U', 0, 1)) }}
                                     </div>
                                     <div class="hidden md:block text-left">
-                                        <div class="text-sm font-medium text-gray-900">{{ auth()->user()->name }}</div>
+                                        <div class="text-sm font-medium text-gray-900">{{ auth()->user()->users ?? 'Utilisateur' }}</div>
                                         <div class="text-xs text-gray-500">
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ auth()->user()->role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' }}">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ auth()->user()->role === 'admin' ? 'bg-purple-100 text-purple-800' : (auth()->user()->role === 'admin_stock' ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-blue-800') }}">
                                                 {{ auth()->user()->role_name }}
                                             </span>
                                         </div>

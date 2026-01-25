@@ -83,41 +83,7 @@
                 <div class="border-t pt-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Gestion du stock</h3>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <!-- Stock initial -->
-                        <div>
-                            <label for="stock_initial" class="block text-sm font-medium text-gray-700 mb-1">
-                                Stock initial <span class="text-red-500">*</span>
-                            </label>
-                            <input type="number" 
-                                   id="stock_initial"
-                                   wire:model="stock_initial" 
-                                   min="0"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('stock_initial') border-red-500 @enderror">
-                            @error('stock_initial')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <!-- Stock actuel -->
-                        <div>
-                            <label for="stock_actuel" class="block text-sm font-medium text-gray-700 mb-1">
-                                Stock actuel <span class="text-red-500">*</span>
-                            </label>
-                            <input type="number" 
-                                   id="stock_actuel"
-                                   wire:model="stock_actuel" 
-                                   min="0"
-                                   {{ $produit ? 'disabled' : '' }}
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('stock_actuel') border-red-500 @enderror {{ $produit ? 'bg-gray-100' : '' }}">
-                            @error('stock_actuel')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                            @if($produit)
-                                <p class="mt-1 text-xs text-gray-500">Modifié automatiquement par les entrées/sorties</p>
-                            @endif
-                        </div>
-
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Seuil d'alerte -->
                         <div>
                             <label for="seuil_alerte" class="block text-sm font-medium text-gray-700 mb-1">
@@ -134,6 +100,21 @@
                             <p class="mt-1 text-xs text-gray-500">Alerte si stock ≤ ce seuil</p>
                         </div>
                     </div>
+
+                    @if(!$produit)
+                        <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 text-blue-600 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                                <div class="text-sm text-blue-800">
+                                    <p class="font-semibold mb-1">Note importante :</p>
+                                    <p>Le stock initial et le stock actuel seront définis à <strong>0</strong> lors de la création du produit.</p>
+                                    <p class="mt-1">Vous pourrez ensuite ajouter le stock initial via une <strong>opération d'entrée de stock</strong>.</p>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 <!-- Descriptif -->
