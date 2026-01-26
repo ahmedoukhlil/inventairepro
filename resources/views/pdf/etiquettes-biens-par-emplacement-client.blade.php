@@ -277,8 +277,9 @@
                         const bien = pageBiens[i];
                         // Utiliser uniquement NumOrdre pour le code-barres Code 128
                         const barcodeValue = String(bien.barcode_value || bien.NumOrdre).trim();
-                        // Le texte affiché est le code formaté complet
-                        const displayText = String(bien.code_formate || bien.NumOrdre).trim();
+                        const numOrdre = String(bien.NumOrdre || '').trim();
+                        const codeFormate = String(bien.code_formate || '').trim();
+                        const designation = String(bien.designation || '').trim();
 
                         if (!barcodeValue) continue;
 
@@ -340,7 +341,7 @@
                         
                         // Centrer le code-barres horizontalement et verticalement dans l'étiquette
                         // Le texte sera juste en dessous du code-barres
-                        const textAreaHeight = 10; // Espace pour le texte sous le code-barres
+                        const textAreaHeight = 15; // Espace pour le texte sous le code-barres (code_formate + designation)
                         const availableHeight = LABEL_HEIGHT - textAreaHeight - 4; // 4 points de padding en bas
                         
                         // Centrer verticalement le code-barres dans l'espace disponible
@@ -356,26 +357,49 @@
                             height: finalBarcodeHeight
                         });
 
-                        // Ajouter le texte du code juste en dessous du code-barres
-                        // Afficher le code formaté complet (pas seulement le NumOrdre)
-                        const fontSize = 7;
-                        page.setFont(font);
-                        page.setFontSize(fontSize);
+                        // Ajouter les textes en dessous du code-barres (centré)
+                        let currentY = barcodeY - 8; // Espacement augmenté sous le code-barres
                         
-                        // Positionner le texte juste sous le code-barres
-                        // barcodeY est la position Y du bas du code-barres, donc le texte doit être en dessous
-                        // Dans pdf-lib, Y=0 est en bas, donc on soustrait pour descendre
-                        const textY = barcodeY - fontSize - 2; // 2 points d'espacement sous le code-barres
-                        const textWidth = font.widthOfTextAtSize(displayText, fontSize);
-                        const centeredTextX = x + (LABEL_WIDTH / 2) - (textWidth / 2);
+                        // Code complet (code_formate) si disponible
+                        if (codeFormate && codeFormate.trim() !== '') {
+                            const fontSizeCode = 7;
+                            page.setFont(font);
+                            page.setFontSize(fontSizeCode);
+                            const textWidthCode = font.widthOfTextAtSize(codeFormate, fontSizeCode);
+                            const centeredTextXCode = x + (LABEL_WIDTH / 2) - (textWidthCode / 2);
+                            page.drawText(codeFormate, {
+                                x: centeredTextXCode,
+                                y: currentY,
+                                size: fontSizeCode,
+                                color: PDFLib.rgb(0, 0, 0)
+                            });
+                            currentY -= fontSizeCode + 3; // Espacement augmenté après le code
+                        }
                         
-                        // Dessiner le texte centré (code formaté complet)
-                        page.drawText(displayText, {
-                            x: centeredTextX,
-                            y: textY,
-                            size: fontSize,
-                            color: PDFLib.rgb(0, 0, 0)
-                        });
+                        // Désignation si disponible
+                        if (designation && designation.trim() !== '') {
+                            const fontSizeDesignation = 5;
+                            page.setFont(font);
+                            page.setFontSize(fontSizeDesignation);
+                            // Tronquer la désignation si trop longue (largeur max = LABEL_WIDTH - 4)
+                            const maxTextWidth = LABEL_WIDTH - 4;
+                            let truncatedDesignation = designation;
+                            let textWidthDesignation = font.widthOfTextAtSize(truncatedDesignation, fontSizeDesignation);
+                            
+                            // Tronquer si nécessaire
+                            while (textWidthDesignation > maxTextWidth && truncatedDesignation.length > 0) {
+                                truncatedDesignation = truncatedDesignation.substring(0, truncatedDesignation.length - 1);
+                                textWidthDesignation = font.widthOfTextAtSize(truncatedDesignation, fontSizeDesignation);
+                            }
+                            
+                            const centeredTextXDesignation = x + (LABEL_WIDTH / 2) - (textWidthDesignation / 2);
+                            page.drawText(truncatedDesignation, {
+                                x: centeredTextXDesignation,
+                                y: currentY,
+                                size: fontSizeDesignation,
+                                color: PDFLib.rgb(0, 0, 0)
+                            });
+                        }
 
                         // Nettoyer le canvas temporaire
                         document.body.removeChild(canvas);

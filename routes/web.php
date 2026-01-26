@@ -225,9 +225,6 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
             
             // Export Excel des biens
             Route::get('/export/excel', [BienController::class, 'exportExcel'])->name('export-excel');
-            
-            // Export PDF des biens
-            Route::get('/export/pdf', [BienController::class, 'exportPDF'])->name('export-pdf');
         });
 
         /*

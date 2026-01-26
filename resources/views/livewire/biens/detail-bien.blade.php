@@ -73,7 +73,7 @@
                 <button 
                     id="btn-print-etiquette-{{ $bien->NumOrdre }}"
                     data-bien-id="{{ $bien->NumOrdre }}"
-                    data-code-value="{{ $bien->code_formate ?? '' }}"
+                    data-code-value="{{ $bien->NumOrdre }}"
                     class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -242,21 +242,22 @@
                         <svg id="barcode-svg-{{ $bien->NumOrdre }}" width="100%" height="40" style="max-width: 100%; display: block;"></svg>
                     </div>
                     <p class="text-xs text-gray-500 mt-1.5">Code 128 - 89mm × 36mm</p>
-                    <p class="text-xs text-gray-700 mt-1 font-mono font-semibold">{{ $bien->code_formate ?? '' }}</p>
+                    <div class="mt-2 space-y-1">
+                        <p class="text-xs text-gray-700 font-mono font-semibold">{{ $bien->NumOrdre }}</p>
+                        @if($bien->code_formate)
+                            <p class="text-xs text-gray-600 font-mono">{{ $bien->code_formate }}</p>
+                        @endif
+                        @if($bien->designation)
+                            <p class="text-xs text-gray-700 font-medium">{{ $bien->designation->designation }}</p>
+                        @endif
+                    </div>
                 </div>
                 
                 <div class="space-y-2">
                     <button 
-                        id="btn-regenerate-barcode-{{ $bien->NumOrdre }}"
-                        data-bien-id="{{ $bien->NumOrdre }}"
-                        data-code-value="{{ $bien->code_formate ?? '' }}"
-                        class="w-full px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 transition-colors mb-2">
-                        🔄 Régénérer Code-barres
-                    </button>
-                    <button 
                         id="btn-print-label-{{ $bien->NumOrdre }}"
                         data-bien-id="{{ $bien->NumOrdre }}"
-                        data-code-value="{{ $bien->code_formate ?? '' }}"
+                        data-code-value="{{ $bien->NumOrdre }}"
                         class="w-full px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
                         Imprimer étiquette
                     </button>
@@ -380,13 +381,19 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Code-barres Code 128</h3>
                 <div class="w-full flex items-center justify-center bg-white p-6 rounded-lg border border-gray-200">
                     <div id="barcode-modal-placeholder-{{ $bien->NumOrdre }}" style="min-height: 120px; display: flex; align-items: center; justify-content: center; width: 100%; max-width: 600px;">
                         <svg id="barcode-svg-modal-{{ $bien->NumOrdre }}" width="100%" height="140" style="max-width: 100%; display: block;"></svg>
                     </div>
                 </div>
-                <p class="text-center text-sm text-gray-400 mt-4">Format d'étiquette : 89mm × 36mm (Landscape)</p>
+                <div class="text-center mt-4 space-y-1">
+                    @if($bien->code_formate)
+                        <p class="text-xs font-mono text-gray-600">{{ $bien->code_formate }}</p>
+                    @endif
+                    @if($bien->designation)
+                        <p class="text-xs font-medium text-gray-700">{{ $bien->designation->designation }}</p>
+                    @endif
+                </div>
             </div>
         </div>
     </div>
@@ -414,7 +421,7 @@
         </div>
     @endif
 
-    @if(isset($bien) && $bien->code_formate)
+    @if(isset($bien) && $bien->NumOrdre)
     {{-- Script jsbarcode via CDN (avec support PNG) --}}
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     {{-- Script jsPDF pour générer le PDF côté client --}}
@@ -424,10 +431,13 @@
     <script>
         console.log('🔍 Initialisation du script de code-barres...');
         
-        // Variables globales pour le bien
+        // Variables globales pour le bien - Utiliser NumOrdre uniquement
         const BIEN_ID = {{ $bien->NumOrdre }};
-        const CODE_VALUE = @json($bien->code_formate);
-        console.log('Bien:', { id: BIEN_ID, code: CODE_VALUE });
+        const CODE_VALUE = {{ $bien->NumOrdre }};
+        // Définir sur window pour être accessible partout
+        window.CODE_FORMATE = @json($bien->code_formate ?? '');
+        window.DESIGNATION = @json($bien->designation->designation ?? '');
+        console.log('Bien:', { id: BIEN_ID, code: CODE_VALUE, codeFormate: window.CODE_FORMATE, designation: window.DESIGNATION });
         // Fonction simplifiée pour générer le code-barres
         function generateBarcode(bienId, codeValue) {
             console.log('📊 generateBarcode appelé:', { bienId, codeValue });
@@ -476,11 +486,7 @@
                         format: "CODE128",
                         width: 3,
                         height: 100,
-                        displayValue: true,
-                        fontSize: 18,
-                        textAlign: "center",
-                        textPosition: "bottom",
-                        textMargin: 8,
+                        displayValue: false, // Le texte sera affiché séparément en dessous
                         background: "#ffffff",
                         lineColor: "#000000",
                         margin: 15
@@ -498,18 +504,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('📄 DOM chargé');
             
-            // Attacher les événements
-            const btnRegenerate = document.getElementById('btn-regenerate-barcode-' + BIEN_ID);
-            if (btnRegenerate) {
-                console.log('✅ Bouton régénérer trouvé');
-                btnRegenerate.addEventListener('click', function() {
-                    console.log('🔄 Clic sur régénérer');
-                    generateBarcode(BIEN_ID, CODE_VALUE);
-                });
-            } else {
-                console.error('❌ Bouton régénérer non trouvé');
-            }
-            
+            // Attacher les événements pour les boutons d'impression
             const btnPrintLabel = document.getElementById('btn-print-label-' + BIEN_ID);
             if (btnPrintLabel) {
                 console.log('✅ Bouton imprimer étiquette trouvé');
@@ -646,11 +641,33 @@
                 const imgData = pdfCanvas.toDataURL('image/png', 1.0);
                 pdf.addImage(imgData, 'PNG', 0, 0, labelWidthMm, labelHeightMm);
                 
-                // Ajouter le texte du code en dessous du code-barres (centré)
-                pdf.setFontSize(9); // Taille lisible pour landscape
-                pdf.setFont('courier', 'bold');
-                const textY = labelHeightMm - 3; // 3mm du bas
-                pdf.text(codeStr, labelWidthMm / 2, textY, { align: 'center' });
+                // Ajouter les textes en dessous du code-barres (centré)
+                let currentY = labelHeightMm - 8; // Commencer plus haut pour avoir de la place
+                
+                // Code complet (code_formate) si disponible
+                const codeFormate = window.CODE_FORMATE || '';
+                if (codeFormate && codeFormate.trim() !== '') {
+                    pdf.setFontSize(7);
+                    pdf.setFont('courier', 'normal');
+                    pdf.text(codeFormate, labelWidthMm / 2, currentY, { align: 'center' });
+                    currentY += 5; // Espacement augmenté après le code
+                }
+                
+                // Désignation si disponible
+                const designation = window.DESIGNATION || '';
+                if (designation && designation.trim() !== '') {
+                    pdf.setFontSize(6);
+                    pdf.setFont('helvetica', 'normal');
+                    // Tronquer la désignation si trop longue
+                    const maxWidth = labelWidthMm - 4;
+                    const truncatedDesignation = pdf.splitTextToSize(designation, maxWidth);
+                    truncatedDesignation.forEach((line, index) => {
+                        if (currentY < labelHeightMm - 1) {
+                            pdf.text(line, labelWidthMm / 2, currentY, { align: 'center' });
+                            currentY += 2.5;
+                        }
+                    });
+                }
                 
                 // Ouvrir le PDF dans une nouvelle fenêtre et lancer l'impression
                 const pdfBlob = pdf.output('blob');

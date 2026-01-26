@@ -249,7 +249,8 @@ class BienController extends Controller
             $biensData = $biens->map(function($bien) {
                 return [
                     'NumOrdre' => $bien->NumOrdre,
-                    'code_formate' => $bien->code_formate ?? $bien->NumOrdre,
+                    'code_formate' => $bien->code_formate ?? '',
+                    'designation' => $bien->designation->designation ?? '',
                     // Pour le code-barres, on utilise uniquement NumOrdre
                     'barcode_value' => (string)$bien->NumOrdre,
                 ];
@@ -281,7 +282,7 @@ class BienController extends Controller
             
             // Récupérer toutes les immobilisations avec relations
             $query = Gesimmo::with([
-                'designation.categorie',
+                'designation',
                 'categorie',
                 'etat',
                 'emplacement.localisation',
@@ -292,10 +293,18 @@ class BienController extends Controller
             
             if ($ids) {
                 $idsArray = is_array($ids) ? $ids : explode(',', $ids);
-                $query->whereIn('NumOrdre', $idsArray);
+                // Filtrer les IDs valides (entiers)
+                $idsArray = array_filter(array_map('intval', $idsArray));
+                if (!empty($idsArray)) {
+                    $query->whereIn('NumOrdre', $idsArray);
+                }
             }
             
-            $biens = $query->get();
+            $biens = $query->orderBy('NumOrdre')->get();
+            
+            if ($biens->isEmpty()) {
+                return redirect()->back()->with('warning', 'Aucun bien à exporter.');
+            }
 
             $filename = 'biens_' . now()->format('Y-m-d_His') . '.csv';
 
@@ -328,17 +337,33 @@ class BienController extends Controller
 
                 // Données
                 foreach ($biens as $bien) {
+                    // DateAcquisition est un entier (année), pas une date
+                    $dateAcquisition = '';
+                    if ($bien->DateAcquisition && $bien->DateAcquisition > 1970) {
+                        $dateAcquisition = (string)$bien->DateAcquisition;
+                    }
+                    
+                    // Gérer les valeurs null pour éviter les erreurs
+                    $codeFormate = '';
+                    try {
+                        $codeFormate = $bien->code_formate ?? '';
+                    } catch (\Exception $e) {
+                        $codeFormate = '';
+                    }
+                    
                     fputcsv($file, [
-                        $bien->NumOrdre,
-                        $bien->code_formate ?? '',
-                        $bien->designation ? $bien->designation->designation : 'N/A',
-                        $bien->categorie ? $bien->categorie->Categorie : 'N/A',
-                        $bien->etat ? $bien->etat->Etat : 'N/A',
-                        $bien->emplacement ? $bien->emplacement->Emplacement : 'N/A',
-                        $bien->emplacement && $bien->emplacement->localisation ? $bien->emplacement->localisation->Localisation : 'N/A',
-                        $bien->natureJuridique ? $bien->natureJuridique->NatJur : 'N/A',
-                        $bien->sourceFinancement ? $bien->sourceFinancement->SourceFin : 'N/A',
-                        $bien->DateAcquisition ? $bien->DateAcquisition->format('d/m/Y') : '',
+                        $bien->NumOrdre ?? '',
+                        $codeFormate,
+                        ($bien->designation && isset($bien->designation->designation)) ? $bien->designation->designation : 'N/A',
+                        ($bien->categorie && isset($bien->categorie->Categorie)) ? $bien->categorie->Categorie : 'N/A',
+                        ($bien->etat && isset($bien->etat->Etat)) ? $bien->etat->Etat : 'N/A',
+                        ($bien->emplacement && isset($bien->emplacement->Emplacement)) ? $bien->emplacement->Emplacement : 'N/A',
+                        ($bien->emplacement && $bien->emplacement->localisation && isset($bien->emplacement->localisation->Localisation)) 
+                            ? $bien->emplacement->localisation->Localisation 
+                            : 'N/A',
+                        ($bien->natureJuridique && isset($bien->natureJuridique->NatJur)) ? $bien->natureJuridique->NatJur : 'N/A',
+                        ($bien->sourceFinancement && isset($bien->sourceFinancement->SourceFin)) ? $bien->sourceFinancement->SourceFin : 'N/A',
+                        $dateAcquisition,
                         $bien->Observations ?? '',
                     ], ';');
                 }
@@ -348,6 +373,18 @@ class BienController extends Controller
 
             return response()->stream($callback, 200, $headers);
         } catch (\Exception $e) {
+            \Log::error('Erreur lors de l\'export Excel des biens', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            // Si on est dans une requête AJAX ou API, retourner une réponse JSON
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'error' => 'Erreur lors de l\'export Excel: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return redirect()->back()->with('error', 'Erreur lors de l\'export Excel: ' . $e->getMessage());
         }
     }

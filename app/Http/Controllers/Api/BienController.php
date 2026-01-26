@@ -71,7 +71,7 @@ class BienController extends Controller
                     'SourceFin' => $bien->sourceFinancement->SourceFin,
                     'CodeSourceFin' => $bien->sourceFinancement->CodeSourceFin,
                 ] : null,
-                'DateAcquisition' => $bien->DateAcquisition?->format('Y-m-d'),
+                'DateAcquisition' => $bien->DateAcquisition && $bien->DateAcquisition > 1970 ? (string)$bien->DateAcquisition : null,
                 'Observations' => $bien->Observations,
             ]
         ]);
