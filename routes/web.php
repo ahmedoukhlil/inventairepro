@@ -12,8 +12,11 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Redirection de la page d'accueil vers le login
+// Redirection de la page d'accueil : vers le dashboard si connecté, sinon vers le login
 Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
     return redirect()->route('login');
 });
 
