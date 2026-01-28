@@ -23,6 +23,7 @@ class ListeEmplacements extends Component
     public $search = '';
     public $filterLocalisation = '';
     public $filterAffectation = '';
+    public $filterImmobilisationsCount = '';
     public $sortField = 'Emplacement';
     public $sortDirection = 'asc';
     public $perPage = 20;
@@ -120,6 +121,7 @@ class ListeEmplacements extends Component
         $this->search = '';
         $this->filterLocalisation = '';
         $this->filterAffectation = '';
+        $this->filterImmobilisationsCount = '';
         $this->selectedEmplacements = [];
         $this->resetPage();
     }
@@ -165,7 +167,8 @@ class ListeEmplacements extends Component
      */
     protected function getEmplacementsQuery()
     {
-        $query = Emplacement::with(['localisation', 'affectation', 'immobilisations']);
+        $query = Emplacement::with(['localisation', 'affectation', 'immobilisations'])
+            ->withCount('immobilisations');
 
         // Recherche globale
         if (!empty($this->search)) {
@@ -184,6 +187,13 @@ class ListeEmplacements extends Component
         if (!empty($this->filterAffectation)) {
             $query->where('idAffectation', $this->filterAffectation);
         }
+
+        // Filtre par nombre exact d'immobilisations (y compris 0)
+        // Utiliser HAVING car immoblilisations_count est un alias de withCount()
+        if ($this->filterImmobilisationsCount !== '' && $this->filterImmobilisationsCount !== null) {
+            $query->having('immobilisations_count', '=', (int) $this->filterImmobilisationsCount);
+        }
+
 
         // Tri
         $query->orderBy($this->sortField, $this->sortDirection);
@@ -207,5 +217,65 @@ class ListeEmplacements extends Component
             'emplacements' => $emplacements,
             'totalEmplacements' => $totalEmplacements,
         ]);
+    }
+
+    /**
+     * Exporter la liste (filtrée) des emplacements en Excel (CSV)
+     */
+    public function exportExcel()
+    {
+        try {
+            // Utiliser la même requête que pour le tableau, mais sans pagination
+            $emplacements = $this->getEmplacementsQuery()->get();
+
+            if ($emplacements->isEmpty()) {
+                session()->flash('warning', 'Aucun emplacement à exporter.');
+                return;
+            }
+
+            $filename = 'emplacements_' . now()->format('Y-m-d_His') . '.csv';
+
+            $headers = [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ];
+
+            $callback = function () use ($emplacements) {
+                $file = fopen('php://output', 'w');
+
+                // BOM UTF-8 pour Excel
+                fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+                // En-têtes de colonnes
+                fputcsv($file, [
+                    'ID Emplacement',
+                    'Emplacement',
+                    'Code Emplacement',
+                    'Localisation',
+                    'Affectation',
+                    'Nombre d\'immobilisations',
+                ], ';');
+
+                foreach ($emplacements as $emplacement) {
+                    // Utiliser le compteur optimisé si disponible
+                    $nbImmobilisations = $emplacement->immobilisations_count ?? ($emplacement->immobilisations ? $emplacement->immobilisations->count() : 0);
+
+                    fputcsv($file, [
+                        $emplacement->idEmplacement,
+                        $emplacement->Emplacement,
+                        $emplacement->CodeEmplacement ?? '',
+                        $emplacement->localisation->Localisation ?? '',
+                        $emplacement->affectation->Affectation ?? '',
+                        $nbImmobilisations,
+                    ], ';');
+                }
+
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        } catch (\Exception $e) {
+            session()->flash('error', 'Erreur lors de l\'export des emplacements: ' . $e->getMessage());
+        }
     }
 }

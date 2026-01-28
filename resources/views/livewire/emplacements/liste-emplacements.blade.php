@@ -14,6 +14,16 @@
             </div>
             
             <div class="flex flex-wrap items-center gap-2">
+                <button
+                    type="button"
+                    wire:click="exportExcel"
+                    class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20H4a2 2 0 01-2-2V6a2 2 0 012-2h6m4-2h6v6m-6-6L10 14" />
+                    </svg>
+                    Exporter en Excel
+                </button>
+
                 <a 
                     href="{{ route('emplacements.create') }}"
                     class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
@@ -47,7 +57,7 @@
                 x-show="open"
                 x-collapse
                 class="border-t border-gray-200 p-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {{-- Recherche globale --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -95,6 +105,31 @@
                             no-results-text="Aucune affectation trouvée"
                             :allow-clear="true"
                         />
+                    </div>
+
+                    {{-- Filtre Nombre d'immobilisations (sélection exacte, incluant 0) --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Nombre d'immobilisations
+                        </label>
+                        <select
+                            wire:model.live="filterImmobilisationsCount"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        >
+                            <option value="">Tous</option>
+                            <option value="0">0 immobilisation</option>
+                            <option value="1">1 immobilisation</option>
+                            <option value="2">2 immobilisations</option>
+                            <option value="3">3 immobilisations</option>
+                            <option value="4">4 immobilisations</option>
+                            <option value="5">5 immobilisations</option>
+                            <option value="10">10 immobilisations</option>
+                            <option value="20">20 immobilisations</option>
+                            <option value="50">50 immobilisations</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Choisissez un nombre précis d'immobilisations (0 inclus).
+                        </p>
                     </div>
                 </div>
 
@@ -168,7 +203,7 @@
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                                        {{ $emplacement->immobilisations->count() }}
+                                        {{ $emplacement->immobilisations_count ?? $emplacement->immobilisations->count() }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
