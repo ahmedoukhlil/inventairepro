@@ -21,7 +21,7 @@ class TransfertBien extends Component
     // Sélection des immobilisations (multiple)
     public $bienIds = []; // Tableau d'IDs sélectionnés
     public $biensSelectionnes = []; // Tableau d'objets Gesimmo chargés
-    public $searchBien = ''; // Recherche dynamique pour les immobilisations
+    public $searchBien = ''; // Recherche dynamique pour les immobilisations et emplacements
     public $raison = ''; // Raison du transfert (optionnel)
 
     // Nouveau emplacement (hiérarchique)
@@ -42,14 +42,60 @@ class TransfertBien extends Component
 
     /**
      * Ajouter une immobilisation à la sélection
+     * Peut aussi gérer l'ajout d'un emplacement (qui charge tous ses biens)
      */
     public function ajouterBien($bienId)
     {
+        // Vérifier si c'est un emplacement (format: "emplacement_123")
+        if (str_starts_with($bienId, 'emplacement_')) {
+            $idEmplacement = (int)str_replace('emplacement_', '', $bienId);
+            $this->chargerBiensParEmplacementId($idEmplacement);
+            return;
+        }
+        
+        // Sinon, c'est un bien normal
         $bienId = (int)$bienId;
         
         if (!in_array($bienId, $this->bienIds)) {
             $this->bienIds[] = $bienId;
             $this->chargerBiensSelectionnes();
+        }
+    }
+
+    /**
+     * Charger les biens d'un emplacement par son ID
+     */
+    public function chargerBiensParEmplacementId($idEmplacement)
+    {
+        if (empty($idEmplacement)) {
+            return;
+        }
+
+        $biens = Gesimmo::with([
+            'designation',
+            'categorie',
+            'emplacement.affectation.localisation'
+        ])
+        ->where('idEmplacement', $idEmplacement)
+        ->orderBy('NumOrdre')
+        ->get();
+
+        // Ajouter tous les biens de cet emplacement à la sélection
+        $ajoutes = 0;
+        foreach ($biens as $bien) {
+            if (!in_array($bien->NumOrdre, $this->bienIds)) {
+                $this->bienIds[] = $bien->NumOrdre;
+                $ajoutes++;
+            }
+        }
+
+        $this->chargerBiensSelectionnes();
+        
+        // Message de confirmation
+        if ($ajoutes > 0) {
+            $emplacement = Emplacement::with(['affectation.localisation'])->find($idEmplacement);
+            $nomEmplacement = $emplacement ? $emplacement->Emplacement : 'N/A';
+            session()->flash('info', "{$ajoutes} immobilisation(s) de l'emplacement '{$nomEmplacement}' ont été ajoutées à la sélection.");
         }
     }
 
@@ -140,9 +186,57 @@ class TransfertBien extends Component
 
     /**
      * Options pour le select Immobilisations (recherche dynamique)
+     * Inclut aussi les emplacements pour permettre de charger tous leurs biens
      */
     public function getBienOptionsProperty()
     {
+        $options = [];
+        
+        // Rechercher les emplacements si une recherche est en cours
+        if (!empty($this->searchBien)) {
+            $search = trim($this->searchBien);
+            
+            // Rechercher les emplacements correspondants
+            $emplacementsQuery = Emplacement::with(['affectation.localisation'])
+                ->where(function ($q) use ($search) {
+                    $q->where('Emplacement', 'like', '%' . $search . '%')
+                        ->orWhere('CodeEmplacement', 'like', '%' . $search . '%')
+                        ->orWhereHas('affectation', function ($q2) use ($search) {
+                            $q2->where('Affectation', 'like', '%' . $search . '%');
+                        })
+                        ->orWhereHas('affectation.localisation', function ($q2) use ($search) {
+                            $q2->where('Localisation', 'like', '%' . $search . '%')
+                                ->orWhere('CodeLocalisation', 'like', '%' . $search . '%');
+                        });
+                })
+                ->limit(10)
+                ->get();
+            
+            // Ajouter les emplacements comme options spéciales
+            foreach ($emplacementsQuery as $emplacement) {
+                $affectation = $emplacement->affectation ? $emplacement->affectation->Affectation : 'N/A';
+                $localisation = $emplacement->affectation && $emplacement->affectation->localisation
+                    ? $emplacement->affectation->localisation->Localisation
+                    : 'N/A';
+                
+                // Compter les biens dans cet emplacement
+                $nombreBiens = Gesimmo::where('idEmplacement', $emplacement->idEmplacement)->count();
+                
+                $options[] = [
+                    'value' => 'emplacement_' . $emplacement->idEmplacement,
+                    'text' => "📍 EMPLACEMENT: {$emplacement->Emplacement} [{$localisation} - {$affectation}] ({$nombreBiens} bien(s))",
+                    'selected' => false,
+                    'type' => 'emplacement',
+                    'idEmplacement' => $emplacement->idEmplacement,
+                    'emplacement' => $emplacement->Emplacement,
+                    'affectation' => $affectation,
+                    'localisation' => $localisation,
+                    'nombreBiens' => $nombreBiens,
+                ];
+            }
+        }
+        
+        // Rechercher les biens
         $query = Gesimmo::with(['designation', 'categorie', 'emplacement.affectation.localisation'])
             ->orderBy('NumOrdre');
 
@@ -200,7 +294,8 @@ class TransfertBien extends Component
             $biens = $biens->merge($biensManquants);
         }
 
-        return $biens->map(function ($bien) {
+        // Ajouter les biens aux options
+        foreach ($biens as $bien) {
             $designation = $bien->designation ? $bien->designation->designation : 'N/A';
             $emplacement = $bien->emplacement ? $bien->emplacement->Emplacement : 'Sans emplacement';
             $affectation = $bien->emplacement && $bien->emplacement->affectation
@@ -212,10 +307,11 @@ class TransfertBien extends Component
             
             $estSelectionne = in_array($bien->NumOrdre, $this->bienIds);
             
-            return [
+            $options[] = [
                 'value' => (string)$bien->NumOrdre,
                 'text' => "{$designation} (Ordre: {$bien->NumOrdre}) - {$emplacement} [{$localisation}]",
                 'selected' => $estSelectionne,
+                'type' => 'bien',
                 // Informations supplémentaires pour l'affichage
                 'numOrdre' => $bien->NumOrdre,
                 'designation' => $designation,
@@ -223,7 +319,9 @@ class TransfertBien extends Component
                 'affectation' => $affectation,
                 'localisation' => $localisation,
             ];
-        })->toArray();
+        }
+
+        return $options;
     }
 
     /**
@@ -274,6 +372,7 @@ class TransfertBien extends Component
         );
         return array_merge($options, $emplacements);
     }
+
 
     /**
      * Règles de validation

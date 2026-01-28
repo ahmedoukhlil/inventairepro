@@ -36,6 +36,15 @@
             </div>
         @endif
 
+        @if (session()->has('info'))
+            <div class="mb-6 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+                {{ session('info') }}
+            </div>
+        @endif
+
         <form wire:submit.prevent="transferer">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
@@ -51,7 +60,7 @@
                         <input 
                             type="text" 
                             wire:model.live.debounce.300ms="searchBien"
-                            placeholder="Rechercher par NumOrdre (ex: 1001), désignation, emplacement ou localisation..."
+                            placeholder="Rechercher par NumOrdre, désignation, emplacement ou localisation... (Les emplacements apparaissent avec 📍)"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         />
                         @if(!empty($searchBien))
@@ -69,51 +78,89 @@
                     <div class="border border-gray-200 rounded-lg" style="max-height: 400px; overflow-y: auto;">
                         @forelse($this->bienOptions as $option)
                             @php
-                                $estSelectionne = in_array($option['value'], $bienIds);
+                                $type = $option['type'] ?? 'bien';
+                                $estEmplacement = $type === 'emplacement';
+                                $estSelectionne = !$estEmplacement && in_array($option['value'], $bienIds);
                                 // Utiliser les informations supplémentaires si disponibles
-                                $numOrdre = $option['numOrdre'] ?? $option['value'];
+                                $numOrdre = $option['numOrdre'] ?? ($estEmplacement ? null : $option['value']);
                                 $designation = $option['designation'] ?? 'N/A';
                                 $emplacement = $option['emplacement'] ?? 'Sans emplacement';
                                 $affectation = $option['affectation'] ?? 'N/A';
                                 $localisation = $option['localisation'] ?? 'N/A';
                             @endphp
-                            <div class="p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors {{ $estSelectionne ? 'bg-indigo-50 border-indigo-200' : '' }}">
+                            <div class="p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors {{ $estEmplacement ? 'bg-green-50 border-green-200' : ($estSelectionne ? 'bg-indigo-50 border-indigo-200' : '') }}">
                                 <div class="flex items-center justify-between">
                                     <div class="flex-1">
-                                        <!-- NumOrdre en évidence -->
-                                        <div class="flex items-center gap-2 mb-1">
-                                            <span class="px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded text-xs font-bold">
-                                                Ordre: {{ $numOrdre }}
-                                            </span>
-                                        </div>
-                                        <!-- Désignation (nom) -->
-                                        <p class="text-sm font-semibold text-gray-900 mb-2">
-                                            {{ $designation }}
-                                        </p>
-                                        <!-- Localisation, Affectation et Emplacement -->
-                                        <div class="space-y-1 text-xs text-gray-600">
-                                            @if($localisation != 'N/A')
-                                                <p class="flex items-center">
-                                                    <span class="mr-1">🏢</span>
-                                                    <span class="font-medium">Localisation:</span>
-                                                    <span class="ml-1">{{ $localisation }}</span>
-                                                </p>
-                                            @endif
-                                            @if($affectation != 'N/A')
-                                                <p class="flex items-center">
-                                                    <span class="mr-1">🏛️</span>
-                                                    <span class="font-medium">Affectation:</span>
-                                                    <span class="ml-1">{{ $affectation }}</span>
-                                                </p>
-                                            @endif
-                                            <p class="flex items-center">
-                                                <span class="mr-1">📍</span>
-                                                <span class="font-medium">Emplacement:</span>
-                                                <span class="ml-1">{{ $emplacement }}</span>
+                                        @if($estEmplacement)
+                                            <!-- Affichage pour un emplacement -->
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <span class="px-2 py-0.5 bg-green-200 text-green-800 rounded text-xs font-bold">
+                                                    📍 EMPLACEMENT
+                                                </span>
+                                                <span class="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
+                                                    {{ $option['nombreBiens'] ?? 0 }} bien(s)
+                                                </span>
+                                            </div>
+                                            <p class="text-sm font-semibold text-gray-900 mb-2">
+                                                {{ $emplacement }}
                                             </p>
-                                        </div>
+                                            <div class="space-y-1 text-xs text-gray-600">
+                                                @if($localisation != 'N/A')
+                                                    <p class="flex items-center">
+                                                        <span class="mr-1">🏢</span>
+                                                        <span class="font-medium">Localisation:</span>
+                                                        <span class="ml-1">{{ $localisation }}</span>
+                                                    </p>
+                                                @endif
+                                                @if($affectation != 'N/A')
+                                                    <p class="flex items-center">
+                                                        <span class="mr-1">🏛️</span>
+                                                        <span class="font-medium">Affectation:</span>
+                                                        <span class="ml-1">{{ $affectation }}</span>
+                                                    </p>
+                                                @endif
+                                            </div>
+                                        @else
+                                            <!-- Affichage pour un bien -->
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <span class="px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded text-xs font-bold">
+                                                    Ordre: {{ $numOrdre }}
+                                                </span>
+                                            </div>
+                                            <p class="text-sm font-semibold text-gray-900 mb-2">
+                                                {{ $designation }}
+                                            </p>
+                                            <div class="space-y-1 text-xs text-gray-600">
+                                                @if($localisation != 'N/A')
+                                                    <p class="flex items-center">
+                                                        <span class="mr-1">🏢</span>
+                                                        <span class="font-medium">Localisation:</span>
+                                                        <span class="ml-1">{{ $localisation }}</span>
+                                                    </p>
+                                                @endif
+                                                @if($affectation != 'N/A')
+                                                    <p class="flex items-center">
+                                                        <span class="mr-1">🏛️</span>
+                                                        <span class="font-medium">Affectation:</span>
+                                                        <span class="ml-1">{{ $affectation }}</span>
+                                                    </p>
+                                                @endif
+                                                <p class="flex items-center">
+                                                    <span class="mr-1">📍</span>
+                                                    <span class="font-medium">Emplacement:</span>
+                                                    <span class="ml-1">{{ $emplacement }}</span>
+                                                </p>
+                                            </div>
+                                        @endif
                                     </div>
-                                    @if($estSelectionne)
+                                    @if($estEmplacement)
+                                        <button 
+                                            type="button"
+                                            wire:click="ajouterBien('{{ $option['value'] }}')"
+                                            class="ml-3 px-3 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 text-sm font-medium transition-colors">
+                                            Charger tous les biens
+                                        </button>
+                                    @elseif($estSelectionne)
                                         <button 
                                             type="button"
                                             wire:click="retirerBien({{ $option['value'] }})"
@@ -123,7 +170,7 @@
                                     @else
                                         <button 
                                             type="button"
-                                            wire:click="ajouterBien({{ $option['value'] }})"
+                                            wire:click="ajouterBien('{{ $option['value'] }}')"
                                             class="ml-3 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 text-sm font-medium transition-colors">
                                             Ajouter
                                         </button>
@@ -146,13 +193,18 @@
                             <div class="space-y-2 max-h-40 overflow-y-auto">
                                 @foreach($biensSelectionnes as $bien)
                                     <div class="flex items-center justify-between bg-white rounded p-2 text-sm">
-                                        <span class="font-medium text-gray-900">
-                                            Ordre: {{ $bien['NumOrdre'] }}
-                                        </span>
+                                        <div class="flex-1">
+                                            <div class="font-medium text-gray-900">
+                                                {{ $bien['designation'] ?? 'N/A' }}
+                                            </div>
+                                            <div class="text-xs text-gray-600 mt-0.5">
+                                                Ordre: {{ $bien['NumOrdre'] }}
+                                            </div>
+                                        </div>
                                         <button 
                                             type="button"
                                             wire:click="retirerBien({{ $bien['NumOrdre'] }})"
-                                            class="text-red-600 hover:text-red-800">
+                                            class="ml-2 text-red-600 hover:text-red-800 flex-shrink-0">
                                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
                                             </svg>
