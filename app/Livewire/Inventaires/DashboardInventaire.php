@@ -201,6 +201,14 @@ class DashboardInventaire extends Component
     }
 
     /**
+     * Propriété calculée : Données pour le graphique progression par localisation
+     */
+    public function getLocalisationsGraphDataProperty()
+    {
+        return $this->inventaireLocalisations->take(10)->values();
+    }
+
+    /**
      * Propriété calculée : Retourne la liste des agents assignés
      */
     public function getAgentsProperty()
