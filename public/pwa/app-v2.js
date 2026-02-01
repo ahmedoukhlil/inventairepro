@@ -70,9 +70,11 @@ const AppState = {
     user: null,
     currentEmplacement: null,
     biensAttendus: [],
-    biensScannés: [],
+    biensScannés: [], // [{ num_ordre, etat_id, photo? }]
+    etats: [], // [{ id, label, require_photo }] depuis API /etats
     scannerActive: false,
     barcodeScanner: null,
+    modalBienEnCours: null, // bien en attente de confirmation (num_ordre, designation)
 };
 
 // ===========================================
@@ -151,6 +153,8 @@ class AuthManager {
             localStorage.setItem(CONFIG.STORAGE_KEY_TOKEN, response.token);
             localStorage.setItem(CONFIG.STORAGE_KEY_USER, JSON.stringify(response.user));
 
+            await UI.loadEtats();
+
             HapticFeedback.success();
             UI.showView('scanner');
             UI.updateUserInfo();
@@ -180,6 +184,7 @@ class AuthManager {
             try {
                 AppState.token = token;
                 AppState.user = JSON.parse(userStr);
+                UI.loadEtats().then(() => {});
                 UI.showView('scanner');
                 UI.updateUserInfo();
                 return true;
@@ -403,25 +408,21 @@ class BarcodeScannerManager {
     static async handleBarcodeDetected(codeBarre) {
         console.log('[Barcode] Détecté:', codeBarre);
 
-        // Le code-barres 128 contient le NumOrdre
         const numOrdre = parseInt(codeBarre, 10);
 
         // Vérifier si déjà scanné
-        if (AppState.biensScannés.includes(numOrdre)) {
+        if (AppState.biensScannés.some(b => b.num_ordre === numOrdre)) {
             HapticFeedback.warning();
             UI.showToast('⚠️ Déjà scanné', 'warning');
             return;
         }
 
-        // Chercher dans les biens attendus par NumOrdre
         const bien = AppState.biensAttendus.find(b => b.num_ordre === numOrdre);
 
         if (bien) {
-            AppState.biensScannés.push(numOrdre);
-            HapticFeedback.success();
-            UI.showToast(`✅ ${bien.designation}`, 'success');
-            UI.updateBiensList();
-            UI.updateProgress();
+            HapticFeedback.light();
+            // Afficher le modal pour définir l'état
+            UI.showModalEtatBien(bien);
         } else {
             HapticFeedback.error();
             UI.showToast(`⚠️ Bien non attendu: ${codeBarre}`, 'warning');
@@ -441,6 +442,17 @@ class BarcodeScannerManager {
 // ===========================================
 
 class UI {
+    static async loadEtats() {
+        if (!AppState.token) return;
+        try {
+            const response = await API.request('/etats');
+            AppState.etats = response.etats || [];
+        } catch (error) {
+            console.warn('[UI] Erreur chargement états:', error);
+            AppState.etats = [];
+        }
+    }
+
     static showView(viewName) {
         document.querySelectorAll('[id^="view-"]').forEach(view => {
             view.classList.add('hidden');
@@ -489,15 +501,19 @@ class UI {
         list.innerHTML = '';
 
         AppState.biensAttendus.forEach(bien => {
-            const isScanned = AppState.biensScannés.includes(bien.num_ordre);
+            const scanData = AppState.biensScannés.find(b => b.num_ordre === bien.num_ordre);
+            const isScanned = !!scanData;
+            const etatObj = scanData && scanData.etat_id ? AppState.etats.find(e => e.id === scanData.etat_id) : null;
+            const isDefectueux = etatObj && etatObj.require_photo;
+            const etatLabel = etatObj ? etatObj.label : '';
             
             const item = document.createElement('div');
-            item.className = `p-3 ${isScanned ? 'bg-green-50' : 'bg-white'}`;
+            item.className = `p-3 ${isScanned ? (isDefectueux ? 'bg-amber-50' : 'bg-green-50') : 'bg-white'}`;
             item.innerHTML = `
                 <div class="flex items-center justify-between">
                     <div class="flex-1">
                         <p class="font-medium text-gray-900 text-sm">${bien.designation}</p>
-                        <p class="text-xs text-gray-600">N° ${bien.num_ordre} • ${bien.categorie}</p>
+                        <p class="text-xs text-gray-600">N° ${bien.num_ordre} • ${bien.categorie}${isScanned ? ' • ' + etatLabel : ''}</p>
                     </div>
                     <div class="ml-3">
                         ${isScanned ? 
@@ -527,13 +543,19 @@ class UI {
         UI.showToast('📊 Calcul des écarts...', 'info');
 
         try {
-            // AppState.biensScannés contient déjà les NumOrdre
+            // Format: [{ num_ordre, etat_id, photo? }] - utilise table etat
+            const biensPayload = AppState.biensScannés.map(b => ({
+                num_ordre: b.num_ordre,
+                etat_id: b.etat_id || null,
+                photo: b.photo || null
+            }));
+
             const response = await API.request(
                 `/emplacements/${AppState.currentEmplacement.id}/terminer`,
                 {
                     method: 'POST',
                     body: JSON.stringify({
-                        biens_scannes: AppState.biensScannés
+                        biens_scannes: biensPayload
                     })
                 }
             );
@@ -544,6 +566,69 @@ class UI {
         } catch (error) {
             UI.showToast('❌ Erreur: ' + error.message, 'error');
         }
+    }
+
+    static showModalEtatBien(bien) {
+        AppState.modalBienEnCours = bien;
+        const modal = document.getElementById('modal-etat-bien');
+        document.getElementById('modal-etat-designation').textContent = `${bien.designation} (N° ${bien.num_ordre})`;
+        
+        // Boutons dynamiques depuis API /etats
+        const container = document.getElementById('modal-etat-buttons');
+        container.innerHTML = '';
+        if (AppState.etats.length > 0) {
+            AppState.etats.forEach(etat => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'modal-etat-btn touch-target py-3 px-4 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-500 hover:bg-indigo-50 transition';
+                btn.dataset.etatId = etat.id;
+                btn.dataset.requirePhoto = etat.require_photo ? '1' : '0';
+                btn.textContent = etat.label;
+                container.appendChild(btn);
+            });
+        } else {
+            // Fallback si états non chargés (envoie null -> API utilise 'bon')
+            const fallback = [{ id: null, label: 'Bon', require_photo: false }];
+            fallback.forEach(etat => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'modal-etat-btn touch-target py-3 px-4 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-500 hover:bg-indigo-50 transition';
+                btn.dataset.etatId = etat.id ?? '';
+                btn.dataset.requirePhoto = etat.require_photo ? '1' : '0';
+                btn.textContent = etat.label;
+                container.appendChild(btn);
+            });
+        }
+        
+        // Reset modal state
+        document.getElementById('modal-etat-photo-section').classList.add('hidden');
+        document.getElementById('modal-etat-photo-input').value = '';
+        document.getElementById('modal-etat-photo-preview').classList.add('hidden');
+        document.getElementById('modal-etat-confirmer').disabled = true;
+        
+        modal.classList.remove('hidden');
+    }
+
+    static hideModalEtatBien() {
+        AppState.modalBienEnCours = null;
+        document.getElementById('modal-etat-bien').classList.add('hidden');
+    }
+
+    static confirmModalEtatBien(etatId, photoBase64) {
+        if (!AppState.modalBienEnCours) return;
+        
+        const bien = AppState.modalBienEnCours;
+        AppState.biensScannés.push({
+            num_ordre: bien.num_ordre,
+            etat_id: etatId ? parseInt(etatId, 10) : null,
+            photo: photoBase64 || null
+        });
+        
+        HapticFeedback.success();
+        UI.showToast(`✅ ${bien.designation}`, 'success');
+        UI.updateBiensList();
+        UI.updateProgress();
+        UI.hideModalEtatBien();
     }
 
     static displayResultats(data) {
@@ -666,6 +751,80 @@ document.getElementById('btn-nouveau-scan').addEventListener('click', () => {
     AppState.biensAttendus = [];
     AppState.biensScannés = [];
     UI.showView('scanner');
+});
+
+// Modal État du bien
+let modalEtatSelectionne = null;
+let modalPhotoBase64 = null;
+
+document.getElementById('modal-etat-buttons').addEventListener('click', (e) => {
+    const btn = e.target.closest('.modal-etat-btn');
+    if (!btn) return;
+    
+    document.querySelectorAll('.modal-etat-btn').forEach(b => b.classList.remove('border-indigo-600', 'bg-indigo-50'));
+    btn.classList.add('border-indigo-600', 'bg-indigo-50');
+    modalEtatSelectionne = btn.dataset.etatId;
+    const requirePhoto = btn.dataset.requirePhoto === '1';
+    
+    const photoSection = document.getElementById('modal-etat-photo-section');
+    const confirmBtn = document.getElementById('modal-etat-confirmer');
+    
+    if (requirePhoto) {
+        photoSection.classList.remove('hidden');
+        confirmBtn.disabled = !modalPhotoBase64;
+    } else {
+        photoSection.classList.add('hidden');
+        modalPhotoBase64 = null;
+        confirmBtn.disabled = false;
+    }
+});
+
+document.getElementById('modal-etat-photo-input').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        modalPhotoBase64 = event.target.result;
+        document.getElementById('modal-etat-photo-img').src = modalPhotoBase64;
+        document.getElementById('modal-etat-photo-preview').classList.remove('hidden');
+        document.getElementById('modal-etat-confirmer').disabled = false;
+    };
+    reader.readAsDataURL(file);
+});
+
+document.getElementById('modal-etat-photo-retake').addEventListener('click', () => {
+    modalPhotoBase64 = null;
+    document.getElementById('modal-etat-photo-input').value = '';
+    document.getElementById('modal-etat-photo-preview').classList.add('hidden');
+    const btn = document.querySelector('.modal-etat-btn.border-indigo-600');
+    const requirePhoto = btn && btn.dataset.requirePhoto === '1';
+    document.getElementById('modal-etat-confirmer').disabled = requirePhoto;
+});
+
+document.getElementById('modal-etat-annuler').addEventListener('click', () => {
+    UI.hideModalEtatBien();
+    modalEtatSelectionne = null;
+    modalPhotoBase64 = null;
+});
+
+document.getElementById('modal-etat-overlay').addEventListener('click', () => {
+    UI.hideModalEtatBien();
+    modalEtatSelectionne = null;
+    modalPhotoBase64 = null;
+});
+
+document.getElementById('modal-etat-confirmer').addEventListener('click', () => {
+    if (!modalEtatSelectionne) return;
+    const btn = document.querySelector('.modal-etat-btn.border-indigo-600');
+    const requirePhoto = btn && btn.dataset.requirePhoto === '1';
+    if (requirePhoto && !modalPhotoBase64) {
+        UI.showToast('📷 Veuillez prendre une photo du bien défectueux', 'warning');
+        return;
+    }
+    UI.confirmModalEtatBien(modalEtatSelectionne, modalPhotoBase64);
+    modalEtatSelectionne = null;
+    modalPhotoBase64 = null;
 });
 
 // ===========================================

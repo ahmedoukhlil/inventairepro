@@ -8,6 +8,7 @@ use App\Models\InventaireScan;
 use App\Models\InventaireLocalisation;
 use App\Models\Bien;
 use App\Models\Emplacement;
+use App\Models\Etat;
 use App\Models\Gesimmo;
 use App\Services\InventaireService;
 use Illuminate\Http\Request;
@@ -330,6 +331,65 @@ class ScanController extends Controller
     }
 
     /**
+     * Récupérer la liste des états (pour PWA modal)
+     * Utilise la table etat sans modifier la BD
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getEtats()
+    {
+        $etats = Etat::orderBy('Etat')
+            ->get(['idEtat', 'Etat', 'CodeEtat'])
+            ->map(function ($etat) {
+                $constate = $this->mapEtatToConstate($etat->idEtat);
+                return [
+                    'id' => $etat->idEtat,
+                    'label' => $etat->Etat,
+                    'code' => $etat->CodeEtat,
+                    'require_photo' => ($constate === 'mauvais'),
+                ];
+            });
+
+        return response()->json(['etats' => $etats]);
+    }
+
+    /**
+     * Mapper idEtat (table etat) vers etat_constate (enum inventaire_scans)
+     * Sans modification de la BD
+     *
+     * @param int|null $idEtat
+     * @return string
+     */
+    private function mapEtatToConstate(?int $idEtat): string
+    {
+        if (!$idEtat) {
+            return 'bon';
+        }
+
+        $etat = Etat::find($idEtat);
+        if (!$etat) {
+            return 'bon';
+        }
+
+        // CodeEtat si valide (neuf, bon, moyen, mauvais)
+        if ($etat->CodeEtat && in_array(strtolower($etat->CodeEtat), ['neuf', 'bon', 'moyen', 'mauvais'])) {
+            return strtolower($etat->CodeEtat);
+        }
+
+        // Mapping par libellé Etat
+        $map = [
+            'neuf' => 'neuf',
+            'bon' => 'bon',
+            'moyen' => 'moyen',
+            'mauvais' => 'mauvais',
+            'défectueux' => 'mauvais',
+            'defectueux' => 'mauvais',
+        ];
+        $label = mb_strtolower(trim($etat->Etat));
+        return $map[$label] ?? 'bon';
+    }
+
+    /**
      * NOUVEAU WORKFLOW: Récupérer tous les biens d'un emplacement
      * 
      * @param int $idEmplacement
@@ -455,7 +515,10 @@ class ScanController extends Controller
     {
         $validated = $request->validate([
             'biens_scannes' => 'required|array',
-            'biens_scannes.*' => 'integer|exists:gesimmo,NumOrdre',
+            'biens_scannes.*.num_ordre' => 'required|integer|exists:gesimmo,NumOrdre',
+            'biens_scannes.*.etat_id' => 'nullable|integer|exists:etat,idEtat',
+            'biens_scannes.*.etat_constate' => 'nullable|string|in:neuf,bon,moyen,mauvais',
+            'biens_scannes.*.photo' => 'nullable|string', // Base64 image
         ]);
 
         $user = $request->user();
@@ -529,33 +592,45 @@ class ScanController extends Controller
             ->get();
 
         $biensAttendusList = $biensAttendus->pluck('NumOrdre')->toArray();
-        $biensScannesList = $validated['biens_scannes'];
+        $biensScannesList = array_map(fn($b) => is_array($b) ? $b['num_ordre'] : $b, $validated['biens_scannes']);
 
         // Calculer les écarts
         $biensManquants = array_diff($biensAttendusList, $biensScannesList);
         $biensEnTrop = array_diff($biensScannesList, $biensAttendusList);
 
-        // Sauvegarder les scans dans la base de données
-        DB::transaction(function () use ($inventaire, $inventaireLocalisation, $biensScannesList, $emplacement, $user) {
-            foreach ($biensScannesList as $numOrdre) {
-                // Vérifier si le scan existe déjà
+        // Sauvegarder les scans dans la base de données (avec etat_constate et photo)
+        DB::transaction(function () use ($inventaire, $inventaireLocalisation, $validated, $emplacement, $user) {
+            foreach ($validated['biens_scannes'] as $scanItem) {
+                $numOrdre = is_array($scanItem) ? $scanItem['num_ordre'] : $scanItem;
+                // Utiliser etat_id (table etat) si fourni, sinon etat_constate direct
+                $etatConstate = $scanItem['etat_constate'] ?? null;
+                if (!$etatConstate && isset($scanItem['etat_id'])) {
+                    $etatConstate = $this->mapEtatToConstate((int) $scanItem['etat_id']);
+                }
+                $etatConstate = $etatConstate ?: 'bon';
+                $photoBase64 = $scanItem['photo'] ?? null;
+
                 $scanExistant = InventaireScan::where('inventaire_id', $inventaire->id)
                     ->where('bien_id', $numOrdre)
                     ->first();
 
                 if (!$scanExistant) {
-                    // Trouver le bien (Gesimmo) pour obtenir son id dans la table biens si nécessaire
                     $bien = Gesimmo::find($numOrdre);
-                    
-                    // Créer le scan
+                    $photoPath = null;
+
+                    if ($photoBase64 && $bien) {
+                        $photoPath = $this->savePhotoFromBase64($photoBase64, 'GS' . $numOrdre);
+                    }
+
                     InventaireScan::create([
                         'inventaire_id' => $inventaire->id,
                         'inventaire_localisation_id' => $inventaireLocalisation->id,
-                        'bien_id' => $numOrdre, // Utiliser NumOrdre comme bien_id (à adapter selon votre structure)
+                        'bien_id' => $numOrdre,
                         'date_scan' => now(),
-                        'statut_scan' => 'present', // Par défaut, le bien est présent
+                        'statut_scan' => 'present',
                         'localisation_reelle_id' => $emplacement->idLocalisation,
-                        'etat_constate' => 'bon', // Par défaut
+                        'etat_constate' => $etatConstate,
+                        'photo_path' => $photoPath,
                         'user_id' => $user->idUser,
                     ]);
                 }
