@@ -209,6 +209,14 @@ class DashboardInventaire extends Component
     }
 
     /**
+     * Propriété calculée : Données pour le graphique progression temporelle
+     */
+    public function getScansGraphDataProperty()
+    {
+        return $this->inventaire->inventaireScans()->orderBy('date_scan')->get();
+    }
+
+    /**
      * Propriété calculée : Retourne la liste des agents assignés
      */
     public function getAgentsProperty()
