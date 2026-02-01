@@ -312,6 +312,44 @@
         <!-- Toast notifications avec Safe Area -->
         <div id="toast-container" class="fixed z-50 space-y-2 w-full px-4 max-w-md left-1/2 transform -translate-x-1/2" 
              style="top: calc(5rem + var(--safe-area-inset-top));"></div>
+
+        <!-- Modal État du bien (après scan) -->
+        <div id="modal-etat-bien" class="fixed inset-0 z-[60] hidden">
+            <div id="modal-etat-overlay" class="absolute inset-0 bg-black bg-opacity-50 touch-feedback"></div>
+            <div class="absolute inset-x-4 top-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+                <h3 class="text-lg font-bold text-gray-900 mb-2" id="modal-etat-titre">État du bien</h3>
+                <p class="text-sm text-gray-600 mb-4" id="modal-etat-designation">-</p>
+                
+                <div class="space-y-3 mb-4">
+                    <label class="block text-sm font-medium text-gray-700">État constaté</label>
+                    <div id="modal-etat-buttons" class="grid grid-cols-2 gap-2">
+                        <!-- Boutons chargés dynamiquement depuis API /etats -->
+                    </div>
+                </div>
+
+                <!-- Zone photo (visible si Défectueux) -->
+                <div id="modal-etat-photo-section" class="hidden mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">📷 Photo du bien défectueux (obligatoire)</label>
+                    <div class="space-y-2">
+                        <input type="file" id="modal-etat-photo-input" accept="image/*" capture="environment" 
+                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                        <div id="modal-etat-photo-preview" class="hidden mt-2">
+                            <img id="modal-etat-photo-img" src="" alt="Aperçu" class="rounded-lg max-h-32 object-cover border border-gray-200">
+                            <button type="button" id="modal-etat-photo-retake" class="mt-2 text-sm text-red-600 font-medium">Reprendre la photo</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button type="button" id="modal-etat-annuler" class="flex-1 py-3 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition">
+                        Annuler
+                    </button>
+                    <button type="button" id="modal-etat-confirmer" class="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition touch-target" disabled>
+                        Confirmer
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Script principal -->

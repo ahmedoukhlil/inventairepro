@@ -112,20 +112,19 @@
                             />
                         </div>
 
-                        {{-- Filtre Catégorie --}}
+                        {{-- Filtre Catégorie (select natif - peu d'options) --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Catégorie
                             </label>
-                            <livewire:components.searchable-select
+                            <select
                                 wire:model.live="filterCategorie"
-                                :options="$this->categories->map(fn($c) => [
-                                    'value' => (string)$c->idCategorie,
-                                    'text' => $c->Categorie
-                                ])->prepend(['value' => '', 'text' => 'Toutes les catégories'])->toArray()"
-                                placeholder="Toutes les catégories"
-                                :key="'filter-categorie'"
-                            />
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="">Toutes les catégories</option>
+                                @foreach($this->categories as $c)
+                                    <option value="{{ $c->idCategorie }}">{{ $c->Categorie }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
 
@@ -274,52 +273,49 @@
 
                     {{-- Troisième ligne : Autres filtres --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {{-- Filtre État --}}
+                        {{-- Filtre État (select natif - peu d'options) --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 État
                             </label>
-                            <livewire:components.searchable-select
+                            <select
                                 wire:model.live="filterEtat"
-                                :options="$this->etats->map(fn($e) => [
-                                    'value' => (string)$e->idEtat,
-                                    'text' => $e->Etat
-                                ])->prepend(['value' => '', 'text' => 'Tous les états'])->toArray()"
-                                placeholder="Tous les états"
-                                :key="'filter-etat'"
-                            />
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="">Tous les états</option>
+                                @foreach($this->etats as $e)
+                                    <option value="{{ $e->idEtat }}">{{ $e->Etat }}</option>
+                                @endforeach
+                            </select>
                         </div>
 
-                        {{-- Filtre Nature Juridique --}}
+                        {{-- Filtre Nature Juridique (select natif - peu d'options) --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Nature Juridique
                             </label>
-                            <livewire:components.searchable-select
+                            <select
                                 wire:model.live="filterNatJur"
-                                :options="$this->natureJuridiques->map(fn($n) => [
-                                    'value' => (string)$n->idNatJur,
-                                    'text' => $n->NatJur
-                                ])->prepend(['value' => '', 'text' => 'Toutes les natures juridiques'])->toArray()"
-                                placeholder="Toutes les natures juridiques"
-                                :key="'filter-natjur'"
-                            />
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="">Toutes les natures juridiques</option>
+                                @foreach($this->natureJuridiques as $n)
+                                    <option value="{{ $n->idNatJur }}">{{ $n->NatJur }}</option>
+                                @endforeach
+                            </select>
                         </div>
 
-                        {{-- Filtre Source de Financement --}}
+                        {{-- Filtre Source de Financement (select natif - peu d'options) --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Source de Financement
                             </label>
-                            <livewire:components.searchable-select
+                            <select
                                 wire:model.live="filterSF"
-                                :options="$this->sourceFinancements->map(fn($s) => [
-                                    'value' => (string)$s->idSF,
-                                    'text' => $s->SourceFin
-                                ])->prepend(['value' => '', 'text' => 'Toutes les sources de financement'])->toArray()"
-                                placeholder="Toutes les sources de financement"
-                                :key="'filter-sf'"
-                            />
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="">Toutes les sources de financement</option>
+                                @foreach($this->sourceFinancements as $s)
+                                    <option value="{{ $s->idSF }}">{{ $s->SourceFin }}</option>
+                                @endforeach
+                            </select>
                         </div>
 
                         {{-- Filtre Année d'acquisition --}}

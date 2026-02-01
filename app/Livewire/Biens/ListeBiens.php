@@ -50,20 +50,26 @@ class ListeBiens extends Component
 
     /**
      * Propriété calculée : Retourne toutes les désignations avec leurs catégories
+     * Cache 1h - table de référence rarement modifiée
      */
     public function getDesignationsProperty()
     {
-        return Designation::with('categorie')
-            ->orderBy('designation')
-            ->get();
+        return cache()->remember('liste_biens_designations', 3600, function () {
+            return Designation::with('categorie')
+                ->orderBy('designation')
+                ->get();
+        });
     }
 
     /**
      * Propriété calculée : Retourne toutes les catégories
+     * Cache 1h - table de référence rarement modifiée
      */
     public function getCategoriesProperty()
     {
-        return Categorie::orderBy('Categorie')->get();
+        return cache()->remember('liste_biens_categories', 3600, function () {
+            return Categorie::orderBy('Categorie')->get();
+        });
     }
 
     /**
@@ -246,26 +252,75 @@ class ListeBiens extends Component
 
     /**
      * Propriété calculée : Retourne tous les états
+     * Cache 1h - table de référence rarement modifiée
      */
     public function getEtatsProperty()
     {
-        return Etat::orderBy('Etat')->get();
+        return cache()->remember('liste_biens_etats', 3600, function () {
+            return Etat::orderBy('Etat')->get();
+        });
     }
 
     /**
      * Propriété calculée : Retourne toutes les natures juridiques
+     * Cache 1h - table de référence rarement modifiée
      */
     public function getNatureJuridiquesProperty()
     {
-        return NatureJuridique::orderBy('NatJur')->get();
+        return cache()->remember('liste_biens_nature_juridiques', 3600, function () {
+            return NatureJuridique::orderBy('NatJur')->get();
+        });
     }
 
     /**
      * Propriété calculée : Retourne toutes les sources de financement
+     * Cache 1h - table de référence rarement modifiée
      */
     public function getSourceFinancementsProperty()
     {
-        return SourceFinancement::orderBy('SourceFin')->get();
+        return cache()->remember('liste_biens_source_financements', 3600, function () {
+            return SourceFinancement::orderBy('SourceFin')->get();
+        });
+    }
+
+    /**
+     * Requête légère pour récupérer uniquement les NumOrdre (sans eager loading)
+     */
+    protected function getBiensNumOrdreQuery()
+    {
+        $query = Gesimmo::query()->select('NumOrdre');
+
+        if (!empty($this->search)) {
+            $search = trim($this->search);
+            if (is_numeric($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('NumOrdre', '=', (int)$search)
+                        ->orWhere('NumOrdre', 'like', '%' . $search . '%')
+                        ->orWhereHas('designation', fn($q2) => $q2->where('designation', 'like', '%' . $search . '%'))
+                        ->orWhereHas('emplacement', fn($q2) => $q2->where('Emplacement', 'like', '%' . $search . '%'));
+                });
+            } else {
+                $query->where(function ($q) use ($search) {
+                    $q->where('NumOrdre', 'like', '%' . $search . '%')
+                        ->orWhereHas('designation', fn($q2) => $q2->where('designation', 'like', '%' . $search . '%'))
+                        ->orWhereHas('emplacement', fn($q2) => $q2->where('Emplacement', 'like', '%' . $search . '%'));
+                });
+            }
+        }
+        if (!empty($this->filterDesignation)) $query->where('idDesignation', $this->filterDesignation);
+        if (!empty($this->filterCategorie)) $query->where('idCategorie', $this->filterCategorie);
+        if (!empty($this->filterEmplacement)) {
+            $query->where('idEmplacement', $this->filterEmplacement);
+        } else {
+            if (!empty($this->filterLocalisation)) $query->whereHas('emplacement', fn($q) => $q->where('idLocalisation', $this->filterLocalisation));
+            if (!empty($this->filterAffectation)) $query->whereHas('emplacement', fn($q) => $q->where('idAffectation', $this->filterAffectation));
+        }
+        if (!empty($this->filterEtat)) $query->where('idEtat', $this->filterEtat);
+        if (!empty($this->filterNatJur)) $query->where('idNatJur', $this->filterNatJur);
+        if (!empty($this->filterSF)) $query->where('idSF', $this->filterSF);
+        if (!empty($this->filterDateAcquisition)) $query->where('DateAcquisition', (int)$this->filterDateAcquisition);
+
+        return $query->orderBy($this->sortField, $this->sortDirection);
     }
 
     /**
@@ -273,7 +328,7 @@ class ListeBiens extends Component
      */
     public function getAllSelectedProperty()
     {
-        $allBiensIds = $this->getBiensQuery()->pluck('NumOrdre')->toArray();
+        $allBiensIds = $this->getBiensNumOrdreQuery()->pluck('NumOrdre')->toArray();
         
         if (empty($allBiensIds)) {
             return false;
@@ -348,8 +403,8 @@ class ListeBiens extends Component
      */
     public function toggleSelectAll(): void
     {
-        // Récupérer tous les IDs des biens correspondant aux filtres (sans pagination)
-        $allBiensIds = $this->getBiensQuery()->pluck('NumOrdre')->toArray();
+        // Requête légère : uniquement NumOrdre, sans eager loading
+        $allBiensIds = $this->getBiensNumOrdreQuery()->pluck('NumOrdre')->toArray();
         
         // Vérifier si tous les biens sont déjà sélectionnés
         $allSelected = !empty($allBiensIds) && 
@@ -463,23 +518,18 @@ class ListeBiens extends Component
             $query->where('idCategorie', $this->filterCategorie);
         }
 
-        // Filtre hiérarchique par localisation
-        if (!empty($this->filterLocalisation)) {
-            $query->whereHas('emplacement', function ($q) {
-                $q->where('idLocalisation', $this->filterLocalisation);
-            });
-        }
-
-        // Filtre hiérarchique par affectation
-        if (!empty($this->filterAffectation)) {
-            $query->whereHas('emplacement', function ($q) {
-                $q->where('idAffectation', $this->filterAffectation);
-            });
-        }
-
-        // Filtre par emplacement (prioritaire sur les filtres hiérarchiques)
+        // Filtre par emplacement : idEmplacement suffit (implique localisation + affectation)
         if (!empty($this->filterEmplacement)) {
             $query->where('idEmplacement', $this->filterEmplacement);
+        } else {
+            // Filtre hiérarchique par localisation (seulement si pas d'emplacement)
+            if (!empty($this->filterLocalisation)) {
+                $query->whereHas('emplacement', fn($q) => $q->where('idLocalisation', $this->filterLocalisation));
+            }
+            // Filtre hiérarchique par affectation (seulement si pas d'emplacement)
+            if (!empty($this->filterAffectation)) {
+                $query->whereHas('emplacement', fn($q) => $q->where('idAffectation', $this->filterAffectation));
+            }
         }
 
         // Filtre par état
