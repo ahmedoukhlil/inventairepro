@@ -39,13 +39,14 @@ class RapportInventaire extends Component
             return;
         }
 
-        // Eager load des relations nécessaires
+        // Eager load des relations nécessaires (compatible PWA: gesimmo)
         $this->inventaire = $inventaire->load([
             'creator',
             'closer',
             'inventaireLocalisations.localisation',
             'inventaireLocalisations.agent',
             'inventaireScans.bien',
+            'inventaireScans.gesimmo.designation',
             'inventaireScans.localisationReelle',
             'inventaireScans.agent',
         ]);
@@ -61,17 +62,18 @@ class RapportInventaire extends Component
     }
 
     /**
-     * Propriété calculée : Retourne les biens présents
+     * Propriété calculée : Retourne les biens présents (compatible PWA: gesimmo)
      */
     public function getBiensPresentsProperty()
     {
         $query = $this->inventaire->inventaireScans()
             ->where('statut_scan', 'present')
-            ->with(['bien.localisation', 'agent']);
+            ->with(['bien.localisation', 'gesimmo.designation', 'gesimmo.emplacement.localisation', 'agent']);
 
         if ($this->filterLocalisation !== 'all') {
-            $query->whereHas('bien', function ($q) {
-                $q->where('localisation_id', $this->filterLocalisation);
+            $query->where(function ($q) {
+                $q->whereHas('bien', fn ($b) => $b->where('localisation_id', $this->filterLocalisation))
+                    ->orWhereHas('gesimmo', fn ($g) => $g->whereHas('emplacement', fn ($e) => $e->where('idLocalisation', $this->filterLocalisation)));
             });
         }
 
@@ -79,17 +81,18 @@ class RapportInventaire extends Component
     }
 
     /**
-     * Propriété calculée : Retourne les biens déplacés
+     * Propriété calculée : Retourne les biens déplacés (compatible PWA: gesimmo)
      */
     public function getBiensDeplacesProperty()
     {
         $query = $this->inventaire->inventaireScans()
             ->where('statut_scan', 'deplace')
-            ->with(['bien.localisation', 'localisationReelle', 'agent']);
+            ->with(['bien.localisation', 'gesimmo.emplacement.localisation', 'localisationReelle', 'agent']);
 
         if ($this->filterLocalisation !== 'all') {
-            $query->whereHas('bien', function ($q) {
-                $q->where('localisation_id', $this->filterLocalisation);
+            $query->where(function ($q) {
+                $q->whereHas('bien', fn ($b) => $b->where('localisation_id', $this->filterLocalisation))
+                    ->orWhereHas('gesimmo', fn ($g) => $g->whereHas('emplacement', fn ($e) => $e->where('idLocalisation', $this->filterLocalisation)));
             });
         }
 
@@ -97,37 +100,57 @@ class RapportInventaire extends Component
     }
 
     /**
-     * Propriété calculée : Retourne les biens absents
+     * Propriété calculée : Retourne les biens absents (compatible PWA: gesimmo)
      */
     public function getBiensAbsentsProperty()
     {
         $scans = $this->inventaire->inventaireScans()
             ->where('statut_scan', 'absent')
-            ->with(['bien.localisation', 'agent'])
+            ->with(['bien.localisation', 'gesimmo.emplacement.localisation', 'agent'])
             ->get();
 
         if ($this->filterLocalisation !== 'all') {
             $scans = $scans->filter(function ($scan) {
-                return $scan->bien && $scan->bien->localisation_id == $this->filterLocalisation;
+                if ($scan->bien) {
+                    return $scan->bien->localisation_id == $this->filterLocalisation;
+                }
+                return $scan->gesimmo?->emplacement?->idLocalisation == $this->filterLocalisation;
             });
         }
 
         // Trier par valeur décroissante
-        return $scans->sortByDesc(function ($scan) {
-            return $scan->bien->valeur_acquisition ?? 0;
-        })->values();
+        return $scans->sortByDesc(fn ($scan) => $scan->bien?->valeur_acquisition ?? 0)->values();
     }
 
     /**
-     * Propriété calculée : Retourne les biens détériorés
+     * Propriété calculée : Retourne les biens détériorés (compatible PWA: gesimmo)
      */
     public function getBiensDeterioresProperty()
     {
         return $this->inventaire->inventaireScans()
             ->where('statut_scan', 'deteriore')
-            ->with(['bien.localisation', 'agent'])
+            ->with(['bien.localisation', 'gesimmo.designation', 'gesimmo.emplacement.localisation', 'agent'])
             ->orderBy('date_scan', 'desc')
             ->get();
+    }
+
+    /**
+     * Propriété calculée : Retourne les biens défectueux (etat_constate = mauvais, signalés via PWA)
+     */
+    public function getBiensDefectueuxProperty()
+    {
+        $query = $this->inventaire->inventaireScans()
+            ->where('etat_constate', 'mauvais')
+            ->with(['bien.localisation', 'gesimmo.designation', 'gesimmo.emplacement.localisation', 'localisationReelle', 'agent']);
+
+        if ($this->filterLocalisation !== 'all') {
+            $query->where(function ($q) {
+                $q->whereHas('bien', fn ($b) => $b->where('localisation_id', $this->filterLocalisation))
+                    ->orWhereHas('gesimmo', fn ($g) => $g->whereHas('emplacement', fn ($e) => $e->where('idLocalisation', $this->filterLocalisation)));
+            });
+        }
+
+        return $query->orderBy('date_scan', 'desc')->get();
     }
 
     /**

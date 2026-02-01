@@ -404,6 +404,7 @@ class InventaireService
         $biensDeplaces = $scans->where('statut_scan', 'deplace')->count();
         $biensAbsents = $scans->where('statut_scan', 'absent')->count();
         $biensDeteriores = $scans->where('statut_scan', 'deteriore')->count();
+        $biensDefectueux = $scans->where('etat_constate', 'mauvais')->count();
 
         $progressionGlobale = $totalLocalisations > 0 
             ? round(($localisationsTerminees / $totalLocalisations) * 100, 2) 
@@ -413,25 +414,22 @@ class InventaireService
             ? round(($biensPresents / $totalBiensScannes) * 100, 2) 
             : 0;
 
-        // Valeur totale scannée et absente
+        // Valeur totale scannée et absente (compatible PWA: gesimmo n'a pas valeur)
         $valeurTotaleScannee = $scans->where('statut_scan', '!=', 'absent')
-            ->sum(function ($scan) {
-                return $scan->bien->valeur_acquisition ?? 0;
-            });
+            ->sum(fn ($scan) => (float) ($scan->bien?->valeur_acquisition ?? 0));
 
         $valeurAbsente = $scans->where('statut_scan', 'absent')
-            ->sum(function ($scan) {
-                return $scan->bien->valeur_acquisition ?? 0;
-            });
+            ->sum(fn ($scan) => (float) ($scan->bien?->valeur_acquisition ?? 0));
 
         $dureeJours = $inventaire->duree ?? 0;
 
         // Statistiques par localisation
         $parLocalisation = $inventaireLocalisations->map(function ($invLoc) {
+            $loc = $invLoc->localisation;
             return [
                 'localisation_id' => $invLoc->localisation_id,
-                'code' => $invLoc->localisation->code,
-                'designation' => $invLoc->localisation->designation,
+                'code' => $loc->CodeLocalisation ?? $loc->Localisation ?? 'N/A',
+                'designation' => $loc->Localisation ?? $loc->CodeLocalisation ?? 'N/A',
                 'statut' => $invLoc->statut,
                 'biens_attendus' => $invLoc->nombre_biens_attendus,
                 'biens_scannes' => $invLoc->nombre_biens_scannes,
@@ -477,6 +475,7 @@ class InventaireService
             'biens_deplaces' => $biensDeplaces,
             'biens_absents' => $biensAbsents,
             'biens_deteriores' => $biensDeteriores,
+            'biens_defectueux' => $biensDefectueux,
             'progression_globale' => $progressionGlobale,
             'taux_conformite' => $tauxConformite,
             'valeur_totale_scannee' => $valeurTotaleScannee,
@@ -580,18 +579,33 @@ class InventaireService
             ];
         }
 
-        // Biens détériorés
+        // Biens détériorés (statut_scan = deteriore)
         $biensDeteriores = $inventaire->inventaireScans()
             ->where('statut_scan', 'deteriore')
-            ->with('bien')
+            ->with(['bien', 'gesimmo.designation'])
             ->get();
         
         foreach ($biensDeteriores as $scan) {
             $alertes['biens_deteriores'][] = [
                 'bien_id' => $scan->bien_id,
-                'code' => $scan->bien->code_inventaire,
-                'designation' => $scan->bien->designation,
+                'code' => $scan->code_inventaire,
+                'designation' => $scan->designation,
                 'etat_constate' => $scan->etat_constate,
+            ];
+        }
+
+        // Biens défectueux (etat_constate = mauvais, signalés via PWA)
+        $biensDefectueux = $inventaire->inventaireScans()
+            ->where('etat_constate', 'mauvais')
+            ->with(['bien', 'gesimmo.designation', 'localisationReelle'])
+            ->get();
+        
+        foreach ($biensDefectueux as $scan) {
+            $alertes['biens_defectueux'][] = [
+                'bien_id' => $scan->bien_id,
+                'code' => $scan->code_inventaire,
+                'designation' => $scan->designation,
+                'localisation' => $scan->localisationReelle?->CodeLocalisation ?? $scan->localisationReelle?->Localisation ?? 'N/A',
             ];
         }
 

@@ -107,6 +107,7 @@ class DashboardInventaire extends Component
         $biensDeplaces = $scans->where('statut_scan', 'deplace')->count();
         $biensAbsents = $scans->where('statut_scan', 'absent')->count();
         $biensDeteriores = $scans->where('statut_scan', 'deteriore')->count();
+        $biensDefectueux = $scans->where('etat_constate', 'mauvais')->count();
 
         // Progression globale : basée sur les biens scannés vs attendus
         $progressionGlobale = $totalBiensAttendus > 0 
@@ -147,6 +148,7 @@ class DashboardInventaire extends Component
             'biens_deplaces' => $biensDeplaces,
             'biens_absents' => $biensAbsents,
             'biens_deteriores' => $biensDeteriores,
+            'biens_defectueux' => $biensDefectueux,
             'progression_globale' => $progressionGlobale,
             'progression_localisations' => $progressionLocalisations,
             'taux_conformite' => $tauxConformite,
@@ -173,7 +175,7 @@ class DashboardInventaire extends Component
         }
 
         // Filtre par agent
-        if ($this->filterAgent !== 'all' && !empty($this->filterAgent)) {
+        if ($this->filterAgent !== 'all') {
             $query->where('user_id', $this->filterAgent);
         }
 
@@ -191,9 +193,6 @@ class DashboardInventaire extends Component
         // Tri manuel si nécessaire (pour le code de localisation)
         if ($this->sortField === 'code') {
             $results = $results->sortBy(function ($invLoc) {
-                if (!$invLoc->localisation) {
-                    return '';
-                }
                 return $invLoc->localisation->CodeLocalisation ?? $invLoc->localisation->Localisation ?? '';
             }, SORT_REGULAR, $this->sortDirection === 'desc');
         }
@@ -211,7 +210,6 @@ class DashboardInventaire extends Component
             ->with('agent')
             ->get()
             ->pluck('agent')
-            ->filter() // Enlever les valeurs null
             ->unique('idUser')
             ->values();
     }
@@ -221,25 +219,22 @@ class DashboardInventaire extends Component
      */
     public function getDerniersScansProperty()
     {
-        // Recharger les scans pour avoir les données à jour
+        // Recharger les scans pour avoir les données à jour (compatible PWA: gesimmo)
         $this->inventaire->load([
             'inventaireScans.gesimmo.designation',
             'inventaireScans.gesimmo.categorie',
+            'inventaireScans.bien',
             'inventaireScans.localisationReelle',
             'inventaireScans.agent'
         ]);
         
         return $this->inventaire->inventaireScans()
-            ->with(['gesimmo.designation', 'gesimmo.categorie', 'localisationReelle', 'agent'])
+            ->with(['gesimmo.designation', 'gesimmo.categorie', 'bien', 'localisationReelle', 'agent'])
             ->orderBy('date_scan', 'desc')
             ->limit(20)
             ->get()
             ->map(function ($scan) {
-                // Ajouter un accesseur pour obtenir le code d'inventaire depuis Gesimmo
-                if ($scan->gesimmo) {
-                    $scan->code_inventaire = "GS{$scan->gesimmo->NumOrdre}";
-                    $scan->designation = $scan->gesimmo->designation->designation ?? 'N/A';
-                }
+                // InventaireScan a des accesseurs code_inventaire et designation (compatible PWA)
                 return $scan;
             });
     }
@@ -253,6 +248,7 @@ class DashboardInventaire extends Component
             'localisations_non_demarrees' => [],
             'localisations_bloquees' => [],
             'biens_absents_valeur_haute' => [],
+            'biens_defectueux' => [],
             'localisations_non_assignees' => [],
         ];
 
@@ -300,38 +296,36 @@ class DashboardInventaire extends Component
         }
 
         // Biens absents de valeur élevée (>100k MRU)
-        // Note: Les scans utilisent gesimmo, pas bien directement
         $biensAbsents = $this->inventaire->inventaireScans()
             ->where('statut_scan', 'absent')
-            ->with(['gesimmo', 'bien'])
+            ->with('bien')
             ->get()
             ->filter(function ($scan) {
-                // Vérifier si c'est un bien ou un gesimmo
-                if ($scan->bien && isset($scan->bien->valeur_acquisition)) {
-                    return $scan->bien->valeur_acquisition > 100000;
-                }
-                // Pour gesimmo, on n'a pas de valeur_acquisition, donc on ignore cette alerte
-                return false;
+                return $scan->bien && $scan->bien->valeur_acquisition > 100000;
             })
             ->take(10);
         
         foreach ($biensAbsents as $scan) {
-            $code = 'N/A';
-            $designation = 'N/A';
-            
-            if ($scan->gesimmo) {
-                $code = "GS{$scan->gesimmo->NumOrdre}";
-                $designation = $scan->gesimmo->designation->designation ?? 'N/A';
-            } elseif ($scan->bien) {
-                $code = $scan->bien->code_inventaire ?? 'N/A';
-                $designation = $scan->bien->designation ?? 'N/A';
-            }
-            
             $alertes['biens_absents_valeur_haute'][] = [
                 'bien_id' => $scan->bien_id,
-                'code' => $code,
-                'designation' => $designation,
+                'code' => $scan->code_inventaire,
+                'designation' => $scan->designation,
                 'valeur' => $scan->bien->valeur_acquisition ?? 0,
+            ];
+        }
+
+        // Biens défectueux (etat_constate = mauvais, signalés via PWA)
+        $biensDefectueux = $this->inventaire->inventaireScans()
+            ->where('etat_constate', 'mauvais')
+            ->with(['gesimmo.designation', 'localisationReelle'])
+            ->get();
+        
+        foreach ($biensDefectueux as $scan) {
+            $alertes['biens_defectueux'][] = [
+                'bien_id' => $scan->bien_id,
+                'code' => $scan->code_inventaire,
+                'designation' => $scan->designation,
+                'localisation' => $scan->localisationReelle?->CodeLocalisation ?? $scan->localisationReelle?->Localisation ?? 'N/A',
             ];
         }
 
@@ -361,6 +355,7 @@ class DashboardInventaire extends Component
         return count($alertes['localisations_non_demarrees']) 
             + count($alertes['localisations_bloquees'])
             + count($alertes['biens_absents_valeur_haute'])
+            + count($alertes['biens_defectueux'] ?? [])
             + count($alertes['localisations_non_assignees']);
     }
 
@@ -489,17 +484,9 @@ class DashboardInventaire extends Component
         }
 
         try {
-            // Convertir userId en int si ce n'est pas vide, sinon null
-            $userIdValue = !empty($userId) ? (int)$userId : null;
-            
             $invLoc->update([
-                'user_id' => $userIdValue,
+                'user_id' => $userId ?: null,
             ]);
-            
-            // Recharger les relations
-            $this->inventaire->refresh();
-            $this->inventaire->load(['inventaireLocalisations.agent']);
-            
             session()->flash('success', 'Localisation réassignée avec succès.');
         } catch (\Exception $e) {
             session()->flash('error', 'Erreur lors de la réassignation: ' . $e->getMessage());
@@ -520,41 +507,6 @@ class DashboardInventaire extends Component
     }
 
     /**
-     * Propriété calculée : Retourne les données formatées pour le graphique de progression par localisation
-     */
-    public function getLocalisationsGraphDataProperty(): array
-    {
-        return $this->inventaireLocalisations->take(10)->map(function($loc) {
-            return [
-                'statut' => $loc->statut,
-                'nombre_biens_attendus' => $loc->nombre_biens_attendus ?? 0,
-                'nombre_biens_scannes' => $loc->nombre_biens_scannes ?? 0,
-                'localisation' => [
-                    'CodeLocalisation' => $loc->localisation->CodeLocalisation ?? null,
-                    'Localisation' => $loc->localisation->Localisation ?? 'N/A',
-                ]
-            ];
-        })->values()->toArray();
-    }
-
-    /**
-     * Propriété calculée : Retourne les données formatées pour le graphique de progression temporelle
-     */
-    public function getScansGraphDataProperty(): array
-    {
-        return $this->inventaire->inventaireScans()
-            ->orderBy('date_scan')
-            ->get()
-            ->map(function($scan) {
-                return [
-                    'date_scan' => $scan->date_scan ? $scan->date_scan->toDateTimeString() : null,
-                ];
-            })
-            ->values()
-            ->toArray();
-    }
-
-    /**
      * Rendu du composant
      */
     public function render()
@@ -562,4 +514,5 @@ class DashboardInventaire extends Component
         return view('livewire.inventaires.dashboard-inventaire');
     }
 }
+
 

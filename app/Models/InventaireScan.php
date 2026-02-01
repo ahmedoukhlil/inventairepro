@@ -143,5 +143,47 @@ class InventaireScan extends Model
     {
         return in_array($this->statut_scan, ['deplace', 'absent']);
     }
+
+    /**
+     * Retourne le code inventaire (Gesimmo ou Bien)
+     * Compatible PWA (bien_id = NumOrdre) et workflow classique
+     */
+    public function getCodeInventaireAttribute(): string
+    {
+        if ($this->gesimmo) {
+            return 'GS' . $this->gesimmo->NumOrdre;
+        }
+        return $this->bien?->code_inventaire ?? 'N/A';
+    }
+
+    /**
+     * Retourne la désignation (Gesimmo ou Bien)
+     */
+    public function getDesignationAttribute(): string
+    {
+        if ($this->gesimmo && $this->gesimmo->designation) {
+            return $this->gesimmo->designation->designation ?? 'N/A';
+        }
+        return $this->bien?->designation ?? 'N/A';
+    }
+
+    /**
+     * Retourne la localisation du bien (pour affichage)
+     */
+    public function getLocalisationCodeAttribute(): ?string
+    {
+        if ($this->gesimmo && $this->gesimmo->emplacement && $this->gesimmo->emplacement->localisation) {
+            return $this->gesimmo->emplacement->localisation->CodeLocalisation ?? $this->gesimmo->emplacement->localisation->Localisation;
+        }
+        return $this->bien?->localisation?->code ?? null;
+    }
+
+    /**
+     * Retourne la valeur d'acquisition (Gesimmo n'a pas de valeur)
+     */
+    public function getValeurAcquisitionAttribute(): float
+    {
+        return (float) ($this->bien?->valeur_acquisition ?? 0);
+    }
 }
 

@@ -30,6 +30,22 @@ class LocalisationImmo extends Model
      */
 
     /**
+     * Alias pour CodeLocalisation (compatibilité vues)
+     */
+    public function getCodeAttribute(): string
+    {
+        return $this->CodeLocalisation ?? $this->Localisation ?? '';
+    }
+
+    /**
+     * Alias pour Localisation (compatibilité vues)
+     */
+    public function getDesignationAttribute(): string
+    {
+        return $this->Localisation ?? $this->CodeLocalisation ?? '';
+    }
+
+    /**
      * Relation avec les emplacements
      */
     public function emplacements(): HasMany

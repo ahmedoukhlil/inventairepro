@@ -156,7 +156,7 @@
             {{-- ONGLET Résumé --}}
             <div x-show="activeTab === 'resume'" x-transition class="space-y-6">
                 {{-- Statistiques détaillées --}}
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                     <div class="bg-green-50 rounded-lg p-4 border border-green-200">
                         <p class="text-xs text-green-700 font-medium mb-1">Présents</p>
                         <p class="text-2xl font-bold text-green-700">{{ $this->statistiques['biens_presents'] }}</p>
@@ -172,6 +172,10 @@
                     <div class="bg-orange-50 rounded-lg p-4 border border-orange-200">
                         <p class="text-xs text-orange-700 font-medium mb-1">Détériorés</p>
                         <p class="text-2xl font-bold text-orange-700">{{ $this->statistiques['biens_deteriores'] }}</p>
+                    </div>
+                    <div class="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                        <p class="text-xs text-amber-700 font-medium mb-1">Défectueux</p>
+                        <p class="text-2xl font-bold text-amber-700">{{ $this->statistiques['biens_defectueux'] ?? 0 }}</p>
                     </div>
                 </div>
 
@@ -263,6 +267,12 @@
                             class="py-2 px-1 border-b-2 font-medium text-sm">
                             Absents ({{ count($this->biensAbsents) }})
                         </button>
+                        <button 
+                            @click="sousOnglet = 'defectueux'"
+                            :class="sousOnglet === 'defectueux' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                            class="py-2 px-1 border-b-2 font-medium text-sm">
+                            Défectueux ({{ count($this->biensDefectueux) }})
+                        </button>
                     </nav>
                 </div>
 
@@ -281,11 +291,11 @@
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @foreach($this->biensPresents->take(50) as $scan)
                                     <tr class="hover:bg-gray-50">
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ $scan->bien->code_inventaire ?? 'N/A' }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-900">{{ Str::limit($scan->bien->designation ?? 'N/A', 50) }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $scan->bien->localisation->code ?? 'N/A' }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ $scan->code_inventaire }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ Str::limit($scan->designation, 50) }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $scan->localisation_code ?? ($scan->bien?->localisation?->code ?? 'N/A') }}</td>
                                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                            {{ number_format($scan->bien->valeur_acquisition ?? 0, 0, ',', ' ') }} MRU
+                                            {{ number_format($scan->bien?->valeur_acquisition ?? 0, 0, ',', ' ') }} MRU
                                         </td>
                                     </tr>
                                 @endforeach
@@ -317,10 +327,10 @@
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @foreach($this->biensDeplaces->take(50) as $scan)
                                     <tr class="hover:bg-gray-50">
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ $scan->bien->code_inventaire ?? 'N/A' }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-900">{{ Str::limit($scan->bien->designation ?? 'N/A', 50) }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-red-600 font-medium">{{ $scan->bien->localisation->code ?? 'N/A' }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-orange-600 font-medium">{{ $scan->localisationReelle->code ?? 'N/A' }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ $scan->code_inventaire }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ Str::limit($scan->designation, 50) }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-red-600 font-medium">{{ $scan->localisation_code ?? ($scan->bien?->localisation?->code ?? 'N/A') }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-orange-600 font-medium">{{ $scan->localisationReelle?->CodeLocalisation ?? $scan->localisationReelle?->Localisation ?? 'N/A' }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -349,11 +359,11 @@
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @foreach($this->biensAbsents->take(50) as $scan)
                                     <tr class="hover:bg-gray-50">
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ $scan->bien->code_inventaire ?? 'N/A' }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-900">{{ Str::limit($scan->bien->designation ?? 'N/A', 50) }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $scan->bien->localisation->code ?? 'N/A' }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ $scan->code_inventaire }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ Str::limit($scan->designation, 50) }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $scan->localisation_code ?? ($scan->bien?->localisation?->code ?? 'N/A') }}</td>
                                         <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-red-600">
-                                            {{ number_format($scan->bien->valeur_acquisition ?? 0, 0, ',', ' ') }} MRU
+                                            {{ number_format($scan->bien?->valeur_acquisition ?? 0, 0, ',', ' ') }} MRU
                                         </td>
                                     </tr>
                                 @endforeach
@@ -361,13 +371,53 @@
                         </table>
                     </div>
                 </div>
+
+                {{-- Défectueux (signalés via PWA) --}}
+                <div x-show="sousOnglet === 'defectueux'" x-transition style="display: none;">
+                    <div class="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+                        <p class="text-sm text-amber-700">
+                            <strong>Immobilisations signalées défectueuses</strong> lors de l'inventaire (via PWA).
+                        </p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Désignation</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Localisation</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Photo</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                @foreach($this->biensDefectueux->take(50) as $scan)
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ $scan->code_inventaire }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ Str::limit($scan->designation, 50) }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $scan->localisationReelle?->CodeLocalisation ?? $scan->localisationReelle?->Localisation ?? ($scan->localisation_code ?? 'N/A') }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                            @if($scan->photo_path)
+                                                <a href="{{ asset('storage/' . $scan->photo_path) }}" target="_blank" class="text-indigo-600 hover:underline">Voir photo</a>
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @if(count($this->biensDefectueux) > 50)
+                        <p class="text-sm text-gray-500 mt-4">Affichage des 50 premiers résultats sur {{ count($this->biensDefectueux) }}</p>
+                    @endif
+                </div>
             </div>
 
             {{-- ONGLET Anomalies --}}
             <div x-show="activeTab === 'anomalies'" x-transition style="display: none;" class="space-y-6">
                 @php $anomalies = $this->anomalies; @endphp
 
-                @if(count($anomalies['localisations_non_demarrees']) > 0 || count($anomalies['taux_absence_eleve']) > 0 || count($anomalies['biens_absents_valeur_haute']) > 0)
+                @if(count($anomalies['localisations_non_demarrees']) > 0 || count($anomalies['taux_absence_eleve']) > 0 || count($anomalies['biens_absents_valeur_haute']) > 0 || count($anomalies['biens_defectueux'] ?? []) > 0)
                     <div class="space-y-4">
                         @if(count($anomalies['localisations_non_demarrees']) > 0)
                             <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
@@ -401,6 +451,16 @@
                                 </ul>
                             </div>
                         @endif
+                        @if(count($anomalies['biens_defectueux'] ?? []) > 0)
+                            <div class="bg-amber-50 border-l-4 border-amber-400 p-4">
+                                <h4 class="font-medium text-amber-800 mb-2">Immobilisations signalées défectueuses ({{ count($anomalies['biens_defectueux']) }})</h4>
+                                <ul class="list-disc list-inside text-sm text-amber-700 space-y-1">
+                                    @foreach($anomalies['biens_defectueux'] as $anomalie)
+                                        <li>{{ $anomalie['code'] }} - {{ $anomalie['designation'] }} ({{ $anomalie['localisation'] }})</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
                     </div>
                 @else
                     <div class="text-center py-8">
@@ -425,6 +485,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const stats = @json($this->statistiques);
+            const biensDefectueux = stats.biens_defectueux ?? 0;
 
             // Graphique : Répartition statuts
             const ctxStatuts = document.getElementById('chart-statuts');
@@ -432,19 +493,21 @@
                 new Chart(ctxStatuts, {
                     type: 'doughnut',
                     data: {
-                        labels: ['Présents', 'Déplacés', 'Absents', 'Détériorés'],
+                        labels: ['Présents', 'Déplacés', 'Absents', 'Détériorés', 'Défectueux'],
                         datasets: [{
                             data: [
                                 stats.biens_presents,
                                 stats.biens_deplaces,
                                 stats.biens_absents,
-                                stats.biens_deteriores
+                                stats.biens_deteriores,
+                                biensDefectueux
                             ],
                             backgroundColor: [
                                 'rgba(34, 197, 94, 0.8)',
                                 'rgba(234, 179, 8, 0.8)',
                                 'rgba(239, 68, 68, 0.8)',
                                 'rgba(249, 115, 22, 0.8)',
+                                'rgba(217, 119, 6, 0.8)',
                             ],
                         }]
                     },

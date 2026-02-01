@@ -233,6 +233,10 @@
                     <span class="text-gray-500">Détériorés</span>
                     <span class="font-medium text-orange-600">{{ $this->statistiques['biens_deteriores'] }}</span>
                 </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Défectueux</span>
+                    <span class="font-medium text-amber-600">{{ $this->statistiques['biens_defectueux'] ?? 0 }}</span>
+                </div>
             </div>
         </div>
 
@@ -352,6 +356,9 @@
                         @endforeach
                         @if(count($this->alertes['biens_absents_valeur_haute']) > 0)
                             <p>⚠️ {{ count($this->alertes['biens_absents_valeur_haute']) }} immobilisation(s) absente(s) de valeur élevée (>100k MRU)</p>
+                        @endif
+                        @if(count($this->alertes['biens_defectueux'] ?? []) > 0)
+                            <p>⚠️ {{ count($this->alertes['biens_defectueux']) }} immobilisation(s) signalée(s) défectueuse(s) lors de l'inventaire</p>
                         @endif
                         @if(count($this->alertes['localisations_non_assignees']) > 0)
                             <p>⚠️ {{ count($this->alertes['localisations_non_assignees']) }} localisation(s) non assignée(s)</p>
@@ -670,7 +677,8 @@
             const ctxScans = document.getElementById('chart-scans');
             if (ctxScans) {
                 const stats = @json($this->statistiques);
-                const total = stats.biens_presents + stats.biens_deplaces + stats.biens_absents + stats.biens_deteriores;
+                const biensDefectueux = stats.biens_defectueux ?? 0;
+                const total = stats.biens_presents + stats.biens_deplaces + stats.biens_absents + stats.biens_deteriores + biensDefectueux;
                 
                 chartScans = new Chart(ctxScans, {
                     type: 'doughnut',
@@ -679,20 +687,23 @@
                             'Présents (' + stats.biens_presents + ')',
                             'Déplacés (' + stats.biens_deplaces + ')',
                             'Absents (' + stats.biens_absents + ')',
-                            'Détériorés (' + stats.biens_deteriores + ')'
+                            'Détériorés (' + stats.biens_deteriores + ')',
+                            'Défectueux (' + biensDefectueux + ')'
                         ],
                         datasets: [{
                             data: [
                                 stats.biens_presents,
                                 stats.biens_deplaces,
                                 stats.biens_absents,
-                                stats.biens_deteriores
+                                stats.biens_deteriores,
+                                biensDefectueux
                             ],
                             backgroundColor: [
                                 '#22c55e',   // Vert vif - Présents
                                 '#eab308',   // Jaune vif - Déplacés
                                 '#ef4444',   // Rouge vif - Absents
                                 '#f97316',   // Orange vif - Détériorés
+                                '#d97706',   // Amber - Défectueux
                             ],
                             borderColor: '#ffffff',
                             borderWidth: 3,
