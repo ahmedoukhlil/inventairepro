@@ -284,6 +284,56 @@
             color: #991b1b;
         }
 
+        /* Bloc emplacement */
+        .emplacement-block {
+            margin-bottom: 24px;
+            page-break-inside: avoid;
+        }
+
+        .emplacement-title {
+            font-size: 11pt;
+            color: #4F46E5;
+            background: #eff6ff;
+            padding: 8px 12px;
+            margin: 16px 0 8px 0;
+            border-left: 4px solid #4F46E5;
+            page-break-after: avoid;
+        }
+
+        .emplacement-resume {
+            font-size: 8pt;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+
+        .emplacement-vide {
+            font-size: 8pt;
+            color: #9ca3af;
+            font-style: italic;
+            padding: 8px 0;
+        }
+
+        .table-detail {
+            font-size: 7pt;
+        }
+
+        .table-detail th {
+            padding: 6px 4px;
+        }
+
+        .table-detail td {
+            padding: 5px 4px;
+        }
+
+        .etat-defectueux {
+            color: #b45309;
+            font-weight: bold;
+        }
+
+        .etat-ok {
+            color: #065f46;
+        }
+
         /* ============================================
            INFO BOXES
            ============================================ */
@@ -437,55 +487,62 @@
         <p><strong>Emplacements inventoriés :</strong> {{ count($statistiques['par_emplacement'] ?? []) }}</p>
     </div>
 
-    <!-- SECTION 2: RÉSULTATS PAR EMPLACEMENT -->
+    <!-- SECTION 2: RÉSULTATS PAR EMPLACEMENT (tableaux détaillés) -->
     <div class="page-break"></div>
     <h1>2. Résultats par emplacement</h1>
 
-    <p class="mb-15">Tableau récapitulatif des immobilisations attendues, scannées et de l'écart par emplacement.</p>
+    <p class="mb-15">Pour chaque emplacement, tableau des immobilisations avec colonnes Attendu, Trouvé effectivement, Conformité et État au moment de l'inventaire.</p>
 
-    @php $parEmplacement = $statistiques['par_emplacement'] ?? []; @endphp
-    @if(count($parEmplacement) > 0)
-    <table class="table-emplacements">
-        <thead>
-            <tr>
-                <th>Emplacement</th>
-                <th>Localisation</th>
-                <th class="text-right">Attendues</th>
-                <th class="text-right">Scannées</th>
-                <th class="text-right">Écart</th>
-                <th class="text-center">Conformité</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($parEmplacement as $emp)
-            @php
-                $ecart = ($emp['biens_attendus'] ?? 0) - ($emp['biens_scannes'] ?? 0);
-                $ecartClass = $ecart == 0 ? 'ecart-ok' : ($ecart > 0 ? 'ecart-manquant' : 'ecart-surplus');
-                $ecartText = $ecart == 0 ? 'Conforme' : ($ecart > 0 ? '-' . $ecart . ' manquant(s)' : '+' . abs($ecart));
-                $taux = $emp['taux_conformite'] ?? 0;
-                $conformiteClass = $taux >= 95 ? 'conformite-excellent' : ($taux >= 85 ? 'conformite-bon' : ($taux >= 70 ? 'conformite-faible' : 'conformite-insuffisant'));
-            @endphp
-            <tr>
-                <td><strong>{{ $emp['code'] ?? 'N/A' }}</strong></td>
-                <td>{{ $emp['localisation'] ?? 'N/A' }}</td>
-                <td class="text-right">{{ $emp['biens_attendus'] ?? 0 }}</td>
-                <td class="text-right">{{ $emp['biens_scannes'] ?? 0 }}</td>
-                <td class="text-right">
-                    <span class="ecart-badge {{ $ecartClass }}">{{ $ecartText }}</span>
-                </td>
-                <td class="text-center">
-                    <span class="conformite-badge {{ $conformiteClass }}">{{ number_format($taux, 1) }}%</span>
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
+    @php $detailParEmplacement = $detailParEmplacement ?? []; @endphp
+    @if(count($detailParEmplacement) > 0)
+        @foreach($detailParEmplacement as $emp)
+        <div class="emplacement-block no-break">
+            <h2 class="emplacement-title">{{ $emp['code'] }} — {{ $emp['localisation'] }}</h2>
+            <p class="emplacement-resume">Résumé : {{ $emp['total_trouves'] }}/{{ $emp['total_attendus'] }} trouvées — Conformité {{ $emp['taux_conformite'] }}%</p>
+            @if(count($emp['lignes'] ?? []) > 0)
+            <table class="table-emplacements table-detail">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Désignation</th>
+                        <th class="text-center">Attendu</th>
+                        <th class="text-center">Trouvé</th>
+                        <th class="text-center">Conformité</th>
+                        <th class="text-center">État</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($emp['lignes'] ?? [] as $ligne)
+                    @php
+                        $statut = $ligne['statut_scan'] ?? '';
+                        $conformiteClass = $statut === 'present' ? 'conformite-excellent' : ($statut === 'absent' ? 'conformite-insuffisant' : ($statut === 'deplace' ? 'conformite-faible' : 'conformite-bon'));
+                        $etatClass = ($ligne['etat'] ?? '') === 'Défectueuse' ? 'etat-defectueux' : 'etat-ok';
+                    @endphp
+                    <tr>
+                        <td><strong>{{ $ligne['code'] ?? 'N/A' }}</strong></td>
+                        <td>{{ Str::limit($ligne['designation'] ?? 'N/A', 35) }}</td>
+                        <td class="text-center">{{ $ligne['attendu'] ?? 1 }}</td>
+                        <td class="text-center">{{ $ligne['trouve'] ?? 0 }}</td>
+                        <td class="text-center">
+                            <span class="conformite-badge {{ $conformiteClass }}">{{ $ligne['conformite'] ?? '-' }}</span>
+                        </td>
+                        <td class="text-center {{ $etatClass }}">{{ $ligne['etat'] ?? '-' }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            @else
+            <p class="emplacement-vide">Aucune immobilisation dans cet emplacement.</p>
+            @endif
+        </div>
+        @endforeach
 
     <div class="info-box no-break mt-15">
-        <p><strong>Légende des écarts :</strong></p>
-        <p>• <span class="ecart-badge ecart-ok">Conforme</span> = Nombre scanné égal au nombre attendu</p>
-        <p>• <span class="ecart-badge ecart-manquant">-X manquant(s)</span> = X immobilisation(s) non trouvée(s) ou non scannée(s)</p>
-        <p>• <span class="ecart-badge ecart-surplus">+X</span> = X immobilisation(s) scannée(s) en surplus</p>
+        <p><strong>Légende :</strong></p>
+        <p>• <strong>Attendu</strong> = 1 si l'immobilisation est attendue dans cet emplacement</p>
+        <p>• <strong>Trouvé</strong> = 1 si trouvée effectivement sur place lors de l'inventaire, 0 sinon</p>
+        <p>• <strong>Conformité</strong> = Présent (trouvé en place), Absent, Déplacé (trouvé ailleurs)</p>
+        <p>• <strong>État</strong> = État physique constaté : Neuf, Bon état, Défectueuse</p>
     </div>
     @else
     <div class="warning-box no-break">
