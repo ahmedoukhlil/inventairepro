@@ -23,7 +23,7 @@ class RapportInventaire extends Component
     /**
      * Filtres pour les tableaux
      */
-    public $filterLocalisation = 'all';
+    public $filterEmplacement = 'all';
     public $filterStatut = 'all';
     public $showPhotos = false;
 
@@ -70,10 +70,13 @@ class RapportInventaire extends Component
             ->where('statut_scan', 'present')
             ->with(['bien.localisation', 'gesimmo.designation', 'gesimmo.emplacement.localisation', 'agent']);
 
-        if ($this->filterLocalisation !== 'all') {
-            $query->where(function ($q) {
-                $q->whereHas('bien', fn ($b) => $b->where('localisation_id', $this->filterLocalisation))
-                    ->orWhereHas('gesimmo', fn ($g) => $g->whereHas('emplacement', fn ($e) => $e->where('idLocalisation', $this->filterLocalisation)));
+        if ($this->filterEmplacement !== 'all') {
+            $emplacement = \App\Models\Emplacement::find($this->filterEmplacement);
+            $query->where(function ($q) use ($emplacement) {
+                $q->whereHas('gesimmo', fn ($g) => $g->where('idEmplacement', $this->filterEmplacement));
+                if ($emplacement) {
+                    $q->orWhereHas('bien', fn ($b) => $b->where('localisation_id', $emplacement->idLocalisation));
+                }
             });
         }
 
@@ -89,10 +92,13 @@ class RapportInventaire extends Component
             ->where('statut_scan', 'deplace')
             ->with(['bien.localisation', 'gesimmo.emplacement.localisation', 'localisationReelle', 'agent']);
 
-        if ($this->filterLocalisation !== 'all') {
-            $query->where(function ($q) {
-                $q->whereHas('bien', fn ($b) => $b->where('localisation_id', $this->filterLocalisation))
-                    ->orWhereHas('gesimmo', fn ($g) => $g->whereHas('emplacement', fn ($e) => $e->where('idLocalisation', $this->filterLocalisation)));
+        if ($this->filterEmplacement !== 'all') {
+            $emplacement = \App\Models\Emplacement::find($this->filterEmplacement);
+            $query->where(function ($q) use ($emplacement) {
+                $q->whereHas('gesimmo', fn ($g) => $g->where('idEmplacement', $this->filterEmplacement));
+                if ($emplacement) {
+                    $q->orWhereHas('bien', fn ($b) => $b->where('localisation_id', $emplacement->idLocalisation));
+                }
             });
         }
 
@@ -109,12 +115,13 @@ class RapportInventaire extends Component
             ->with(['bien.localisation', 'gesimmo.emplacement.localisation', 'agent'])
             ->get();
 
-        if ($this->filterLocalisation !== 'all') {
+        if ($this->filterEmplacement !== 'all') {
             $scans = $scans->filter(function ($scan) {
-                if ($scan->bien) {
-                    return $scan->bien->localisation_id == $this->filterLocalisation;
+                if ($scan->gesimmo) {
+                    return $scan->gesimmo->idEmplacement == $this->filterEmplacement;
                 }
-                return $scan->gesimmo?->emplacement?->idLocalisation == $this->filterLocalisation;
+                $emplacement = \App\Models\Emplacement::find($this->filterEmplacement);
+                return $emplacement && $scan->bien?->localisation_id == $emplacement->idLocalisation;
             });
         }
 
@@ -143,10 +150,13 @@ class RapportInventaire extends Component
             ->where('etat_constate', 'mauvais')
             ->with(['bien.localisation', 'gesimmo.designation', 'gesimmo.emplacement.localisation', 'localisationReelle', 'agent']);
 
-        if ($this->filterLocalisation !== 'all') {
-            $query->where(function ($q) {
-                $q->whereHas('bien', fn ($b) => $b->where('localisation_id', $this->filterLocalisation))
-                    ->orWhereHas('gesimmo', fn ($g) => $g->whereHas('emplacement', fn ($e) => $e->where('idLocalisation', $this->filterLocalisation)));
+        if ($this->filterEmplacement !== 'all') {
+            $emplacement = \App\Models\Emplacement::find($this->filterEmplacement);
+            $query->where(function ($q) use ($emplacement) {
+                $q->whereHas('gesimmo', fn ($g) => $g->where('idEmplacement', $this->filterEmplacement));
+                if ($emplacement) {
+                    $q->orWhereHas('bien', fn ($b) => $b->where('localisation_id', $emplacement->idLocalisation));
+                }
             });
         }
 

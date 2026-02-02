@@ -141,10 +141,10 @@
                     Résumé
                 </button>
                 <button 
-                    @click="activeTab = 'localisations'; $wire.setActiveTab('localisations')"
-                    :class="activeTab === 'localisations' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    @click="activeTab = 'emplacements'; $wire.setActiveTab('emplacements')"
+                    :class="activeTab === 'emplacements' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                    Par localisation
+                    Par emplacement
                 </button>
                 <button 
                     @click="activeTab = 'biens'; $wire.setActiveTab('biens')"
@@ -243,13 +243,14 @@
                 </div>
                 @endif
 
-                {{-- Performance par localisation (tableau simplifié) --}}
+                {{-- Performance par emplacement (tableau simplifié) --}}
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Performance par localisation</h3>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Performance par emplacement</h3>
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Emplacement</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Localisation</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scannés</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Présents</th>
@@ -257,14 +258,15 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                @foreach(collect($this->statistiques['par_localisation'])->sortByDesc('taux_conformite')->take(10) as $loc)
+                                @foreach(collect($this->statistiques['par_emplacement'] ?? [])->sortByDesc('taux_conformite')->take(10) as $emp)
                                     <tr class="hover:bg-gray-50">
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ $loc['code'] }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $loc['biens_scannes'] }}/{{ $loc['biens_attendus'] }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-green-600 font-medium">{{ $loc['biens_presents'] ?? 0 }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ $emp['code'] }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ $emp['localisation'] ?? 'N/A' }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $emp['biens_scannes'] }}/{{ $emp['biens_attendus'] }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-green-600 font-medium">{{ $emp['biens_presents'] ?? 0 }}</td>
                                         <td class="px-4 py-3 whitespace-nowrap">
-                                            <span class="text-sm font-medium {{ $loc['taux_conformite'] >= 90 ? 'text-green-600' : ($loc['taux_conformite'] >= 70 ? 'text-yellow-600' : 'text-red-600') }}">
-                                                {{ round($loc['taux_conformite'], 1) }}%
+                                            <span class="text-sm font-medium {{ ($emp['taux_conformite'] ?? 0) >= 90 ? 'text-green-600' : (($emp['taux_conformite'] ?? 0) >= 70 ? 'text-yellow-600' : 'text-red-600') }}">
+                                                {{ round($emp['taux_conformite'] ?? 0, 1) }}%
                                             </span>
                                         </td>
                                     </tr>
@@ -275,33 +277,33 @@
                 </div>
             </div>
 
-            {{-- ONGLET Par localisation --}}
-            <div x-show="activeTab === 'localisations'" x-transition style="display: none;" class="space-y-6">
+            {{-- ONGLET Par emplacement --}}
+            <div x-show="activeTab === 'emplacements'" x-transition style="display: none;" class="space-y-6">
                 <div class="mb-4">
                     <select 
-                        wire:model.live="filterLocalisation"
+                        wire:model.live="filterEmplacement"
                         class="block w-full md:w-64 px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        <option value="all">Toutes les localisations</option>
-                        @foreach($inventaire->inventaireLocalisations as $invLoc)
-                            <option value="{{ $invLoc->localisation_id }}">{{ $invLoc->localisation->code }}</option>
+                        <option value="all">Tous les emplacements</option>
+                        @foreach($this->statistiques['par_emplacement'] ?? [] as $emp)
+                            <option value="{{ $emp['emplacement_id'] }}">{{ $emp['code'] }} ({{ $emp['localisation'] ?? 'N/A' }})</option>
                         @endforeach
                     </select>
                 </div>
 
-                @foreach($inventaire->inventaireLocalisations as $invLoc)
-                    @if($filterLocalisation === 'all' || $filterLocalisation == $invLoc->localisation_id)
+                @foreach($this->statistiques['par_emplacement'] ?? [] as $emp)
+                    @if($filterEmplacement === 'all' || $filterEmplacement == $emp['emplacement_id'])
                         <div class="bg-gray-50 rounded-lg p-4 mb-4">
                             <div class="flex items-center justify-between mb-3">
                                 <div>
-                                    <h3 class="text-base font-semibold text-gray-900">{{ $invLoc->localisation->code }}</h3>
-                                    <p class="text-sm text-gray-600">{{ $invLoc->localisation->designation }}</p>
+                                    <h3 class="text-base font-semibold text-gray-900">{{ $emp['code'] }}</h3>
+                                    <p class="text-sm text-gray-600">{{ $emp['designation'] ?? $emp['code'] }} — {{ $emp['localisation'] ?? 'N/A' }}</p>
                                 </div>
-                                <span class="text-sm font-medium {{ $invLoc->taux_conformite >= 90 ? 'text-green-600' : ($invLoc->taux_conformite >= 70 ? 'text-yellow-600' : 'text-red-600') }}">
-                                    {{ round($invLoc->taux_conformite, 1) }}%
+                                <span class="text-sm font-medium {{ ($emp['taux_conformite'] ?? 0) >= 90 ? 'text-green-600' : (($emp['taux_conformite'] ?? 0) >= 70 ? 'text-yellow-600' : 'text-red-600') }}">
+                                    {{ round($emp['taux_conformite'] ?? 0, 1) }}%
                                 </span>
                             </div>
                             <div class="text-sm text-gray-600">
-                                {{ $invLoc->nombre_biens_scannes }}/{{ $invLoc->nombre_biens_attendus }} immobilisations scannées
+                                {{ $emp['biens_scannes'] }}/{{ $emp['biens_attendus'] }} immobilisations scannées
                             </div>
                         </div>
                     @endif
@@ -460,16 +462,19 @@
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $scan->localisationReelle?->CodeLocalisation ?? $scan->localisationReelle?->Localisation ?? ($scan->localisation_code ?? 'N/A') }}</td>
                                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                            @if($scan->photo_path)
-                                                <div x-data="{ open: false }" class="inline">
+                                            @if($scan->photo_path && $scan->photo_url)
+                                                <div x-data="{ open: false }" class="inline" @keydown.escape.window="open = false">
                                                     <button @click="open = true" type="button" class="flex items-center gap-2 group">
-                                                        <img src="{{ asset('storage/' . $scan->photo_path) }}" alt="Photo {{ $scan->code_inventaire }}" class="w-12 h-12 object-cover rounded border border-gray-200 group-hover:border-indigo-400 transition cursor-pointer">
+                                                        <img src="{{ $scan->photo_url }}" alt="Photo {{ $scan->code_inventaire }}" class="w-12 h-12 object-contain rounded border border-gray-200 group-hover:border-indigo-400 transition cursor-pointer bg-gray-50" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2248%22 height=%2248%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%239ca3af%22 stroke-width=%222%22%3E%3Crect x=%223%22 y=%223%22 width=%2218%22 height=%2218%22 rx=%222%22/%3E%3Ccircle cx=%228.5%22 cy=%228.5%22 r=%221.5%22/%3E%3Cpath d=%22M21 15l-5-5L5 21%22/%3E%3C/svg%3E';">
                                                         <span class="text-indigo-600 hover:underline text-sm">Voir</span>
                                                     </button>
-                                                    <div x-show="open" x-cloak @click.self="open = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" x-transition>
-                                                        <div class="relative max-w-4xl max-h-[90vh]">
-                                                            <img src="{{ asset('storage/' . $scan->photo_path) }}" alt="Photo {{ $scan->code_inventaire }}" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-xl">
-                                                            <button @click="open = false" class="absolute -top-10 right-0 text-white hover:text-gray-300 p-2">
+                                                    <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" @click.self="open = false" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4">
+                                                        <div class="relative max-w-4xl max-h-[90vh] flex items-center justify-center">
+                                                            <img src="{{ $scan->photo_url }}" alt="Photo {{ $scan->code_inventaire }}" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-xl bg-gray-900" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+                                                            <div class="hidden min-h-[200px] min-w-[300px] flex items-center justify-center rounded-lg bg-gray-800 text-gray-400 p-8">
+                                                                <span>Image non disponible</span>
+                                                            </div>
+                                                            <button @click="open = false" type="button" class="absolute -top-12 right-0 text-white hover:text-gray-300 p-2 rounded-full hover:bg-white/10 transition" aria-label="Fermer">
                                                                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                                             </button>
                                                             <p class="text-white text-sm mt-2 text-center">{{ $scan->code_inventaire }} - {{ Str::limit($scan->designation, 40) }}</p>
