@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Gesimmo;
 
 class InventaireScan extends Model
@@ -198,6 +199,18 @@ class InventaireScan extends Model
             'mauvais' => 'Défectueuse',
         ];
         return $labels[$this->etat_constate ?? 'bon'] ?? 'Bon état';
+    }
+
+    /**
+     * URL publique de la photo (pour affichage)
+     */
+    public function getPhotoUrlAttribute(): ?string
+    {
+        if (empty($this->photo_path)) {
+            return null;
+        }
+        $path = ltrim(str_replace('\\', '/', $this->photo_path), '/');
+        return Storage::disk('public')->url($path);
     }
 }
 

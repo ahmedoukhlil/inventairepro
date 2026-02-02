@@ -7,6 +7,8 @@ use App\Models\InventaireLocalisation;
 use App\Models\InventaireScan;
 use App\Models\Localisation;
 use App\Models\Bien;
+use App\Models\Emplacement;
+use App\Models\Gesimmo;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -449,7 +451,39 @@ class InventaireService
 
         $dureeJours = $inventaire->duree ?? 0;
 
-        // Statistiques par localisation
+        // Statistiques par emplacement (au lieu de par localisation)
+        $localisationIds = $inventaireLocalisations->pluck('localisation_id')->unique()->toArray();
+        $emplacements = Emplacement::whereIn('idLocalisation', $localisationIds)
+            ->with('localisation')
+            ->orderBy('CodeEmplacement')
+            ->get();
+
+        $parEmplacement = $emplacements->map(function ($emplacement) use ($inventaire) {
+            $biensAttendus = $emplacement->immobilisations()->count();
+            $biensScannes = $inventaire->inventaireScans()
+                ->whereHas('gesimmo', fn ($q) => $q->where('idEmplacement', $emplacement->idEmplacement))
+                ->count();
+            $biensPresents = $inventaire->inventaireScans()
+                ->whereHas('gesimmo', fn ($q) => $q->where('idEmplacement', $emplacement->idEmplacement))
+                ->where('statut_scan', 'present')
+                ->count();
+            $progression = $biensAttendus > 0 ? round(($biensScannes / $biensAttendus) * 100, 2) : 0;
+            $tauxConformite = $biensScannes > 0 ? round(($biensPresents / $biensScannes) * 100, 2) : 0;
+
+            return [
+                'emplacement_id' => $emplacement->idEmplacement,
+                'code' => $emplacement->CodeEmplacement ?? $emplacement->Emplacement ?? 'N/A',
+                'designation' => $emplacement->Emplacement ?? $emplacement->CodeEmplacement ?? 'N/A',
+                'localisation' => $emplacement->localisation?->CodeLocalisation ?? $emplacement->localisation?->Localisation ?? 'N/A',
+                'biens_attendus' => $biensAttendus,
+                'biens_scannes' => $biensScannes,
+                'biens_presents' => $biensPresents,
+                'progression' => $progression,
+                'taux_conformite' => $tauxConformite,
+            ];
+        })->toArray();
+
+        // Garder par_localisation pour compatibilité (utilise par_emplacement agrégé par localisation si besoin)
         $parLocalisation = $inventaireLocalisations->map(function ($invLoc) use ($inventaire) {
             $loc = $invLoc->localisation;
             $biensPresents = $inventaire->inventaireScans()
@@ -520,6 +554,7 @@ class InventaireService
             'valeur_absente' => $valeurAbsente,
             'duree_jours' => $dureeJours,
             'par_localisation' => $parLocalisation,
+            'par_emplacement' => $parEmplacement,
             'par_agent' => $parAgent,
             'par_nature' => $parNature,
         ];
