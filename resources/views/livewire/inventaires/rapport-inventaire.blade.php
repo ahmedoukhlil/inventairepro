@@ -130,12 +130,6 @@
         </div>
     </div>
 
-    {{-- Graphique principal simplifié --}}
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Répartition des statuts</h3>
-        <canvas id="chart-statuts" height="250"></canvas>
-    </div>
-
     {{-- Navigation onglets simplifiée --}}
     <div class="bg-white rounded-lg shadow-sm border border-gray-200">
         <div class="border-b border-gray-200">
@@ -553,58 +547,6 @@
     <div class="mt-6 pt-6 border-t border-gray-200 text-sm text-gray-500 text-center">
         <p>Rapport généré le {{ now()->format('d/m/Y à H:i') }} par {{ auth()->user()->name }}</p>
     </div>
-
-    {{-- Scripts pour les graphiques Chart.js --}}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const stats = @json($this->statistiques);
-            const biensDefectueux = stats.biens_defectueux ?? 0;
-
-            // Graphique : Répartition statuts
-            const ctxStatuts = document.getElementById('chart-statuts');
-            if (ctxStatuts) {
-                new Chart(ctxStatuts, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Présents', 'Déplacés', 'Absents', 'Détériorés', 'Défectueux'],
-                        datasets: [{
-                            data: [
-                                stats.biens_presents,
-                                stats.biens_deplaces,
-                                stats.biens_absents,
-                                stats.biens_deteriores,
-                                biensDefectueux
-                            ],
-                            backgroundColor: [
-                                'rgba(34, 197, 94, 0.8)',
-                                'rgba(234, 179, 8, 0.8)',
-                                'rgba(239, 68, 68, 0.8)',
-                                'rgba(249, 115, 22, 0.8)',
-                                'rgba(217, 119, 6, 0.8)',
-                            ],
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { position: 'bottom' },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                        const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
-                                        return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-        });
-    </script>
 
     {{-- Messages flash --}}
     @if(session()->has('error'))
