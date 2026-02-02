@@ -406,6 +406,10 @@ class InventaireService
         $biensDeteriores = $scans->where('statut_scan', 'deteriore')->count();
         $biensDefectueux = $scans->where('etat_constate', 'mauvais')->count();
 
+        // Répartition par état physique (Neuf, Bon état, Défectueuse)
+        $biensNeufs = $scans->where('etat_constate', 'neuf')->count();
+        $biensBonEtat = $scans->whereIn('etat_constate', ['bon', 'moyen'])->count();
+
         $progressionGlobale = $totalLocalisations > 0 
             ? round(($localisationsTerminees / $totalLocalisations) * 100, 2) 
             : 0;
@@ -413,6 +417,28 @@ class InventaireService
         $tauxConformite = $totalBiensScannes > 0 
             ? round(($biensPresents / $totalBiensScannes) * 100, 2) 
             : 0;
+
+        // Taux de couverture (% biens scannés vs attendus)
+        $tauxCouverture = $totalBiensAttendus > 0 
+            ? round(($totalBiensScannes / $totalBiensAttendus) * 100, 2) 
+            : 0;
+
+        // Taux d'absence (% biens absents parmi les scannés)
+        $tauxAbsence = $totalBiensScannes > 0 
+            ? round(($biensAbsents / $totalBiensScannes) * 100, 2) 
+            : 0;
+
+        // Biens non scannés (manquants)
+        $biensNonScannes = max(0, $totalBiensAttendus - $totalBiensScannes);
+
+        // Taux d'anomalies (déplacés + absents + défectueux)
+        $totalAnomalies = $biensDeplaces + $biensAbsents + $biensDefectueux;
+        $tauxAnomalies = $totalBiensScannes > 0 
+            ? round(($totalAnomalies / $totalBiensScannes) * 100, 2) 
+            : 0;
+
+        // Nombre d'agents ayant participé
+        $nombreAgents = $inventaireLocalisations->whereNotNull('user_id')->pluck('user_id')->unique()->count();
 
         // Valeur totale scannée et absente (compatible PWA: gesimmo n'a pas valeur)
         $valeurTotaleScannee = $scans->where('statut_scan', '!=', 'absent')
@@ -424,8 +450,12 @@ class InventaireService
         $dureeJours = $inventaire->duree ?? 0;
 
         // Statistiques par localisation
-        $parLocalisation = $inventaireLocalisations->map(function ($invLoc) {
+        $parLocalisation = $inventaireLocalisations->map(function ($invLoc) use ($inventaire) {
             $loc = $invLoc->localisation;
+            $biensPresents = $inventaire->inventaireScans()
+                ->where('inventaire_localisation_id', $invLoc->id)
+                ->where('statut_scan', 'present')
+                ->count();
             return [
                 'localisation_id' => $invLoc->localisation_id,
                 'code' => $loc->CodeLocalisation ?? $loc->Localisation ?? 'N/A',
@@ -433,6 +463,7 @@ class InventaireService
                 'statut' => $invLoc->statut,
                 'biens_attendus' => $invLoc->nombre_biens_attendus,
                 'biens_scannes' => $invLoc->nombre_biens_scannes,
+                'biens_presents' => $biensPresents,
                 'progression' => $invLoc->progression,
                 'taux_conformite' => $invLoc->taux_conformite,
             ];
@@ -451,9 +482,9 @@ class InventaireService
                 ];
             })->values()->toArray();
 
-        // Statistiques par nature
+        // Statistiques par nature (compatible PWA: bien peut être null)
         $parNature = $scans->groupBy(function ($scan) {
-            return $scan->bien->nature ?? 'unknown';
+            return $scan->bien?->nature ?? 'Non renseigné';
         })->map(function ($group, $nature) {
             return [
                 'nature' => $nature,
@@ -476,8 +507,15 @@ class InventaireService
             'biens_absents' => $biensAbsents,
             'biens_deteriores' => $biensDeteriores,
             'biens_defectueux' => $biensDefectueux,
+            'biens_neufs' => $biensNeufs,
+            'biens_bon_etat' => $biensBonEtat,
+            'biens_non_scannes' => $biensNonScannes,
             'progression_globale' => $progressionGlobale,
             'taux_conformite' => $tauxConformite,
+            'taux_couverture' => $tauxCouverture,
+            'taux_absence' => $tauxAbsence,
+            'taux_anomalies' => $tauxAnomalies,
+            'nombre_agents' => $nombreAgents,
             'valeur_totale_scannee' => $valeurTotaleScannee,
             'valeur_absente' => $valeurAbsente,
             'duree_jours' => $dureeJours,
