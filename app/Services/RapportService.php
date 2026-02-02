@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Emplacement;
 use App\Models\Inventaire;
 use App\Models\InventaireScan;
 use App\Models\Bien;
@@ -45,6 +46,7 @@ class RapportService
             'inventaire' => $inventaire,
             'statistiques' => $statistiques,
             'anomalies' => $anomalies,
+            'detailParEmplacement' => $this->getDetailParEmplacement($inventaire),
             'biensPresents' => $this->getBiensPresents($inventaire),
             'biensDeplaces' => $this->getBiensDeplaces($inventaire),
             'biensAbsents' => $this->getBiensAbsents($inventaire),
@@ -54,6 +56,80 @@ class RapportService
             'mouvements' => $this->getAnalyseMouvements($inventaire),
             'recommendations' => $this->genererRecommandations($inventaire, $statistiques, $anomalies),
         ];
+    }
+
+    /**
+     * Détail des immobilisations par emplacement pour le rapport PDF
+     * Chaque emplacement liste les immos avec : Code, Désignation, Attendu, Trouvé, Conformité, État
+     */
+    protected function getDetailParEmplacement(Inventaire $inventaire): array
+    {
+        $localisationIds = $inventaire->inventaireLocalisations()->pluck('localisation_id')->unique()->toArray();
+        $emplacements = Emplacement::whereIn('idLocalisation', $localisationIds)
+            ->with(['localisation', 'immobilisations.designation'])
+            ->orderBy('CodeEmplacement')
+            ->get();
+
+        $scansByNumOrdre = $inventaire->inventaireScans()
+            ->whereHas('gesimmo')
+            ->with(['gesimmo', 'localisationReelle'])
+            ->get()
+            ->keyBy('bien_id');
+
+        $result = [];
+        foreach ($emplacements as $emplacement) {
+            $lignes = [];
+            foreach ($emplacement->immobilisations as $gesimmo) {
+                $scan = $scansByNumOrdre->get($gesimmo->NumOrdre);
+                $attendu = 1;
+                $trouve = $scan && $scan->statut_scan === 'present' ? 1 : 0;
+                $conformite = $scan ? $this->labelConformite($scan->statut_scan) : 'Non scanné';
+                $etat = $scan ? $this->labelEtat($scan->etat_constate) : '-';
+
+                $lignes[] = [
+                    'code' => 'GS' . $gesimmo->NumOrdre,
+                    'designation' => $gesimmo->designation->designation ?? 'N/A',
+                    'attendu' => $attendu,
+                    'trouve' => $trouve,
+                    'conformite' => $conformite,
+                    'etat' => $etat,
+                    'statut_scan' => $scan?->statut_scan,
+                ];
+            }
+
+            $result[] = [
+                'code' => $emplacement->CodeEmplacement ?? $emplacement->Emplacement ?? 'N/A',
+                'designation' => $emplacement->Emplacement ?? $emplacement->CodeEmplacement ?? 'N/A',
+                'localisation' => $emplacement->localisation?->CodeLocalisation ?? $emplacement->localisation?->Localisation ?? 'N/A',
+                'total_attendus' => count($lignes),
+                'total_trouves' => collect($lignes)->sum('trouve'),
+                'taux_conformite' => count($lignes) > 0 ? round((collect($lignes)->sum('trouve') / count($lignes)) * 100, 1) : 0,
+                'lignes' => $lignes,
+            ];
+        }
+
+        return $result;
+    }
+
+    protected function labelConformite(?string $statut): string
+    {
+        return match ($statut) {
+            'present' => 'Présent',
+            'absent' => 'Absent',
+            'deplace' => 'Déplacé',
+            'deteriore' => 'Détérioré',
+            default => $statut ?? 'Non scanné',
+        };
+    }
+
+    protected function labelEtat(?string $etat): string
+    {
+        return match ($etat) {
+            'neuf' => 'Neuf',
+            'bon', 'moyen' => 'Bon état',
+            'mauvais' => 'Défectueuse',
+            default => '-',
+        };
     }
 
     public function genererRapportPDF(Inventaire $inventaire)
