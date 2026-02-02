@@ -75,48 +75,58 @@
         </div>
     </div>
 
-    {{-- Section synthèse (cards simplifiées) --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        {{-- Card 1 : Taux de conformité --}}
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 {{ $interpretation['bg'] }}">
-            <div class="flex items-center justify-between mb-3">
-                <h3 class="text-sm font-medium text-gray-600">Taux de conformité</h3>
-                @if($this->statistiques['taux_conformite'] >= 95)
-                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                @else
-                    <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                @endif
+    {{-- Section statistiques pertinentes --}}
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+        {{-- Taux de conformité --}}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 {{ $interpretation['bg'] }}">
+            <h3 class="text-xs font-medium text-gray-600 mb-1">Taux de conformité</h3>
+            <p class="text-2xl font-bold {{ $interpretation['color'] }}">{{ round($this->statistiques['taux_conformite'], 1) }}%</p>
+            <p class="text-xs text-gray-500 mt-1">{{ $interpretation['label'] }}</p>
+        </div>
+
+        {{-- Taux de couverture --}}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+            <h3 class="text-xs font-medium text-gray-600 mb-1">Taux de couverture</h3>
+            <p class="text-2xl font-bold text-indigo-600">{{ $this->statistiques['taux_couverture'] ?? 0 }}%</p>
+            <p class="text-xs text-gray-500 mt-1">{{ $this->statistiques['total_biens_scannes'] }}/{{ $this->statistiques['total_biens_attendus'] }} scannés</p>
+        </div>
+
+        {{-- Biens non scannés --}}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 {{ ($this->statistiques['biens_non_scannes'] ?? 0) > 0 ? 'border-amber-200 bg-amber-50' : '' }}">
+            <h3 class="text-xs font-medium text-gray-600 mb-1">Non scannés</h3>
+            <p class="text-2xl font-bold {{ ($this->statistiques['biens_non_scannes'] ?? 0) > 0 ? 'text-amber-600' : 'text-gray-600' }}">
+                {{ $this->statistiques['biens_non_scannes'] ?? 0 }}
+            </p>
+            <p class="text-xs text-gray-500 mt-1">manquants</p>
+        </div>
+
+        {{-- Agents --}}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+            <h3 class="text-xs font-medium text-gray-600 mb-1">Agents</h3>
+            <p class="text-2xl font-bold text-gray-900">{{ $this->statistiques['nombre_agents'] ?? 0 }}</p>
+            <p class="text-xs text-gray-500 mt-1">ayant participé</p>
+        </div>
+    </div>
+
+    {{-- Répartition par état physique (Neuf, Bon état, Défectueuse) --}}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">
+        <h3 class="text-sm font-semibold text-gray-900 mb-4">Répartition par état physique</h3>
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                <p class="text-xs text-green-700 font-medium mb-1">Neuf</p>
+                <p class="text-2xl font-bold text-green-700">{{ $this->statistiques['biens_neufs'] ?? 0 }}</p>
+                <p class="text-xs text-green-600 mt-1">{{ $this->statistiques['total_biens_scannes'] > 0 ? round((($this->statistiques['biens_neufs'] ?? 0) / $this->statistiques['total_biens_scannes']) * 100, 1) : 0 }}%</p>
             </div>
-            <p class="text-4xl font-bold {{ $interpretation['color'] }} mb-1">
-                {{ round($this->statistiques['taux_conformite'], 1) }}%
-            </p>
-            <p class="text-sm font-medium {{ $interpretation['color'] }}">
-                {{ $interpretation['label'] }}
-            </p>
-        </div>
-
-        {{-- Card 2 : Total scannés --}}
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 class="text-sm font-medium text-gray-600 mb-3">Immobilisations scannées</h3>
-            <p class="text-4xl font-bold text-gray-900 mb-1">
-                {{ $this->statistiques['total_biens_scannes'] }}
-            </p>
-            <p class="text-sm text-gray-500">
-                sur {{ $this->statistiques['total_biens_attendus'] }} attendues
-            </p>
-        </div>
-
-        {{-- Card 3 : Valeur totale --}}
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 class="text-sm font-medium text-gray-600 mb-3">Valeur totale</h3>
-            <p class="text-4xl font-bold text-indigo-600 mb-1">
-                {{ number_format($this->statistiques['valeur_totale_scannee'] / 1000, 1, ',', ' ') }}k
-            </p>
-            <p class="text-sm text-gray-500">MRU</p>
+            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <p class="text-xs text-blue-700 font-medium mb-1">Bon état</p>
+                <p class="text-2xl font-bold text-blue-700">{{ $this->statistiques['biens_bon_etat'] ?? 0 }}</p>
+                <p class="text-xs text-blue-600 mt-1">{{ $this->statistiques['total_biens_scannes'] > 0 ? round((($this->statistiques['biens_bon_etat'] ?? 0) / $this->statistiques['total_biens_scannes']) * 100, 1) : 0 }}%</p>
+            </div>
+            <div class="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                <p class="text-xs text-amber-700 font-medium mb-1">Défectueuse</p>
+                <p class="text-2xl font-bold text-amber-700">{{ $this->statistiques['biens_defectueux'] ?? 0 }}</p>
+                <p class="text-xs text-amber-600 mt-1">{{ $this->statistiques['total_biens_scannes'] > 0 ? round((($this->statistiques['biens_defectueux'] ?? 0) / $this->statistiques['total_biens_scannes']) * 100, 1) : 0 }}%</p>
+            </div>
         </div>
     </div>
 
@@ -161,7 +171,31 @@
         <div class="p-6">
             {{-- ONGLET Résumé --}}
             <div x-show="activeTab === 'resume'" x-transition class="space-y-6">
-                {{-- Statistiques détaillées --}}
+                {{-- Indicateurs clés --}}
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                        <p class="text-xs text-gray-600 font-medium mb-1">Taux d'absence</p>
+                        <p class="text-xl font-bold {{ ($this->statistiques['taux_absence'] ?? 0) > 10 ? 'text-red-600' : 'text-gray-900' }}">{{ $this->statistiques['taux_absence'] ?? 0 }}%</p>
+                        <p class="text-xs text-gray-500">{{ $this->statistiques['biens_absents'] }} biens absents</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                        <p class="text-xs text-gray-600 font-medium mb-1">Taux d'anomalies</p>
+                        <p class="text-xl font-bold {{ ($this->statistiques['taux_anomalies'] ?? 0) > 15 ? 'text-orange-600' : 'text-gray-900' }}">{{ $this->statistiques['taux_anomalies'] ?? 0 }}%</p>
+                        <p class="text-xs text-gray-500">déplacés + absents + défectueux</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                        <p class="text-xs text-gray-600 font-medium mb-1">Progression</p>
+                        <p class="text-xl font-bold text-indigo-600">{{ $this->statistiques['progression_globale'] ?? 0 }}%</p>
+                        <p class="text-xs text-gray-500">{{ $this->statistiques['localisations_terminees'] }}/{{ $this->statistiques['total_localisations'] }} loc. terminées</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                        <p class="text-xs text-gray-600 font-medium mb-1">Durée</p>
+                        <p class="text-xl font-bold text-gray-900">{{ $this->statistiques['duree_jours'] ?? 0 }} jour(s)</p>
+                        <p class="text-xs text-gray-500">inventaire</p>
+                    </div>
+                </div>
+
+                {{-- Répartition par statut de scan --}}
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                     <div class="bg-green-50 rounded-lg p-4 border border-green-200">
                         <p class="text-xs text-green-700 font-medium mb-1">Présents</p>
@@ -184,6 +218,36 @@
                         <p class="text-2xl font-bold text-amber-700">{{ $this->statistiques['biens_defectueux'] ?? 0 }}</p>
                     </div>
                 </div>
+
+                {{-- Contribution par agent --}}
+                @if(count($this->statistiques['par_agent'] ?? []) > 0)
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Contribution par agent</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Agent</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Localisations</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Biens scannés</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">% du total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                @foreach($this->statistiques['par_agent'] as $agent)
+                                    @php $pct = $this->statistiques['total_biens_scannes'] > 0 ? round(($agent['biens_scannes'] / $this->statistiques['total_biens_scannes']) * 100, 1) : 0; @endphp
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ $agent['agent_name'] }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $agent['localisations'] }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $agent['biens_scannes'] }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-indigo-600">{{ $pct }}%</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endif
 
                 {{-- Performance par localisation (tableau simplifié) --}}
                 <div>
@@ -292,7 +356,6 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Désignation</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">État</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Localisation</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valeur</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
@@ -305,9 +368,6 @@
                                             <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {{ $etatStyle['color'] }}">{{ $scan->etat_constate_label }}</span>
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $scan->localisation_code ?? ($scan->bien?->localisation?->code ?? 'N/A') }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                            {{ number_format($scan->bien?->valeur_acquisition ?? 0, 0, ',', ' ') }} MRU
-                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -353,8 +413,7 @@
                 <div x-show="sousOnglet === 'absents'" x-transition style="display: none;">
                     <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
                         <p class="text-sm font-medium text-red-800">
-                            {{ count($this->biensAbsents) }} immobilisations absentes pour une valeur de 
-                            {{ number_format($this->statistiques['valeur_absente'], 0, ',', ' ') }} MRU
+                            {{ count($this->biensAbsents) }} immobilisation(s) absente(s)
                         </p>
                     </div>
                     <div class="overflow-x-auto">
@@ -364,7 +423,6 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Désignation</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Localisation</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valeur</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
@@ -373,9 +431,6 @@
                                         <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ $scan->code_inventaire }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-900">{{ Str::limit($scan->designation, 50) }}</td>
                                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $scan->localisation_code ?? ($scan->bien?->localisation?->code ?? 'N/A') }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-red-600">
-                                            {{ number_format($scan->bien?->valeur_acquisition ?? 0, 0, ',', ' ') }} MRU
-                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -446,7 +501,7 @@
             <div x-show="activeTab === 'anomalies'" x-transition style="display: none;" class="space-y-6">
                 @php $anomalies = $this->anomalies; @endphp
 
-                @if(count($anomalies['localisations_non_demarrees']) > 0 || count($anomalies['taux_absence_eleve']) > 0 || count($anomalies['biens_absents_valeur_haute']) > 0 || count($anomalies['biens_defectueux'] ?? []) > 0)
+                @if(count($anomalies['localisations_non_demarrees']) > 0 || count($anomalies['taux_absence_eleve']) > 0 || count($anomalies['biens_defectueux'] ?? []) > 0)
                     <div class="space-y-4">
                         @if(count($anomalies['localisations_non_demarrees']) > 0)
                             <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
@@ -470,16 +525,6 @@
                             </div>
                         @endif
 
-                        @if(count($anomalies['biens_absents_valeur_haute']) > 0)
-                            <div class="bg-red-50 border-l-4 border-red-400 p-4">
-                                <h4 class="font-medium text-red-800 mb-2">Immobilisations absentes de valeur élevée ({{ count($anomalies['biens_absents_valeur_haute']) }})</h4>
-                                <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
-                                    @foreach($anomalies['biens_absents_valeur_haute'] as $anomalie)
-                                        <li>{{ $anomalie['code'] }} - {{ number_format($anomalie['valeur'], 0, ',', ' ') }} MRU</li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        @endif
                         @if(count($anomalies['biens_defectueux'] ?? []) > 0)
                             <div class="bg-amber-50 border-l-4 border-amber-400 p-4">
                                 <h4 class="font-medium text-amber-800 mb-2">Immobilisations signalées défectueuses ({{ count($anomalies['biens_defectueux']) }})</h4>
