@@ -204,15 +204,13 @@ class RapportInventaire extends Component
     }
 
     /**
-     * Exporte le rapport en PDF
+     * Exporte le rapport en PDF (stream direct, sans fichier disque)
      */
     public function exportPDF()
     {
         try {
             $service = app(\App\Services\RapportService::class);
-            $filePath = $service->genererRapportPDF($this->inventaire);
-            
-            return response()->download(storage_path('app/' . $filePath));
+            return $service->streamRapportPDF($this->inventaire);
         } catch (\Exception $e) {
             session()->flash('error', 'Erreur lors de la génération du PDF: ' . $e->getMessage());
         }

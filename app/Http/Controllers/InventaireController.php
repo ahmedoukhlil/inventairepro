@@ -96,8 +96,7 @@ class InventaireController extends Controller
     {
         try {
             $service = app(RapportService::class);
-            $filePath = $service->genererRapportPDF($inventaire);
-            return response()->download(storage_path('app/' . $filePath));
+            return $service->streamRapportPDF($inventaire);
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Erreur lors de la génération du PDF: ' . $e->getMessage());
         }

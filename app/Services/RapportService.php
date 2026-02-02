@@ -20,9 +20,11 @@ class RapportService
      * @param Inventaire $inventaire
      * @return string Chemin du fichier PDF généré
      */
-    public function genererRapportPDF(Inventaire $inventaire)
+    /**
+     * Préparer les données pour le rapport PDF
+     */
+    protected function preparerDonneesRapport(Inventaire $inventaire): array
     {
-        // Charger toutes les données nécessaires avec eager loading (compatible PWA: gesimmo)
         $inventaire->load([
             'creator',
             'closer',
@@ -35,13 +37,11 @@ class RapportService
             'inventaireScans.agent'
         ]);
 
-        // Calculer les statistiques via InventaireService
         $inventaireService = app(InventaireService::class);
         $statistiques = $inventaireService->calculerStatistiques($inventaire);
         $anomalies = $inventaireService->detecterAnomalies($inventaire);
 
-        // Préparer les données par section
-        $data = [
+        return [
             'inventaire' => $inventaire,
             'statistiques' => $statistiques,
             'anomalies' => $anomalies,
@@ -54,8 +54,12 @@ class RapportService
             'mouvements' => $this->getAnalyseMouvements($inventaire),
             'recommendations' => $this->genererRecommandations($inventaire, $statistiques, $anomalies),
         ];
+    }
 
-        // Générer le PDF
+    public function genererRapportPDF(Inventaire $inventaire)
+    {
+        $data = $this->preparerDonneesRapport($inventaire);
+
         $pdf = Pdf::loadView('pdf.rapport-inventaire', $data);
         
         // Configuration PDF
@@ -66,12 +70,42 @@ class RapportService
 
         // Nom du fichier
         $filename = 'rapport_inventaire_' . $inventaire->annee . '_' . now()->format('YmdHis') . '.pdf';
-        $path = 'rapports/' . $inventaire->annee . '/' . $filename;
+        $dir = 'rapports/' . $inventaire->annee;
+        $path = $dir . '/' . $filename;
+
+        // Créer le répertoire si nécessaire
+        if (!Storage::disk('local')->exists($dir)) {
+            Storage::disk('local')->makeDirectory($dir);
+        }
 
         // Sauvegarder
         Storage::disk('local')->put($path, $pdf->output());
 
         return $path;
+    }
+
+    /**
+     * Générer et retourner le PDF en flux direct (sans sauvegarde disque)
+     * Évite les problèmes de chemin ou permissions sur le stockage
+     *
+     * @param Inventaire $inventaire
+     * @return \Illuminate\Http\Response
+     */
+    public function streamRapportPDF(Inventaire $inventaire)
+    {
+        $data = $this->preparerDonneesRapport($inventaire);
+        $pdf = Pdf::loadView('pdf.rapport-inventaire', $data);
+        $pdf->setPaper('a4', 'portrait');
+        $pdf->setOption('isHtml5ParserEnabled', true);
+        $pdf->setOption('isRemoteEnabled', true);
+        $pdf->setOption('defaultFont', 'DejaVu Sans');
+
+        $filename = 'rapport_inventaire_' . $inventaire->annee . '_' . now()->format('Y-m-d_His') . '.pdf';
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 
     /**
