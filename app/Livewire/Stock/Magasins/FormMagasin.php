@@ -3,6 +3,7 @@
 namespace App\Livewire\Stock\Magasins;
 
 use App\Models\StockMagasin;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
 
@@ -87,6 +88,8 @@ class FormMagasin extends Component
 
             session()->flash('success', 'Magasin créé avec succès.');
         }
+
+        Cache::forget('stock_magasins_options');
 
         return redirect()->route('stock.magasins.index');
     }

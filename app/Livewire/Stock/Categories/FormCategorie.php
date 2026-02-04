@@ -3,6 +3,7 @@
 namespace App\Livewire\Stock\Categories;
 
 use App\Models\StockCategorie;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
 
@@ -56,6 +57,8 @@ class FormCategorie extends Component
             StockCategorie::create($validated);
             session()->flash('success', 'Catégorie créée avec succès.');
         }
+
+        Cache::forget('stock_categories_options');
 
         return redirect()->route('stock.categories.index');
     }
