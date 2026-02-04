@@ -190,9 +190,9 @@ class ListeInventaires extends Component
             return;
         }
 
-        // Vérifier que l'inventaire est en préparation uniquement
-        if ($inventaire->statut !== 'en_preparation') {
-            session()->flash('error', 'Impossible de supprimer un inventaire en cours ou terminé. Seuls les inventaires en préparation peuvent être supprimés.');
+        // Ne pas supprimer un inventaire en cours (travail en cours)
+        if ($inventaire->statut === 'en_cours') {
+            session()->flash('error', 'Impossible de supprimer un inventaire en cours. Terminez-le ou clôturez-le d\'abord.');
             return;
         }
 

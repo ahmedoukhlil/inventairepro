@@ -417,10 +417,10 @@
                                             </a>
                                         @endif
 
-                                        @if($isAdmin && $inventaire->statut === 'en_preparation')
+                                        @if($isAdmin && in_array($inventaire->statut, ['en_preparation', 'termine', 'cloture']))
                                             <button 
                                                 wire:click="supprimerInventaire({{ $inventaire->id }})"
-                                                wire:confirm="Êtes-vous sûr de vouloir supprimer cet inventaire ? Cette action est irréversible."
+                                                wire:confirm="Êtes-vous sûr de vouloir supprimer cet inventaire ({{ $inventaire->annee }}) ? Tous les scans et données associés seront définitivement supprimés."
                                                 class="text-red-600 hover:text-red-900 transition-colors"
                                                 title="Supprimer">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
