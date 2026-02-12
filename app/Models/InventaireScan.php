@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
-use App\Models\Gesimmo;
 
 class InventaireScan extends Model
 {
@@ -51,26 +50,24 @@ class InventaireScan extends Model
     }
 
     /**
-     * Relation avec le bien
-     * Note: Dans le nouveau workflow, bien_id peut contenir NumOrdre (Gesimmo)
-     * ou l'ID d'un Bien selon le contexte
+     * Relation avec le bien (Gesimmo)
+     * bien_id contient le NumOrdre de la table gesimmo
      */
     public function bien(): BelongsTo
-    {
-        return $this->belongsTo(Bien::class);
-    }
-
-    /**
-     * Relation avec Gesimmo (pour le nouveau workflow)
-     */
-    public function gesimmo(): BelongsTo
     {
         return $this->belongsTo(Gesimmo::class, 'bien_id', 'NumOrdre');
     }
 
     /**
+     * Alias de bien() pour compatibilité
+     */
+    public function gesimmo(): BelongsTo
+    {
+        return $this->bien();
+    }
+
+    /**
      * Relation avec la localisation réelle (où le bien a été trouvé)
-     * Utilise LocalisationImmo car c'est la table utilisée pour les inventaires
      */
     public function localisationReelle(): BelongsTo
     {
@@ -89,33 +86,21 @@ class InventaireScan extends Model
      * SCOPES
      */
 
-    /**
-     * Scope pour filtrer les scans avec biens présents
-     */
     public function scopePresents(Builder $query): Builder
     {
         return $query->where('statut_scan', 'present');
     }
 
-    /**
-     * Scope pour filtrer les scans avec biens déplacés
-     */
     public function scopeDeplaces(Builder $query): Builder
     {
         return $query->where('statut_scan', 'deplace');
     }
 
-    /**
-     * Scope pour filtrer les scans avec biens absents
-     */
     public function scopeAbsents(Builder $query): Builder
     {
         return $query->where('statut_scan', 'absent');
     }
 
-    /**
-     * Scope pour filtrer par localisation réelle
-     */
     public function scopeByLocalisation(Builder $query, int $localisationId): Builder
     {
         return $query->where('localisation_reelle_id', $localisationId);
@@ -134,11 +119,12 @@ class InventaireScan extends Model
             return false;
         }
 
-        return $this->bien->localisation_id === $this->localisation_reelle_id;
+        $locPrevue = $this->bien->emplacement?->idLocalisation;
+        return $locPrevue === $this->localisation_reelle_id;
     }
 
     /**
-     * Vérifie si le bien est déformé (déplacé ou absent)
+     * Vérifie si le bien est déplacé ou absent
      */
     public function getIsDeformeAttribute(): bool
     {
@@ -146,45 +132,45 @@ class InventaireScan extends Model
     }
 
     /**
-     * Retourne le code inventaire (Gesimmo ou Bien)
-     * Compatible PWA (bien_id = NumOrdre) et workflow classique
+     * Retourne le code inventaire depuis Gesimmo
      */
     public function getCodeInventaireAttribute(): string
     {
-        if ($this->gesimmo) {
-            return 'GS' . $this->gesimmo->NumOrdre;
+        if ($this->bien) {
+            return $this->bien->code_formate ?? ('GS' . $this->bien->NumOrdre);
         }
-        return $this->bien?->code_inventaire ?? 'N/A';
+        return 'GS' . $this->bien_id;
     }
 
     /**
-     * Retourne la désignation (Gesimmo ou Bien)
+     * Retourne la désignation depuis Gesimmo
      */
     public function getDesignationAttribute(): string
     {
-        if ($this->gesimmo && $this->gesimmo->designation) {
-            return $this->gesimmo->designation->designation ?? 'N/A';
+        if ($this->bien && $this->bien->designation) {
+            return $this->bien->designation->designation ?? 'N/A';
         }
-        return $this->bien?->designation ?? 'N/A';
+        return 'N/A';
     }
 
     /**
-     * Retourne la localisation du bien (pour affichage)
+     * Retourne le code localisation du bien
      */
     public function getLocalisationCodeAttribute(): ?string
     {
-        if ($this->gesimmo && $this->gesimmo->emplacement && $this->gesimmo->emplacement->localisation) {
-            return $this->gesimmo->emplacement->localisation->CodeLocalisation ?? $this->gesimmo->emplacement->localisation->Localisation;
+        $loc = $this->bien?->emplacement?->localisation;
+        if ($loc) {
+            return $loc->CodeLocalisation ?? $loc->Localisation;
         }
-        return $this->bien?->localisation?->code ?? null;
+        return null;
     }
 
     /**
-     * Retourne la valeur d'acquisition (Gesimmo n'a pas de valeur)
+     * Retourne la catégorie du bien
      */
-    public function getValeurAcquisitionAttribute(): float
+    public function getCategorieAttribute(): ?string
     {
-        return (float) ($this->bien?->valeur_acquisition ?? 0);
+        return $this->bien?->categorie?->Categorie;
     }
 
     /**
@@ -202,7 +188,7 @@ class InventaireScan extends Model
     }
 
     /**
-     * URL publique de la photo (pour affichage)
+     * URL publique de la photo
      */
     public function getPhotoUrlAttribute(): ?string
     {

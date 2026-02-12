@@ -2,7 +2,6 @@
 
 namespace App\Livewire;
 
-use App\Models\Bien;
 use App\Models\Gesimmo;
 use App\Models\Inventaire;
 use App\Models\InventaireLocalisation;

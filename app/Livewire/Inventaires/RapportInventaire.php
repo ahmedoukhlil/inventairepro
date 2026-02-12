@@ -40,14 +40,15 @@ class RapportInventaire extends Component
             return;
         }
 
-        // Eager load des relations nécessaires (compatible PWA: gesimmo)
+        // Eager load des relations nécessaires
         $this->inventaire = $inventaire->load([
             'creator',
             'closer',
             'inventaireLocalisations.localisation',
             'inventaireLocalisations.agent',
-            'inventaireScans.bien',
-            'inventaireScans.gesimmo.designation',
+            'inventaireScans.bien.designation',
+            'inventaireScans.bien.categorie',
+            'inventaireScans.bien.emplacement.localisation',
             'inventaireScans.localisationReelle',
             'inventaireScans.agent',
         ]);
@@ -77,16 +78,10 @@ class RapportInventaire extends Component
     {
         $query = $this->inventaire->inventaireScans()
             ->where('statut_scan', 'present')
-            ->with(['bien.localisation', 'gesimmo.designation', 'gesimmo.emplacement.localisation', 'agent']);
+            ->with(['bien.designation', 'bien.emplacement.localisation', 'agent']);
 
         if ($this->filterEmplacement !== 'all') {
-            $emplacement = \App\Models\Emplacement::find($this->filterEmplacement);
-            $query->where(function ($q) use ($emplacement) {
-                $q->whereHas('gesimmo', fn ($g) => $g->where('idEmplacement', $this->filterEmplacement));
-                if ($emplacement) {
-                    $q->orWhereHas('bien', fn ($b) => $b->where('localisation_id', $emplacement->idLocalisation));
-                }
-            });
+            $query->whereHas('bien', fn ($q) => $q->where('idEmplacement', $this->filterEmplacement));
         }
 
         return $query->orderBy('date_scan', 'desc')->get();
@@ -99,16 +94,10 @@ class RapportInventaire extends Component
     {
         $query = $this->inventaire->inventaireScans()
             ->where('statut_scan', 'deplace')
-            ->with(['bien.localisation', 'gesimmo.emplacement.localisation', 'localisationReelle', 'agent']);
+            ->with(['bien.emplacement.localisation', 'bien.designation', 'localisationReelle', 'agent']);
 
         if ($this->filterEmplacement !== 'all') {
-            $emplacement = \App\Models\Emplacement::find($this->filterEmplacement);
-            $query->where(function ($q) use ($emplacement) {
-                $q->whereHas('gesimmo', fn ($g) => $g->where('idEmplacement', $this->filterEmplacement));
-                if ($emplacement) {
-                    $q->orWhereHas('bien', fn ($b) => $b->where('localisation_id', $emplacement->idLocalisation));
-                }
-            });
+            $query->whereHas('bien', fn ($q) => $q->where('idEmplacement', $this->filterEmplacement));
         }
 
         return $query->orderBy('date_scan', 'desc')->get();
@@ -119,23 +108,15 @@ class RapportInventaire extends Component
      */
     public function getBiensAbsentsProperty()
     {
-        $scans = $this->inventaire->inventaireScans()
+        $query = $this->inventaire->inventaireScans()
             ->where('statut_scan', 'absent')
-            ->with(['bien.localisation', 'gesimmo.emplacement.localisation', 'agent'])
-            ->get();
+            ->with(['bien.emplacement.localisation', 'bien.designation', 'agent']);
 
         if ($this->filterEmplacement !== 'all') {
-            $scans = $scans->filter(function ($scan) {
-                if ($scan->gesimmo) {
-                    return $scan->gesimmo->idEmplacement == $this->filterEmplacement;
-                }
-                $emplacement = \App\Models\Emplacement::find($this->filterEmplacement);
-                return $emplacement && $scan->bien?->localisation_id == $emplacement->idLocalisation;
-            });
+            $query->whereHas('bien', fn ($q) => $q->where('idEmplacement', $this->filterEmplacement));
         }
 
-        // Trier par valeur décroissante
-        return $scans->sortByDesc(fn ($scan) => $scan->bien?->valeur_acquisition ?? 0)->values();
+        return $query->orderBy('date_scan', 'desc')->get();
     }
 
     /**
@@ -145,7 +126,7 @@ class RapportInventaire extends Component
     {
         return $this->inventaire->inventaireScans()
             ->where('statut_scan', 'deteriore')
-            ->with(['bien.localisation', 'gesimmo.designation', 'gesimmo.emplacement.localisation', 'agent'])
+            ->with(['bien.designation', 'bien.emplacement.localisation', 'agent'])
             ->orderBy('date_scan', 'desc')
             ->get();
     }
@@ -157,16 +138,10 @@ class RapportInventaire extends Component
     {
         $query = $this->inventaire->inventaireScans()
             ->where('etat_constate', 'mauvais')
-            ->with(['bien.localisation', 'gesimmo.designation', 'gesimmo.emplacement.localisation', 'localisationReelle', 'agent']);
+            ->with(['bien.designation', 'bien.emplacement.localisation', 'localisationReelle', 'agent']);
 
         if ($this->filterEmplacement !== 'all') {
-            $emplacement = \App\Models\Emplacement::find($this->filterEmplacement);
-            $query->where(function ($q) use ($emplacement) {
-                $q->whereHas('gesimmo', fn ($g) => $g->where('idEmplacement', $this->filterEmplacement));
-                if ($emplacement) {
-                    $q->orWhereHas('bien', fn ($b) => $b->where('localisation_id', $emplacement->idLocalisation));
-                }
-            });
+            $query->whereHas('bien', fn ($q) => $q->where('idEmplacement', $this->filterEmplacement));
         }
 
         return $query->orderBy('date_scan', 'desc')->get();
@@ -182,16 +157,21 @@ class RapportInventaire extends Component
             ->pluck('localisation_id')
             ->toArray();
 
-        // Récupérer les IDs des biens déjà scannés
+        // Emplacements liés à ces localisations
+        $emplacementIds = \App\Models\Emplacement::whereIn('idLocalisation', $localisationIds)
+            ->pluck('idEmplacement')
+            ->toArray();
+
+        // Récupérer les NumOrdre déjà scannés
         $biensScannesIds = $this->inventaire->inventaireScans()
             ->pluck('bien_id')
             ->toArray();
 
-        // Retourner les biens attendus mais non scannés
-        return \App\Models\Bien::whereIn('localisation_id', $localisationIds)
-            ->whereNotIn('id', $biensScannesIds)
-            ->with('localisation')
-            ->orderBy('code_inventaire')
+        // Biens Gesimmo attendus mais non scannés
+        return \App\Models\Gesimmo::whereIn('idEmplacement', $emplacementIds)
+            ->whereNotIn('NumOrdre', $biensScannesIds)
+            ->with(['designation', 'categorie', 'emplacement.localisation'])
+            ->orderBy('NumOrdre')
             ->get();
     }
 

@@ -5,7 +5,6 @@ namespace App\Livewire\Inventaires;
 use App\Models\Inventaire;
 use App\Models\InventaireLocalisation;
 use App\Models\InventaireScan;
-use App\Models\Bien;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -47,16 +46,10 @@ class DashboardInventaire extends Component
 
     /**
      * Propriété calculée : Retourne les statistiques complètes de l'inventaire
+     * Note: Le refresh est géré par refreshStatistiques() pour éviter les appels multiples
      */
     public function getStatistiquesProperty(): array
     {
-        // Recharger les relations pour avoir les données à jour
-        $this->inventaire->refresh();
-        $this->inventaire->load([
-            'inventaireLocalisations.localisation',
-            'inventaireScans'
-        ]);
-        
         $inventaireLocalisations = $this->inventaire->inventaireLocalisations;
         $scans = $this->inventaire->inventaireScans;
 
@@ -65,40 +58,23 @@ class DashboardInventaire extends Component
         $localisationsEnCours = $inventaireLocalisations->where('statut', 'en_cours')->count();
         $localisationsEnAttente = $inventaireLocalisations->where('statut', 'en_attente')->count();
 
-        // Calculer le total de biens attendus (somme de tous les biens attendus dans toutes les localisations)
+        // Calculer le total de biens attendus
         $totalBiensAttendus = $inventaireLocalisations->sum('nombre_biens_attendus');
         
-        // Si le total est 0, recalculer depuis les emplacements
+        // Si le total est 0, recalculer depuis les emplacements (une seule fois)
         if ($totalBiensAttendus == 0) {
-            foreach ($inventaireLocalisations as $invLoc) {
-                if ($invLoc->localisation) {
-                    $nombreBiensAttendus = $invLoc->localisation->emplacements()
-                        ->withCount('immobilisations')
-                        ->get()
-                        ->sum('immobilisations_count');
-                    
-                    if ($invLoc->nombre_biens_attendus == 0) {
-                        $invLoc->update(['nombre_biens_attendus' => $nombreBiensAttendus]);
-                    }
-                }
-            }
+            $this->recalculerBiensAttendus();
             // Recharger après mise à jour
-            $this->inventaire->refresh();
+            $this->inventaire->load('inventaireLocalisations');
             $inventaireLocalisations = $this->inventaire->inventaireLocalisations;
             $totalBiensAttendus = $inventaireLocalisations->sum('nombre_biens_attendus');
         }
 
-        // Total de biens scannés : utiliser le nombre depuis les localisations (plus fiable)
-        // car il est mis à jour lors de la finalisation du scan
+        // Total de biens scannés : max entre localisations et scans uniques
         $totalBiensScannesFromLoc = $inventaireLocalisations->sum('nombre_biens_scannes');
-        
-        // Compter aussi les scans uniques dans la table inventaire_scans
         $totalBiensScannesFromScans = $scans->unique('bien_id')->count();
-        
-        // Utiliser le maximum entre les deux pour être sûr d'avoir le bon nombre
         $totalBiensScannes = max($totalBiensScannesFromLoc, $totalBiensScannesFromScans);
         
-        // Si toujours 0, utiliser le count simple des scans
         if ($totalBiensScannes == 0) {
             $totalBiensScannes = $scans->count();
         }
@@ -109,12 +85,10 @@ class DashboardInventaire extends Component
         $biensDeteriores = $scans->where('statut_scan', 'deteriore')->count();
         $biensDefectueux = $scans->where('etat_constate', 'mauvais')->count();
 
-        // Progression globale : basée sur les biens scannés vs attendus
         $progressionGlobale = $totalBiensAttendus > 0 
             ? round(($totalBiensScannes / $totalBiensAttendus) * 100, 1) 
             : 0;
         
-        // Progression par localisations (pour information)
         $progressionLocalisations = $totalLocalisations > 0 
             ? round(($localisationsTerminees / $totalLocalisations) * 100, 1) 
             : 0;
@@ -126,9 +100,7 @@ class DashboardInventaire extends Component
         $dureeJours = $this->inventaire->duree ?? 0;
 
         // Scans effectués aujourd'hui
-        $scansAujourdhui = $scans->filter(function ($scan) {
-            return $scan->date_scan && $scan->date_scan->isToday();
-        })->count();
+        $scansAujourdhui = $scans->filter(fn($scan) => $scan->date_scan && $scan->date_scan->isToday())->count();
 
         // Vitesse moyenne (scans par jour)
         $vitesseMoyenne = 0;
@@ -159,13 +131,27 @@ class DashboardInventaire extends Component
     }
 
     /**
+     * Recalcule les biens attendus depuis les emplacements (opération coûteuse, exécutée une seule fois)
+     */
+    private function recalculerBiensAttendus(): void
+    {
+        foreach ($this->inventaire->inventaireLocalisations as $invLoc) {
+            if ($invLoc->localisation && $invLoc->nombre_biens_attendus == 0) {
+                $nombreBiensAttendus = $invLoc->localisation->emplacements()
+                    ->withCount('immobilisations')
+                    ->get()
+                    ->sum('immobilisations_count');
+                
+                $invLoc->update(['nombre_biens_attendus' => $nombreBiensAttendus]);
+            }
+        }
+    }
+
+    /**
      * Propriété calculée : Retourne les localisations filtrées et triées
      */
     public function getInventaireLocalisationsProperty()
     {
-        // Recharger les relations pour avoir les données à jour
-        $this->inventaire->load(['inventaireLocalisations.localisation', 'inventaireLocalisations.agent']);
-        
         $query = $this->inventaire->inventaireLocalisations()
             ->with(['localisation', 'agent']);
 
@@ -235,24 +221,11 @@ class DashboardInventaire extends Component
      */
     public function getDerniersScansProperty()
     {
-        // Recharger les scans pour avoir les données à jour (compatible PWA: gesimmo)
-        $this->inventaire->load([
-            'inventaireScans.gesimmo.designation',
-            'inventaireScans.gesimmo.categorie',
-            'inventaireScans.bien',
-            'inventaireScans.localisationReelle',
-            'inventaireScans.agent'
-        ]);
-        
         return $this->inventaire->inventaireScans()
             ->with(['gesimmo.designation', 'gesimmo.categorie', 'bien', 'localisationReelle', 'agent'])
             ->orderBy('date_scan', 'desc')
             ->limit(20)
-            ->get()
-            ->map(function ($scan) {
-                // InventaireScan a des accesseurs code_inventaire et designation (compatible PWA)
-                return $scan;
-            });
+            ->get();
     }
 
     /**
@@ -311,22 +284,19 @@ class DashboardInventaire extends Component
             ];
         }
 
-        // Biens absents de valeur élevée (>100k MRU)
+        // Biens absents (liste les 10 premiers)
         $biensAbsents = $this->inventaire->inventaireScans()
             ->where('statut_scan', 'absent')
-            ->with('bien')
-            ->get()
-            ->filter(function ($scan) {
-                return $scan->bien && $scan->bien->valeur_acquisition > 100000;
-            })
-            ->take(10);
+            ->with('bien.designation')
+            ->limit(10)
+            ->get();
         
         foreach ($biensAbsents as $scan) {
             $alertes['biens_absents_valeur_haute'][] = [
                 'bien_id' => $scan->bien_id,
                 'code' => $scan->code_inventaire,
                 'designation' => $scan->designation,
-                'valeur' => $scan->bien->valeur_acquisition ?? 0,
+                'valeur' => 0,
             ];
         }
 
@@ -364,15 +334,36 @@ class DashboardInventaire extends Component
 
     /**
      * Propriété calculée : Retourne le nombre total d'alertes
+     * Note: Utilise les données déjà chargées pour éviter un double calcul
      */
     public function getTotalAlertesProperty(): int
     {
-        $alertes = $this->alertes;
-        return count($alertes['localisations_non_demarrees']) 
-            + count($alertes['localisations_bloquees'])
-            + count($alertes['biens_absents_valeur_haute'])
-            + count($alertes['biens_defectueux'] ?? [])
-            + count($alertes['localisations_non_assignees']);
+        // Compter rapidement sans recalculer toutes les alertes en détail
+        $total = 0;
+        
+        $total += $this->inventaire->inventaireLocalisations()
+            ->where('statut', 'en_attente')->count();
+        
+        $ilY24h = now()->subDay();
+        $total += $this->inventaire->inventaireLocalisations()
+            ->where('statut', 'en_cours')
+            ->where(function ($q) use ($ilY24h) {
+                $q->whereNull('date_debut_scan')
+                    ->orWhere('date_debut_scan', '<', $ilY24h);
+            })->count();
+        
+        $total += $this->inventaire->inventaireScans()
+            ->where('statut_scan', 'absent')
+            ->whereHas('bien', fn($q) => $q->where('valeur_acquisition', '>', 100000))
+            ->count();
+        
+        $total += $this->inventaire->inventaireScans()
+            ->where('etat_constate', 'mauvais')->count();
+        
+        $total += $this->inventaire->inventaireLocalisations()
+            ->whereNull('user_id')->count();
+        
+        return $total;
     }
 
     /**

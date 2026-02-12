@@ -93,11 +93,14 @@ class InventaireController extends Controller
                     'nombre_biens_attendus' => $invLoc->nombre_biens_attendus,
                     'nombre_biens_scannes' => $invLoc->nombre_biens_scannes,
                     'user_id' => $invLoc->user_id,
-                    'localisation' => [
+                    'localisation' => $invLoc->localisation ? [
+                        'id' => $invLoc->localisation->idLocalisation,
                         'idLocalisation' => $invLoc->localisation->idLocalisation,
+                        'code' => $invLoc->localisation->CodeLocalisation,
+                        'designation' => $invLoc->localisation->Localisation,
                         'Localisation' => $invLoc->localisation->Localisation,
                         'CodeLocalisation' => $invLoc->localisation->CodeLocalisation,
-                    ]
+                    ] : null
                 ];
             });
 
@@ -290,11 +293,14 @@ class InventaireController extends Controller
             'nombre_biens_attendus' => $invLoc->nombre_biens_attendus,
             'nombre_biens_scannes' => $invLoc->nombre_biens_scannes,
             'user_id' => $invLoc->user_id,
-            'localisation' => [
+            'localisation' => $invLoc->localisation ? [
+                'id' => $invLoc->localisation->idLocalisation,
                 'idLocalisation' => $invLoc->localisation->idLocalisation,
+                'code' => $invLoc->localisation->CodeLocalisation,
+                'designation' => $invLoc->localisation->Localisation,
                 'Localisation' => $invLoc->localisation->Localisation,
                 'CodeLocalisation' => $invLoc->localisation->CodeLocalisation,
-            ]
+            ] : null
         ];
     }
 }

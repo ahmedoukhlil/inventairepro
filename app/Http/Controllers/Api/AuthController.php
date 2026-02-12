@@ -77,11 +77,13 @@ class AuthController extends Controller
         // Créer un nouveau token Sanctum
         $token = $user->createToken('pwa-scanner')->plainTextToken;
 
-        // Retourner les données
+        // Retourner les données (avec aliases pour compatibilité PWA v1/v2)
         return response()->json([
             'token' => $token,
             'user' => [
+                'id' => $user->idUser,           // Alias pour PWA v1
                 'idUser' => $user->idUser,
+                'name' => $user->users,          // Alias pour PWA v2
                 'users' => $user->users,
                 'role' => $user->role,
             ]
@@ -129,7 +131,9 @@ class AuthController extends Controller
 
         return response()->json([
             'user' => [
+                'id' => $user->idUser,
                 'idUser' => $user->idUser,
+                'name' => $user->users,
                 'users' => $user->users,
                 'role' => $user->role,
             ]

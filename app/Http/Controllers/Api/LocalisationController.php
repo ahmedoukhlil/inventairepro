@@ -35,12 +35,7 @@ class LocalisationController extends Controller
         $localisation->loadCount('emplacements');
 
         return response()->json([
-            'localisation' => [
-                'idLocalisation' => $localisation->idLocalisation,
-                'Localisation' => $localisation->Localisation,
-                'CodeLocalisation' => $localisation->CodeLocalisation,
-                'emplacements_count' => $localisation->emplacements_count,
-            ]
+            'localisation' => $this->formatLocalisation($localisation)
         ]);
     }
 
@@ -62,19 +57,21 @@ class LocalisationController extends Controller
                 'designation',
                 'categorie',
                 'etat',
-                'emplacement',
-                'code',
+                'emplacement.localisation',
             ])
             ->get()
-            ->map(function ($bien) {
+            ->map(function ($bien) use ($localisation) {
                 return [
+                    'id' => $bien->NumOrdre,            // Alias pour PWA v1 (bien.id)
                     'NumOrdre' => $bien->NumOrdre,
                     'code' => $bien->code_formate ?? '',
+                    'code_inventaire' => $bien->code_formate ?? '',  // Alias pour PWA v1
                     'designation' => $bien->designation ? $bien->designation->designation : 'N/A',
                     'categorie' => $bien->categorie ? $bien->categorie->Categorie : 'N/A',
                     'etat' => $bien->etat ? $bien->etat->Etat : 'N/A',
                     'emplacement' => $bien->emplacement ? $bien->emplacement->Emplacement : 'N/A',
-                    'DateAcquisition' => $bien->DateAcquisition?->format('Y-m-d'),
+                    'localisation_id' => $bien->emplacement?->idLocalisation ?? $localisation->idLocalisation,
+                    'DateAcquisition' => $bien->DateAcquisition,  // Année (entier)
                 ];
             });
 
@@ -95,12 +92,23 @@ class LocalisationController extends Controller
         $localisation->loadCount('emplacements');
 
         return response()->json([
-            'localisation' => [
-                'idLocalisation' => $localisation->idLocalisation,
-                'Localisation' => $localisation->Localisation,
-                'CodeLocalisation' => $localisation->CodeLocalisation,
-                'emplacements_count' => $localisation->emplacements_count,
-            ]
+            'localisation' => $this->formatLocalisation($localisation)
         ]);
+    }
+
+    /**
+     * Formater une localisation pour l'API avec aliases PWA
+     */
+    private function formatLocalisation(LocalisationImmo $localisation): array
+    {
+        return [
+            'id' => $localisation->idLocalisation,              // Alias pour PWA v1
+            'idLocalisation' => $localisation->idLocalisation,
+            'code' => $localisation->CodeLocalisation,          // Alias pour PWA v1
+            'designation' => $localisation->Localisation,       // Alias pour PWA v1
+            'Localisation' => $localisation->Localisation,
+            'CodeLocalisation' => $localisation->CodeLocalisation,
+            'emplacements_count' => $localisation->emplacements_count ?? null,
+        ];
     }
 }
