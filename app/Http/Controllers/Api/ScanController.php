@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Inventaire;
 use App\Models\InventaireScan;
 use App\Models\InventaireLocalisation;
-use App\Models\Bien;
 use App\Models\Emplacement;
 use App\Models\Etat;
 use App\Models\Gesimmo;
@@ -44,11 +43,12 @@ class ScanController extends Controller
     public function store(Request $request, Inventaire $inventaire)
     {
         // Valider les données
+        // Note: bien_id peut être un NumOrdre (Gesimmo) ou un id (Bien) selon le workflow
         $validated = $request->validate([
             'inventaire_localisation_id' => 'required|exists:inventaire_localisations,id',
-            'bien_id' => 'required|exists:biens,id',
+            'bien_id' => 'required|integer',
             'statut_scan' => 'required|in:present,deplace,absent,deteriore',
-            'localisation_reelle_id' => 'required|exists:localisations,id',
+            'localisation_reelle_id' => 'required|exists:localisation,idLocalisation',
             'etat_constate' => 'required|in:neuf,bon,moyen,mauvais',
             'commentaire' => 'nullable|string|max:1000',
             'photo' => 'nullable|string', // Base64 image
@@ -61,13 +61,14 @@ class ScanController extends Controller
             ], 400);
         }
 
-        // Vérifier que le bien existe et n'est pas soft deleted
-        $bien = Bien::find($validated['bien_id']);
-        if (!$bien || $bien->trashed()) {
+        // Chercher le bien dans Gesimmo par NumOrdre
+        $gesimmo = Gesimmo::find($validated['bien_id']);
+        if (!$gesimmo) {
             return response()->json([
-                'message' => 'Bien non trouvé ou supprimé'
+                'message' => 'Bien non trouvé (NumOrdre: ' . $validated['bien_id'] . ')'
             ], 404);
         }
+        $bienCode = 'GS' . $gesimmo->NumOrdre;
 
         // Vérifier que le bien n'a pas déjà été scanné dans cet inventaire
         $dejaScanne = InventaireScan::where('inventaire_id', $inventaire->id)
@@ -86,24 +87,28 @@ class ScanController extends Controller
             // Traiter la photo si présente
             $photoPath = null;
             if (!empty($validated['photo'])) {
-                $photoPath = $this->savePhotoFromBase64($validated['photo'], $bien->code_inventaire);
+                $photoPath = $this->savePhotoFromBase64($validated['photo'], $bienCode);
             }
 
-            // Préparer les données du scan
-            $scanData = [
+            // Créer le scan directement (compatible Gesimmo et Bien)
+            $scan = InventaireScan::create([
                 'inventaire_id' => $inventaire->id,
                 'inventaire_localisation_id' => $validated['inventaire_localisation_id'],
                 'bien_id' => $validated['bien_id'],
+                'date_scan' => now(),
                 'statut_scan' => $validated['statut_scan'],
                 'localisation_reelle_id' => $validated['localisation_reelle_id'],
                 'etat_constate' => $validated['etat_constate'],
                 'commentaire' => $validated['commentaire'] ?? null,
                 'photo_path' => $photoPath,
-                'user_id' => $request->user()->id,
-            ];
+                'user_id' => $request->user()->idUser,
+            ]);
 
-            // Enregistrer le scan via le service
-            $scan = $this->inventaireService->enregistrerScan($scanData);
+            // Mettre à jour le compteur de biens scannés
+            $invLoc = InventaireLocalisation::find($validated['inventaire_localisation_id']);
+            if ($invLoc) {
+                $invLoc->increment('nombre_biens_scannes');
+            }
 
             DB::commit();
 
@@ -140,9 +145,9 @@ class ScanController extends Controller
         $validated = $request->validate([
             'scans' => 'required|array|min:1|max:50',
             'scans.*.inventaire_localisation_id' => 'required|exists:inventaire_localisations,id',
-            'scans.*.bien_id' => 'required|exists:biens,id',
+            'scans.*.bien_id' => 'required|integer',
             'scans.*.statut_scan' => 'required|in:present,deplace,absent,deteriore',
-            'scans.*.localisation_reelle_id' => 'required|exists:localisations,id',
+            'scans.*.localisation_reelle_id' => 'required|exists:localisation,idLocalisation',
             'scans.*.etat_constate' => 'required|in:neuf,bon,moyen,mauvais',
             'scans.*.commentaire' => 'nullable|string|max:1000',
             'scans.*.photo' => 'nullable|string',
@@ -165,16 +170,17 @@ class ScanController extends Controller
         try {
             foreach ($validated['scans'] as $index => $scanData) {
                 try {
-                    // Vérifier que le bien existe et n'est pas soft deleted
-                    $bien = Bien::find($scanData['bien_id']);
-                    if (!$bien || $bien->trashed()) {
+                    // Chercher le bien dans Gesimmo par NumOrdre
+                    $gesimmo = Gesimmo::find($scanData['bien_id']);
+                    if (!$gesimmo) {
                         $results['errors'][] = [
                             'index' => $index,
                             'bien_id' => $scanData['bien_id'],
-                            'error' => 'Bien non trouvé ou supprimé'
+                            'error' => 'Bien non trouvé (NumOrdre: ' . $scanData['bien_id'] . ')'
                         ];
                         continue;
                     }
+                    $bienCode = 'GS' . $gesimmo->NumOrdre;
 
                     // Vérifier doublon
                     $dejaScanne = InventaireScan::where('inventaire_id', $inventaire->id)
@@ -193,20 +199,21 @@ class ScanController extends Controller
                     // Traiter photo
                     $photoPath = null;
                     if (!empty($scanData['photo'])) {
-                        $photoPath = $this->savePhotoFromBase64($scanData['photo'], $bien->code_inventaire);
+                        $photoPath = $this->savePhotoFromBase64($scanData['photo'], $bienCode);
                     }
 
-                    // Enregistrer via le service
-                    $scan = $this->inventaireService->enregistrerScan([
+                    // Créer le scan directement (compatible Gesimmo et Bien)
+                    $scan = InventaireScan::create([
                         'inventaire_id' => $inventaire->id,
                         'inventaire_localisation_id' => $scanData['inventaire_localisation_id'],
                         'bien_id' => $scanData['bien_id'],
+                        'date_scan' => now(),
                         'statut_scan' => $scanData['statut_scan'],
                         'localisation_reelle_id' => $scanData['localisation_reelle_id'],
                         'etat_constate' => $scanData['etat_constate'],
                         'commentaire' => $scanData['commentaire'] ?? null,
                         'photo_path' => $photoPath,
-                        'user_id' => $request->user()->id,
+                        'user_id' => $request->user()->idUser,
                     ]);
 
                     $results['success'][] = [
@@ -291,43 +298,6 @@ class ScanController extends Controller
             \Log::error('Erreur sauvegarde photo: ' . $e->getMessage());
             return null;
         }
-    }
-
-    /**
-     * Récupérer l'historique des scans d'un bien
-     * 
-     * @param Bien $bien
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function history(Bien $bien)
-    {
-        // Vérifier que le bien n'est pas soft deleted
-        if ($bien->trashed()) {
-            return response()->json([
-                'message' => 'Ce bien a été supprimé'
-            ], 404);
-        }
-
-        $scans = InventaireScan::where('bien_id', $bien->id)
-            ->with(['inventaire', 'agent', 'localisationReelle'])
-            ->orderBy('date_scan', 'desc')
-            ->limit(10)
-            ->get()
-            ->map(function ($scan) {
-                return [
-                    'id' => $scan->id,
-                    'inventaire_annee' => $scan->inventaire->annee ?? null,
-                    'date_scan' => $scan->date_scan->format('Y-m-d H:i:s'),
-                    'statut_scan' => $scan->statut_scan,
-                    'localisation' => $scan->localisationReelle->code ?? null,
-                    'agent' => $scan->agent->name ?? null,
-                    'commentaire' => $scan->commentaire,
-                ];
-            });
-
-        return response()->json([
-            'scans' => $scans
-        ]);
     }
 
     /**

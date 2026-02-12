@@ -1450,8 +1450,6 @@ class ScannerManager {
             // Message de succès
             showToast(`✓ Bureau activé : ${localisation.code}`, 'success');
             playSound('success');
-            showToast(`✓ Bureau activé : ${localisation.code}`, 'success');
-            playSound('success');
 
             // Redémarrer le scanner pour les biens
             setTimeout(() => this.start(), 1500);

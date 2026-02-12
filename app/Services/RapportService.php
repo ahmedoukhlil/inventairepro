@@ -3,9 +3,9 @@
 namespace App\Services;
 
 use App\Models\Emplacement;
+use App\Models\Gesimmo;
 use App\Models\Inventaire;
 use App\Models\InventaireScan;
-use App\Models\Bien;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 
@@ -31,9 +31,8 @@ class RapportService
             'closer',
             'inventaireLocalisations.localisation',
             'inventaireLocalisations.agent',
-            'inventaireScans.bien.localisation',
-            'inventaireScans.gesimmo.designation',
-            'inventaireScans.gesimmo.emplacement.localisation',
+            'inventaireScans.bien.designation',
+            'inventaireScans.bien.emplacement.localisation',
             'inventaireScans.localisationReelle',
             'inventaireScans.agent'
         ]);
@@ -215,20 +214,21 @@ class RapportService
     {
         return InventaireScan::where('inventaire_id', $inventaire->id)
             ->where('statut_scan', 'present')
-            ->with(['bien.localisation', 'gesimmo.designation', 'gesimmo.emplacement.localisation', 'localisationReelle', 'agent'])
+            ->with(['bien.designation', 'bien.categorie', 'bien.emplacement.localisation', 'localisationReelle', 'agent'])
             ->get()
             ->map(function ($scan) {
-                $isConforme = $scan->bien ? ($scan->bien->localisation_id === $scan->localisation_reelle_id) : true;
+                $locPrevue = $scan->bien?->emplacement?->idLocalisation;
+                $isConforme = $locPrevue ? ($locPrevue === $scan->localisation_reelle_id) : true;
                 return [
                     'code' => $scan->code_inventaire,
                     'designation' => $scan->designation,
-                    'nature' => $scan->bien?->nature ?? null,
+                    'nature' => $scan->categorie,
                     'localisation' => $scan->localisationReelle?->CodeLocalisation ?? $scan->localisationReelle?->Localisation ?? $scan->localisation_code,
-                    'service' => $scan->bien?->service_usager ?? null,
-                    'valeur' => $scan->bien?->valeur_acquisition ?? 0,
+                    'service' => null,
+                    'valeur' => 0,
                     'etat' => $scan->etat_constate,
                     'date_scan' => $scan->date_scan,
-                    'agent' => $scan->agent->name ?? null,
+                    'agent' => $scan->agent->users ?? null,
                     'conforme' => $isConforme,
                 ];
             });
@@ -244,21 +244,21 @@ class RapportService
     {
         return InventaireScan::where('inventaire_id', $inventaire->id)
             ->where('statut_scan', 'deplace')
-            ->with(['bien.localisation', 'gesimmo.emplacement.localisation', 'localisationReelle', 'agent'])
+            ->with(['bien.emplacement.localisation', 'bien.designation', 'bien.categorie', 'localisationReelle', 'agent'])
             ->get()
             ->map(function ($scan) {
-                $locPrevue = $scan->bien?->localisation?->code ?? $scan->gesimmo?->emplacement?->localisation?->CodeLocalisation ?? $scan->localisation_code;
+                $locPrevue = $scan->bien?->emplacement?->localisation?->CodeLocalisation ?? $scan->localisation_code;
                 $locReelle = $scan->localisationReelle?->CodeLocalisation ?? $scan->localisationReelle?->Localisation ?? null;
                 return [
                     'code' => $scan->code_inventaire,
                     'designation' => $scan->designation,
-                    'nature' => $scan->bien?->nature ?? null,
+                    'nature' => $scan->categorie,
                     'localisation_prevue' => $locPrevue,
                     'localisation_reelle' => $locReelle,
-                    'service' => $scan->bien?->service_usager ?? null,
-                    'valeur' => $scan->bien?->valeur_acquisition ?? 0,
+                    'service' => null,
+                    'valeur' => 0,
                     'date_scan' => $scan->date_scan,
-                    'agent' => $scan->agent->name ?? null,
+                    'agent' => $scan->agent->users ?? null,
                     'commentaire' => $scan->commentaire,
                 ];
             });
@@ -274,23 +274,22 @@ class RapportService
     {
         return InventaireScan::where('inventaire_id', $inventaire->id)
             ->where('statut_scan', 'absent')
-            ->with(['bien.localisation', 'gesimmo.emplacement.localisation', 'agent'])
+            ->with(['bien.emplacement.localisation', 'bien.designation', 'bien.categorie', 'agent'])
             ->get()
             ->map(function ($scan) {
                 return [
                     'code' => $scan->code_inventaire,
                     'designation' => $scan->designation,
-                    'nature' => $scan->bien?->nature ?? null,
-                    'localisation' => $scan->localisation_code ?? ($scan->bien?->localisation?->code ?? null),
-                    'service' => $scan->bien?->service_usager ?? null,
-                    'valeur' => $scan->bien?->valeur_acquisition ?? 0,
-                    'date_acquisition' => $scan->bien?->date_acquisition ?? null,
+                    'nature' => $scan->categorie,
+                    'localisation' => $scan->localisation_code,
+                    'service' => null,
+                    'valeur' => 0,
+                    'date_acquisition' => $scan->bien?->DateAcquisition,
                     'date_scan' => $scan->date_scan,
-                    'agent' => $scan->agent->name ?? null,
+                    'agent' => $scan->agent->users ?? null,
                     'commentaire' => $scan->commentaire,
                 ];
-            })
-            ->sortByDesc('valeur');
+            });
     }
 
     /**
@@ -301,7 +300,7 @@ class RapportService
      */
     public function getBiensNonScannes(Inventaire $inventaire)
     {
-        // Récupérer tous les IDs de biens scannés
+        // Récupérer tous les NumOrdre de biens scannés
         $biensScannésIds = InventaireScan::where('inventaire_id', $inventaire->id)
             ->pluck('bien_id');
 
@@ -309,20 +308,23 @@ class RapportService
         $localisationsIds = $inventaire->inventaireLocalisations()
             ->pluck('localisation_id');
 
-        // Biens attendus mais non scannés
-        return Bien::whereIn('localisation_id', $localisationsIds)
-            ->whereNotIn('id', $biensScannésIds)
-            ->whereNull('deleted_at')
-            ->with('localisation')
+        // Récupérer les emplacements de ces localisations
+        $emplacementIds = Emplacement::whereIn('idLocalisation', $localisationsIds)
+            ->pluck('idEmplacement');
+
+        // Biens attendus mais non scannés (via gesimmo → emplacement → localisation)
+        return Gesimmo::whereIn('idEmplacement', $emplacementIds)
+            ->whereNotIn('NumOrdre', $biensScannésIds)
+            ->with(['designation', 'categorie', 'emplacement.localisation'])
             ->get()
             ->map(function ($bien) {
                 return [
-                    'code' => $bien->code_inventaire,
-                    'designation' => $bien->designation,
-                    'nature' => $bien->nature,
-                    'localisation' => $bien->localisation->code ?? null,
-                    'service' => $bien->service_usager,
-                    'valeur' => $bien->valeur_acquisition,
+                    'code' => 'GS' . $bien->NumOrdre,
+                    'designation' => $bien->designation->designation ?? 'N/A',
+                    'nature' => $bien->categorie?->Categorie,
+                    'localisation' => $bien->emplacement?->localisation?->CodeLocalisation,
+                    'service' => null,
+                    'valeur' => 0,
                 ];
             });
     }
@@ -479,17 +481,8 @@ class RapportService
         }
 
         if ($statistiques['biens_absents'] > 0) {
-            $valeurAbsente = InventaireScan::where('inventaire_id', $inventaire->id)
-                ->where('statut_scan', 'absent')
-                ->with('bien')
-                ->get()
-                ->sum(function ($scan) {
-                    return $scan->bien ? $scan->bien->valeur_acquisition : 0;
-                });
-
             $recommendations['corrections_immediates'][] = 
-                "Investiguer {$statistiques['biens_absents']} bien(s) absent(s) représentant " . 
-                number_format($valeurAbsente, 0, ',', ' ') . " MRU.";
+                "Investiguer {$statistiques['biens_absents']} bien(s) absent(s).";
         }
 
         if (count($anomalies['biens_deteriores'] ?? []) > 0) {
@@ -545,7 +538,7 @@ class RapportService
     {
         $inventaireLocalisation = $inventaire->inventaireLocalisations()
             ->where('localisation_id', $localisationId)
-            ->with(['localisation', 'agent', 'inventaireScans.bien'])
+            ->with(['localisation', 'agent', 'inventaireScans.bien.designation'])
             ->firstOrFail();
 
         $data = [

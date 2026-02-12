@@ -34,8 +34,10 @@ class BienController extends Controller
 
         return response()->json([
             'bien' => [
+                'id' => $bien->NumOrdre,            // Alias pour PWA v1 (bien.id)
                 'NumOrdre' => $bien->NumOrdre,
                 'code' => $bien->code_formate,
+                'code_inventaire' => $bien->code_formate,  // Alias pour PWA v1
                 'designation' => $bien->designation ? [
                     'id' => $bien->designation->id,
                     'designation' => $bien->designation->designation,
@@ -61,6 +63,7 @@ class BienController extends Controller
                         'CodeLocalisation' => $bien->emplacement->localisation->CodeLocalisation,
                     ] : null,
                 ] : null,
+                'localisation_id' => $bien->emplacement?->idLocalisation,  // Pour comparaison PWA v1
                 'natureJuridique' => $bien->natureJuridique ? [
                     'idNatJur' => $bien->natureJuridique->idNatJur,
                     'NatJur' => $bien->natureJuridique->NatJur,
@@ -71,7 +74,7 @@ class BienController extends Controller
                     'SourceFin' => $bien->sourceFinancement->SourceFin,
                     'CodeSourceFin' => $bien->sourceFinancement->CodeSourceFin,
                 ] : null,
-                'DateAcquisition' => $bien->DateAcquisition?->format('Y-m-d'),
+                'DateAcquisition' => $bien->DateAcquisition,  // Année (entier)
                 'Observations' => $bien->Observations,
             ]
         ]);

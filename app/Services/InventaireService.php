@@ -5,8 +5,7 @@ namespace App\Services;
 use App\Models\Inventaire;
 use App\Models\InventaireLocalisation;
 use App\Models\InventaireScan;
-use App\Models\Localisation;
-use App\Models\Bien;
+use App\Models\LocalisationImmo;
 use App\Models\Emplacement;
 use App\Models\Gesimmo;
 use App\Models\User;
@@ -61,14 +60,14 @@ class InventaireService
 
             // Pour chaque localisation, créer InventaireLocalisation
             foreach ($data['localisations'] as $localisationId) {
-                $localisation = Localisation::find($localisationId);
+                $localisation = LocalisationImmo::find($localisationId);
                 
                 if (!$localisation) {
                     throw new Exception("Localisation {$localisationId} introuvable.");
                 }
 
-                // Calculer nombre_biens_attendus
-                $nombreBiensAttendus = $localisation->biens()->count();
+                // Calculer nombre_biens_attendus via les emplacements → gesimmo
+                $nombreBiensAttendus = Gesimmo::whereHas('emplacement', fn ($q) => $q->where('idLocalisation', $localisationId))->count();
                 
                 // Récupérer l'agent assigné si fourni
                 $userId = $data['assignations'][$localisationId] ?? null;
@@ -155,14 +154,14 @@ class InventaireService
                 throw new Exception("Seules les localisations en attente peuvent être démarrées. Statut actuel : {$invLoc->statut}");
             }
 
-            // Set statut = 'en_cours', date_debut_scan = now(), user_id = $user->id
+            // Set statut = 'en_cours', date_debut_scan = now(), user_id = $user->idUser
             $invLoc->demarrer();
-            $invLoc->update(['user_id' => $user->id]);
+            $invLoc->update(['user_id' => $user->idUser]);
 
             Log::info("Localisation démarrée", [
                 'inventaire_localisation_id' => $invLoc->id,
                 'localisation_id' => $invLoc->localisation_id,
-                'user_id' => $user->id,
+                'user_id' => $user->idUser,
             ]);
 
             return true;
@@ -189,10 +188,10 @@ class InventaireService
     public function enregistrerScan(array $data): InventaireScan
     {
         return DB::transaction(function () use ($data) {
-            // Validations
-            $bien = Bien::find($data['bien_id']);
+            // Validations — bien_id = NumOrdre dans la table gesimmo
+            $bien = Gesimmo::find($data['bien_id']);
             if (!$bien) {
-                throw new Exception("Bien {$data['bien_id']} introuvable.");
+                throw new Exception("Bien (NumOrdre {$data['bien_id']}) introuvable dans gesimmo.");
             }
 
             // Vérifier que le bien n'a pas déjà été scanné dans cet inventaire
@@ -201,7 +200,7 @@ class InventaireService
                 ->first();
 
             if ($scanExistant) {
-                throw new Exception("Le bien {$bien->code_inventaire} a déjà été scanné dans cet inventaire.");
+                throw new Exception("Le bien GS{$bien->NumOrdre} a déjà été scanné dans cet inventaire.");
             }
 
             // Vérifier que InventaireLocalisation est en_cours
@@ -260,15 +259,15 @@ class InventaireService
             // Marquer les biens non scannés comme 'absent' si demandé
             if ($marquerBiensAbsents) {
                 $biensScannes = $invLoc->inventaireScans()->pluck('bien_id')->toArray();
-                $biensNonScannes = $invLoc->localisation->biens()
-                    ->whereNotIn('id', $biensScannes)
+                $biensNonScannes = Gesimmo::whereHas('emplacement', fn ($q) => $q->where('idLocalisation', $invLoc->localisation_id))
+                    ->whereNotIn('NumOrdre', $biensScannes)
                     ->get();
 
                 foreach ($biensNonScannes as $bien) {
                     InventaireScan::create([
                         'inventaire_id' => $invLoc->inventaire_id,
                         'inventaire_localisation_id' => $invLoc->id,
-                        'bien_id' => $bien->id,
+                        'bien_id' => $bien->NumOrdre,
                         'date_scan' => now(),
                         'statut_scan' => 'absent',
                         'user_id' => $invLoc->user_id,
@@ -364,13 +363,13 @@ class InventaireService
                 throw new Exception("Seuls les inventaires terminés peuvent être clôturés. Statut actuel : {$inventaire->statut}");
             }
 
-            // Set statut = 'cloture', closed_by = $user->id
-            $inventaire->cloturer($user->id);
+            // Set statut = 'cloture', closed_by = $user->idUser
+            $inventaire->cloturer($user->idUser);
 
             Log::info("Inventaire clôturé", [
                 'inventaire_id' => $inventaire->id,
                 'annee' => $inventaire->annee,
-                'closed_by' => $user->id,
+                'closed_by' => $user->idUser,
             ]);
 
             // Générer rapport final automatiquement (méthode à implémenter)
@@ -442,12 +441,9 @@ class InventaireService
         // Nombre d'agents ayant participé
         $nombreAgents = $inventaireLocalisations->whereNotNull('user_id')->pluck('user_id')->unique()->count();
 
-        // Valeur totale scannée et absente (compatible PWA: gesimmo n'a pas valeur)
-        $valeurTotaleScannee = $scans->where('statut_scan', '!=', 'absent')
-            ->sum(fn ($scan) => (float) ($scan->bien?->valeur_acquisition ?? 0));
-
-        $valeurAbsente = $scans->where('statut_scan', 'absent')
-            ->sum(fn ($scan) => (float) ($scan->bien?->valeur_acquisition ?? 0));
+        // Valeur totale : gesimmo n'a pas de champ valeur_acquisition
+        $valeurTotaleScannee = 0;
+        $valeurAbsente = 0;
 
         $dureeJours = $inventaire->duree ?? 0;
 
@@ -516,12 +512,12 @@ class InventaireService
                 ];
             })->values()->toArray();
 
-        // Statistiques par nature (compatible PWA: bien peut être null)
+        // Statistiques par catégorie (via gesimmo → categorie)
         $parNature = $scans->groupBy(function ($scan) {
-            return $scan->bien?->nature ?? 'Non renseigné';
-        })->map(function ($group, $nature) {
+            return $scan->bien?->categorie?->Categorie ?? 'Non renseigné';
+        })->map(function ($group, $categorie) {
             return [
-                'nature' => $nature,
+                'nature' => $categorie,
                 'total' => $group->count(),
                 'presents' => $group->where('statut_scan', 'present')->count(),
                 'deplaces' => $group->where('statut_scan', 'deplace')->count(),
@@ -620,21 +616,19 @@ class InventaireService
             ];
         }
 
-        // Biens absents de valeur élevée (>100k MRU)
+        // Biens absents (gesimmo n'a pas de valeur d'acquisition, on liste tous les absents)
         $biensAbsents = $inventaire->inventaireScans()
             ->where('statut_scan', 'absent')
-            ->with('bien')
-            ->get()
-            ->filter(function ($scan) {
-                return $scan->bien && $scan->bien->valeur_acquisition > 100000;
-            });
+            ->with('bien.designation')
+            ->limit(20)
+            ->get();
         
         foreach ($biensAbsents as $scan) {
             $alertes['biens_absents_valeur_haute'][] = [
                 'bien_id' => $scan->bien_id,
-                'code' => $scan->bien->code_inventaire,
-                'designation' => $scan->bien->designation,
-                'valeur' => $scan->bien->valeur_acquisition,
+                'code' => $scan->code_inventaire,
+                'designation' => $scan->designation,
+                'valeur' => 0,
             ];
         }
 
@@ -730,13 +724,13 @@ class InventaireService
         $ancienAgent = $invLoc->agent;
         
         $invLoc->update([
-            'user_id' => $newAgent?->id,
+            'user_id' => $newAgent?->idUser,
         ]);
 
         Log::info("Localisation réassignée", [
             'inventaire_localisation_id' => $invLoc->id,
-            'ancien_agent_id' => $ancienAgent?->id,
-            'nouvel_agent_id' => $newAgent?->id,
+            'ancien_agent_id' => $ancienAgent?->idUser,
+            'nouvel_agent_id' => $newAgent?->idUser,
             'user_id' => Auth::id(),
         ]);
 

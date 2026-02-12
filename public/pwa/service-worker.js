@@ -3,11 +3,13 @@
  * Gère le cache, le mode offline et la synchronisation en arrière-plan
  */
 
-const CACHE_NAME = 'inventaire-scanner-v1';
+const CACHE_NAME = 'inventaire-scanner-v2';
 const ASSETS_TO_CACHE = [
   '/pwa/',
   '/pwa/index.html',
+  '/pwa/index-v2.html',
   '/pwa/app.js',
+  '/pwa/app-v2.js',
   '/pwa/styles.css',
   '/pwa/manifest.json',
   '/pwa/assets/icons/icon-192x192.png',
@@ -195,7 +197,7 @@ async function syncScans() {
     for (const scan of scans) {
       try {
         // Envoyer chaque scan à l'API
-        const response = await fetch(`/api/inventaires/${scan.inventaire_id}/scan`, {
+        const response = await fetch(`/api/v1/inventaires/${scan.inventaire_id}/scan`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
