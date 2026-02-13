@@ -171,14 +171,28 @@
                 LABEL_W_MM: 70,
                 LABEL_H_MM: 24.4,
                 COLS: 3,         // 3 × 70mm = 210mm = largeur A4
-                ROWS: 11,        // 11 × 24.4mm = 268.4mm → 33 étiquettes/page
+                MARGIN_TOP_MM: 7,    // marge haute 7mm
+                MARGIN_BOTTOM_MM: 7, // marge basse 7mm
 
-                get LABEL_W() { return this.LABEL_W_MM * this.MM; },  // 198.43 pts
-                get LABEL_H() { return this.LABEL_H_MM * this.MM; },  // 69.17 pts
-                get TOTAL()   { return this.COLS * this.ROWS; },       // 33 par page
-                // Marges de la grille sur la page A4
+                get LABEL_W() { return this.LABEL_W_MM * this.MM; },
+                get LABEL_H() { return this.LABEL_H_MM * this.MM; },
                 get MARGIN_LEFT() { return (this.A4_W - this.COLS * this.LABEL_W) / 2; },
-                get MARGIN_TOP()  { return 7 * this.MM; },  // marge haute fixe ~7mm
+                get MARGIN_TOP()  { return this.MARGIN_TOP_MM * this.MM; },
+                get MARGIN_BOTTOM() { return this.MARGIN_BOTTOM_MM * this.MM; },
+                // Espace disponible entre marges haute et basse
+                get AVAILABLE_H() { return this.A4_H - this.MARGIN_TOP - this.MARGIN_BOTTOM; },
+                // Nombre max de lignes
+                get ROWS() { return Math.floor(this.AVAILABLE_H / this.LABEL_H); },
+                get TOTAL() { return this.COLS * this.ROWS; },
+                // Espacement vertical entre lignes pour répartir uniformément
+                // (espace restant / nombre d'intervalles entre lignes)
+                get ROW_GAP() {
+                    const usedH = this.ROWS * this.LABEL_H;
+                    const remaining = this.AVAILABLE_H - usedH;
+                    return this.ROWS > 1 ? remaining / (this.ROWS - 1) : 0;
+                },
+                // Pas vertical : hauteur étiquette + espacement
+                get ROW_PITCH() { return this.LABEL_H + this.ROW_GAP; },
 
                 setStatus(type, text) { this.statusType = type; this.statusText = text; },
 
@@ -229,7 +243,7 @@
 
                                 // ── Coin supérieur gauche de l'étiquette ──
                                 const labelX = this.MARGIN_LEFT + col * this.LABEL_W;
-                                const labelTopY = this.A4_H - this.MARGIN_TOP - row * this.LABEL_H;
+                                const labelTopY = this.A4_H - this.MARGIN_TOP - row * this.ROW_PITCH;
                                 const labelBottomY = labelTopY - this.LABEL_H;
 
                                 // ── Générer le code-barres ──
@@ -250,19 +264,6 @@
                                 const maxBcW = this.LABEL_W * 0.88;
                                 let bcW = BC_HEIGHT * bcAR;
                                 if (bcW > maxBcW) bcW = maxBcW;
-
-                                // ── DEBUG : bordure de l'étiquette ──
-                                page.drawRectangle({
-                                    x: labelX, y: labelBottomY,
-                                    width: this.LABEL_W, height: this.LABEL_H,
-                                    borderColor: PDFLib.rgb(0.8, 0.8, 0.8),
-                                    borderWidth: 0.5, opacity: 0,
-                                });
-                                page.drawLine({
-                                    start: { x: labelX, y: labelTopY - this.LABEL_H / 2 },
-                                    end: { x: labelX + this.LABEL_W, y: labelTopY - this.LABEL_H / 2 },
-                                    color: PDFLib.rgb(1, 0, 0), thickness: 0.3,
-                                });
 
                                 // ── Dessiner le code-barres (position fixe) ──
                                 // En PDF : Y du bas de l'image = labelTopY - offset - hauteur

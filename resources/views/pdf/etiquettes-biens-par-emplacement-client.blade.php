@@ -175,9 +175,20 @@
                 get MARGIN_LEFT() { return (this.A4_W - this.COLS * this.LABEL_W) / 2; },
                 get MARGIN_TOP()  { return this.MARGIN_TOP_MM * this.MM; },
                 get MARGIN_BOTTOM() { return this.MARGIN_BOTTOM_MM * this.MM; },
-                // Nombre max de lignes = espace disponible / hauteur étiquette
-                get ROWS() { return Math.floor((this.A4_H - this.MARGIN_TOP - this.MARGIN_BOTTOM) / this.LABEL_H); },
-                get TOTAL() { return this.COLS * this.ROWS; },  // étiquettes par page
+                // Espace disponible entre marges haute et basse
+                get AVAILABLE_H() { return this.A4_H - this.MARGIN_TOP - this.MARGIN_BOTTOM; },
+                // Nombre max de lignes
+                get ROWS() { return Math.floor(this.AVAILABLE_H / this.LABEL_H); },
+                get TOTAL() { return this.COLS * this.ROWS; },
+                // Espacement vertical entre lignes pour répartir uniformément
+                // (espace restant / nombre d'intervalles entre lignes)
+                get ROW_GAP() {
+                    const usedH = this.ROWS * this.LABEL_H;
+                    const remaining = this.AVAILABLE_H - usedH;
+                    return this.ROWS > 1 ? remaining / (this.ROWS - 1) : 0;
+                },
+                // Pas vertical : hauteur étiquette + espacement
+                get ROW_PITCH() { return this.LABEL_H + this.ROW_GAP; },
 
                 setStatus(type, text) { this.statusType = type; this.statusText = text; },
 
@@ -228,7 +239,7 @@
 
                                 // ── Coin supérieur gauche de l'étiquette ──
                                 const labelX = this.MARGIN_LEFT + col * this.LABEL_W;
-                                const labelTopY = this.A4_H - this.MARGIN_TOP - row * this.LABEL_H;
+                                const labelTopY = this.A4_H - this.MARGIN_TOP - row * this.ROW_PITCH;
                                 const labelBottomY = labelTopY - this.LABEL_H;
 
                                 // ── Générer le code-barres ──
