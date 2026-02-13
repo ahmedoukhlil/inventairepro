@@ -43,7 +43,11 @@
     {{-- INVENTAIRE EN COURS (mise en avant)        --}}
     {{-- ========================================== --}}
     @if($inventaireActif && $inventaireActif->statut === 'en_cours')
-        @php $statsActif = $inventaireActif->getStatistiques(); @endphp
+        @php
+            $totalLoc = $inventaireActif->inventaire_localisations_count ?? 0;
+            $locTerminees = $inventaireActif->localisations_terminees_count ?? 0;
+            $progressionActif = $totalLoc > 0 ? round(($locTerminees / $totalLoc) * 100, 1) : 0;
+        @endphp
         <div class="mb-6 bg-white rounded-xl shadow-sm border-2 border-blue-200 overflow-hidden">
             <div class="p-5 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
@@ -67,12 +71,12 @@
                 <div class="mb-4">
                     <div class="flex items-center justify-between mb-1.5">
                         <span class="text-sm text-gray-600">Progression</span>
-                        <span class="text-sm font-bold text-gray-900">{{ round($statsActif['progression'], 1) }}%</span>
+                        <span class="text-sm font-bold text-gray-900">{{ $progressionActif }}%</span>
                     </div>
                     <div class="w-full bg-gray-100 rounded-full h-2.5">
                         <div
-                            class="h-2.5 rounded-full transition-all duration-500 {{ $statsActif['progression'] >= 100 ? 'bg-green-500' : 'bg-blue-500' }}"
-                            style="width: {{ min($statsActif['progression'], 100) }}%"></div>
+                            class="h-2.5 rounded-full transition-all duration-500 {{ $progressionActif >= 100 ? 'bg-green-500' : 'bg-blue-500' }}"
+                            style="width: {{ min($progressionActif, 100) }}%"></div>
                     </div>
                 </div>
 
@@ -84,7 +88,7 @@
                         </div>
                         <div>
                             <p class="text-xs text-gray-400">Localisations</p>
-                            <p class="text-sm font-bold text-gray-900">{{ $statsActif['localisations_terminees'] }}<span class="text-gray-400 font-normal">/{{ $statsActif['total_localisations'] }}</span></p>
+                            <p class="text-sm font-bold text-gray-900">{{ $locTerminees }}<span class="text-gray-400 font-normal">/{{ $totalLoc }}</span></p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2.5">
@@ -93,7 +97,7 @@
                         </div>
                         <div>
                             <p class="text-xs text-gray-400">Présents</p>
-                            <p class="text-sm font-bold text-green-600">{{ $statsActif['scans_presents'] }}</p>
+                            <p class="text-sm font-bold text-green-600">{{ $inventaireActif->scans_presents_count ?? 0 }}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2.5">
@@ -102,7 +106,7 @@
                         </div>
                         <div>
                             <p class="text-xs text-gray-400">Déplacés</p>
-                            <p class="text-sm font-bold text-amber-600">{{ $statsActif['scans_deplaces'] }}</p>
+                            <p class="text-sm font-bold text-amber-600">{{ $inventaireActif->scans_deplaces_count ?? 0 }}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2.5">
@@ -111,7 +115,7 @@
                         </div>
                         <div>
                             <p class="text-xs text-gray-400">Absents</p>
-                            <p class="text-sm font-bold text-red-600">{{ $statsActif['scans_absents'] }}</p>
+                            <p class="text-sm font-bold text-red-600">{{ $inventaireActif->scans_absents_count ?? 0 }}</p>
                         </div>
                     </div>
                 </div>
@@ -165,9 +169,21 @@
         <div class="divide-y divide-gray-100">
             @forelse($inventaires as $inventaire)
                 @php
-                    $stats = $inventaire->getStatistiques();
                     $cfg = $statutConfig[$inventaire->statut] ?? $statutConfig['en_preparation'];
                     $isActif = in_array($inventaire->statut, ['en_cours', 'en_preparation']);
+
+                    // Données pré-chargées via withCount (0 requêtes supplémentaires)
+                    $totalLoc = $inventaire->inventaire_localisations_count ?? 0;
+                    $locTerminees = $inventaire->localisations_terminees_count ?? 0;
+                    $totalScans = $inventaire->inventaire_scans_count ?? 0;
+                    $scansPresents = $inventaire->scans_presents_count ?? 0;
+                    $totalAttendus = (int) ($inventaire->total_biens_attendus ?? 0);
+
+                    // Progression = localisations terminées / total localisations
+                    $progression = $totalLoc > 0 ? round(($locTerminees / $totalLoc) * 100, 1) : 0;
+
+                    // Conformité réelle = présents / total attendus (pas juste scannés)
+                    $conformite = $totalAttendus > 0 ? round(($scansPresents / $totalAttendus) * 100, 1) : 0;
                 @endphp
                 <div class="px-5 py-4 hover:bg-gray-50/50 transition-colors {{ $inventaire->statut === 'en_cours' ? 'bg-blue-50/30' : '' }}">
                     <div class="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -196,41 +212,44 @@
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center justify-between mb-1">
                                     <span class="text-xs text-gray-400">
-                                        {{ $stats['localisations_terminees'] }}/{{ $stats['total_localisations'] }} loc.
+                                        {{ $locTerminees }}/{{ $totalLoc }} loc.
                                     </span>
-                                    <span class="text-xs font-semibold text-gray-600">{{ round($stats['progression'], 0) }}%</span>
+                                    <span class="text-xs font-semibold text-gray-600">{{ round($progression, 0) }}%</span>
                                 </div>
                                 <div class="w-full bg-gray-100 rounded-full h-1.5">
                                     @php
                                         $barColor = match(true) {
-                                            $stats['progression'] >= 100 => 'bg-green-500',
-                                            $stats['progression'] >= 50  => 'bg-blue-500',
-                                            $stats['progression'] > 0    => 'bg-amber-500',
-                                            default                      => 'bg-gray-300',
+                                            $progression >= 100 => 'bg-green-500',
+                                            $progression >= 50  => 'bg-blue-500',
+                                            $progression > 0    => 'bg-amber-500',
+                                            default             => 'bg-gray-300',
                                         };
                                     @endphp
-                                    <div class="{{ $barColor }} h-1.5 rounded-full transition-all" style="width: {{ min($stats['progression'], 100) }}%"></div>
+                                    <div class="{{ $barColor }} h-1.5 rounded-full transition-all" style="width: {{ min($progression, 100) }}%"></div>
                                 </div>
                             </div>
 
                             {{-- Stats mini --}}
                             <div class="hidden md:flex items-center gap-4 text-xs flex-shrink-0">
-                                <div class="text-center" title="Scans effectués">
-                                    <p class="font-bold text-gray-700">{{ $stats['total_scans'] }}</p>
+                                <div class="text-center" title="Scans effectués sur {{ $totalAttendus }} attendus">
+                                    <p class="font-bold text-gray-700">{{ $totalScans }}<span class="text-gray-400 font-normal">/{{ $totalAttendus }}</span></p>
                                     <p class="text-gray-400">scans</p>
                                 </div>
-                                @if($stats['taux_conformite'] > 0)
-                                    <div class="text-center" title="Taux de conformité">
+                                @if($conformite > 0 || $totalScans > 0)
+                                    <div class="text-center" title="Taux de conformité (présents / attendus)">
                                         @php
-                                            $confColor = $stats['taux_conformite'] >= 90 ? 'text-green-600' : ($stats['taux_conformite'] >= 70 ? 'text-amber-600' : 'text-red-600');
+                                            $confColor = $conformite >= 90 ? 'text-green-600' : ($conformite >= 70 ? 'text-amber-600' : 'text-red-600');
                                         @endphp
-                                        <p class="font-bold {{ $confColor }}">{{ round($stats['taux_conformite'], 0) }}%</p>
+                                        <p class="font-bold {{ $confColor }}">{{ round($conformite, 0) }}%</p>
                                         <p class="text-gray-400">conf.</p>
                                     </div>
                                 @endif
-                                @if($inventaire->duree !== null)
+                                @if($inventaire->date_debut)
+                                    @php
+                                        $duree = \Carbon\Carbon::parse($inventaire->date_debut)->diffInDays($inventaire->date_fin ?? now());
+                                    @endphp
                                     <div class="text-center" title="Durée">
-                                        <p class="font-bold text-gray-700">{{ $inventaire->duree }}j</p>
+                                        <p class="font-bold text-gray-700">{{ $duree }}j</p>
                                         <p class="text-gray-400">durée</p>
                                     </div>
                                 @endif

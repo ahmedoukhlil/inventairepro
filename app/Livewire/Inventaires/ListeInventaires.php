@@ -46,9 +46,24 @@ class ListeInventaires extends Component
      */
     public function getInventaireEnCoursProperty()
     {
-        return Inventaire::where('statut', 'en_cours')
-            ->orWhere('statut', 'en_preparation')
-            ->with(['creator', 'inventaireLocalisations', 'inventaireScans'])
+        return Inventaire::whereIn('statut', ['en_cours', 'en_preparation'])
+            ->with(['creator'])
+            ->withCount([
+                'inventaireLocalisations',
+                'inventaireLocalisations as localisations_terminees_count' => function ($q) {
+                    $q->where('statut', 'termine');
+                },
+                'inventaireScans',
+                'inventaireScans as scans_presents_count' => function ($q) {
+                    $q->where('statut_scan', 'present');
+                },
+                'inventaireScans as scans_deplaces_count' => function ($q) {
+                    $q->where('statut_scan', 'deplace');
+                },
+                'inventaireScans as scans_absents_count' => function ($q) {
+                    $q->where('statut_scan', 'absent');
+                },
+            ])
             ->first();
     }
 
@@ -162,8 +177,25 @@ class ListeInventaires extends Component
      */
     protected function getInventairesQuery()
     {
-        $query = Inventaire::with(['creator', 'closer'])
-            ->withCount(['inventaireLocalisations', 'inventaireScans']);
+        $query = Inventaire::with(['creator'])
+            ->withCount([
+                'inventaireLocalisations',
+                'inventaireLocalisations as localisations_terminees_count' => function ($q) {
+                    $q->where('statut', 'termine');
+                },
+                'inventaireScans',
+                'inventaireScans as scans_presents_count' => function ($q) {
+                    $q->where('statut_scan', 'present');
+                },
+                'inventaireScans as scans_deplaces_count' => function ($q) {
+                    $q->where('statut_scan', 'deplace');
+                },
+                'inventaireScans as scans_absents_count' => function ($q) {
+                    $q->where('statut_scan', 'absent');
+                },
+            ])
+            // Sous-requête pour le total de biens attendus (somme des nombre_biens_attendus)
+            ->withSum('inventaireLocalisations as total_biens_attendus', 'nombre_biens_attendus');
 
         // Filtre par statut
         if ($this->filterStatut !== 'all') {
