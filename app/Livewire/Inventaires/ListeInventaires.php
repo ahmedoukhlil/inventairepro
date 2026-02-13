@@ -3,7 +3,6 @@
 namespace App\Livewire\Inventaires;
 
 use App\Models\Inventaire;
-use App\Models\InventaireScan;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -54,62 +53,15 @@ class ListeInventaires extends Component
     }
 
     /**
-     * Propriété calculée : Retourne les statistiques globales sur tous les inventaires
+     * Propriété calculée : Compteurs rapides pour le header
      */
-    public function getStatistiquesGlobalesProperty(): array
+    public function getCompteursProperty(): array
     {
-        $totalInventaires = Inventaire::count();
-        $inventaireEnCours = $this->inventaireEnCours;
-        
-        // Calculer le taux moyen de conformité
-        $inventairesTermines = Inventaire::whereIn('statut', ['termine', 'cloture'])->get();
-        $tauxMoyen = 0;
-        
-        if ($inventairesTermines->count() > 0) {
-            $sommeTaux = $inventairesTermines->sum(function ($inv) {
-                return $inv->taux_conformite;
-            });
-            $tauxMoyen = round($sommeTaux / $inventairesTermines->count(), 1);
-        }
-
-        // Dernier inventaire clôturé
-        $dernierCloture = Inventaire::where('statut', 'cloture')
-            ->orderBy('date_fin', 'desc')
-            ->first();
-
         return [
-            'total_inventaires' => $totalInventaires,
-            'inventaire_en_cours' => $inventaireEnCours,
-            'taux_moyen_conformite' => $tauxMoyen,
-            'dernier_cloture' => $dernierCloture,
-        ];
-    }
-
-    /**
-     * Propriété calculée : Statistiques des résultats d'inventaire (inventaires terminés et clôturés)
-     */
-    public function getStatistiquesResultatsProperty(): array
-    {
-        $inventaireIds = Inventaire::whereIn('statut', ['termine', 'cloture'])->pluck('id');
-
-        $totalScans = InventaireScan::whereIn('inventaire_id', $inventaireIds)->count();
-        $biensPresents = InventaireScan::whereIn('inventaire_id', $inventaireIds)->where('statut_scan', 'present')->count();
-        $biensDeplaces = InventaireScan::whereIn('inventaire_id', $inventaireIds)->where('statut_scan', 'deplace')->count();
-        $biensAbsents = InventaireScan::whereIn('inventaire_id', $inventaireIds)->where('statut_scan', 'absent')->count();
-        $biensDefectueux = InventaireScan::whereIn('inventaire_id', $inventaireIds)->where('etat_constate', 'mauvais')->count();
-        $biensDeteriores = InventaireScan::whereIn('inventaire_id', $inventaireIds)->where('statut_scan', 'deteriore')->count();
-
-        $tauxConformite = $totalScans > 0 ? round(($biensPresents / $totalScans) * 100, 1) : 0;
-
-        return [
-            'total_scans' => $totalScans,
-            'biens_presents' => $biensPresents,
-            'biens_deplaces' => $biensDeplaces,
-            'biens_absents' => $biensAbsents,
-            'biens_defectueux' => $biensDefectueux,
-            'biens_deteriores' => $biensDeteriores,
-            'taux_conformite' => $tauxConformite,
-            'nombre_inventaires_termines' => $inventaireIds->count(),
+            'total' => Inventaire::count(),
+            'en_cours' => Inventaire::whereIn('statut', ['en_cours', 'en_preparation'])->count(),
+            'termines' => Inventaire::where('statut', 'termine')->count(),
+            'clotures' => Inventaire::where('statut', 'cloture')->count(),
         ];
     }
 
