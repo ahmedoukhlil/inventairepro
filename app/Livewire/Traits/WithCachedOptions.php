@@ -60,14 +60,18 @@ trait WithCachedOptions
             });
         }
 
-        // Avec filtrage par localisation — on cherche les affectations utilisées
-        // par des emplacements dans la localisation sélectionnée
+        // Avec filtrage par localisation — on cherche les affectations qui :
+        // 1. Appartiennent directement à cette localisation (idLocalisation sur affectation)
+        // 2. OU qui ont des emplacements dans cette localisation
         $cacheKey = 'affectation_options_loc_' . $idLocalisation;
         
         return Cache::remember($cacheKey, $cacheDuration, function () use ($idLocalisation) {
             return Affectation::select('idAffectation', 'Affectation', 'CodeAffectation')
-                ->whereHas('emplacements', function ($query) use ($idLocalisation) {
-                    $query->where('idLocalisation', $idLocalisation);
+                ->where(function ($query) use ($idLocalisation) {
+                    $query->where('idLocalisation', $idLocalisation)
+                          ->orWhereHas('emplacements', function ($q) use ($idLocalisation) {
+                              $q->where('idLocalisation', $idLocalisation);
+                          });
                 })
                 ->orderBy('Affectation')
                 ->get()

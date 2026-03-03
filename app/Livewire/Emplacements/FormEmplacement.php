@@ -249,8 +249,13 @@ class FormEmplacement extends Component
 
             session()->flash('success', $message);
 
-            // Rediriger vers le dashboard
-            return $this->redirect(route('dashboard'), navigate: true);
+            // Rester sur la même vue pour créer d'autres emplacements
+            if (!$this->isEdit) {
+                $this->reset(['Emplacement', 'CodeEmplacement', 'idAffectation']);
+                return;
+            }
+
+            return $this->redirect(route('emplacements.index'), navigate: true);
         } catch (\Illuminate\Validation\ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {

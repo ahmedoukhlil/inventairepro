@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BienController;
+use App\Http\Controllers\Api\CollecteInitialeController;
 use App\Http\Controllers\Api\InventaireController;
 use App\Http\Controllers\Api\LocalisationController;
 use App\Http\Controllers\Api\ScanController;
@@ -144,6 +145,19 @@ Route::prefix('v1')->group(function () {
             // Détails d'un bien
             Route::get('/{bien}', [BienController::class, 'show'])
                 ->name('show');
+        });
+
+        /*
+        |------------------------------------------------------------------
+        | Collecte Initiale Autonome API
+        |------------------------------------------------------------------
+        |
+        | Stockage dans table dédiée sans relation aux autres tables métier.
+        |
+        */
+        Route::prefix('collecte-initiale')->name('api.collecte-initiale.')->group(function () {
+            Route::post('/enregistrer-lot', [CollecteInitialeController::class, 'enregistrerLot'])
+                ->name('enregistrer-lot');
         });
 
         /*

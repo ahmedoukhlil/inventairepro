@@ -170,8 +170,8 @@ class FormAffectation extends Component
                     DB::beginTransaction();
                     
                     // Générer un code unique si nécessaire
+                    $count = Affectation::count() + 1;
                     if (empty($data['CodeAffectation'])) {
-                        $count = Affectation::count() + 1;
                         $data['CodeAffectation'] = 'AFF-' . str_pad($count, 3, '0', STR_PAD_LEFT);
                     }
                     

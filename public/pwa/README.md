@@ -2,6 +2,14 @@
 
 Application Progressive Web App pour scanner les QR codes des biens lors des inventaires.
 
+## Module collecte initiale autonome
+
+Une page dediee existe pour la premiere collecte des biens, sans relation avec les tables metier existantes.
+
+- URL: `http://localhost:8000/pwa/collecte-initiale.html`
+- API utilisee: `POST /api/v1/collecte-initiale/enregistrer-lot`
+- Workflow: dictee contexte (emplacement + affectation) -> dictee biens -> afficher liste -> modifier -> valider emplacement
+
 ## Structure des fichiers
 
 ```

@@ -451,7 +451,7 @@ class ScanController extends Controller
 
         // Rechercher le bien par NumOrdre (clé primaire)
         $bien = Gesimmo::where('NumOrdre', $validated['num_ordre'])
-            ->with(['designation', 'categorie', 'etat'])
+            ->with(['designation', 'categorie', 'etat', 'emplacement.localisation', 'emplacement.affectation'])
             ->first();
 
         if (!$bien) {
@@ -464,6 +464,18 @@ class ScanController extends Controller
         // Vérifier si le bien appartient à cet emplacement
         $appartient = ($bien->idEmplacement == $idEmplacement);
 
+        // Construire les infos de l'emplacement initial si le bien est déplacé
+        $emplacementInitial = null;
+        if (!$appartient && $bien->emplacement) {
+            $emplacementInitial = [
+                'id' => $bien->emplacement->idEmplacement,
+                'nom' => $bien->emplacement->Emplacement,
+                'code' => $bien->emplacement->CodeEmplacement ?? null,
+                'localisation' => $bien->emplacement->localisation->Localisation ?? null,
+                'affectation' => $bien->emplacement->affectation->Affectation ?? null,
+            ];
+        }
+
         return response()->json([
             'success' => true,
             'bien' => [
@@ -472,7 +484,9 @@ class ScanController extends Controller
                 'categorie' => $bien->categorie->Categorie ?? 'N/A',
                 'etat' => $bien->etat->Etat ?? 'N/A',
                 'appartient_emplacement' => $appartient,
+                'statut' => $appartient ? 'present' : 'deplace',
                 'emplacement_actuel' => $bien->idEmplacement,
+                'emplacement_initial' => $emplacementInitial,
             ],
         ], 200);
     }
@@ -574,7 +588,7 @@ class ScanController extends Controller
         $biensEnTrop = array_diff($biensScannesList, $biensAttendusList);
 
         // Sauvegarder les scans dans la base de données (avec etat_constate et photo)
-        DB::transaction(function () use ($inventaire, $inventaireLocalisation, $validated, $emplacement, $user) {
+        DB::transaction(function () use ($inventaire, $inventaireLocalisation, $validated, $emplacement, $idEmplacement, $user) {
             foreach ($validated['biens_scannes'] as $scanItem) {
                 $numOrdre = is_array($scanItem) ? $scanItem['num_ordre'] : $scanItem;
                 // Utiliser etat_id (table etat) si fourni, sinon etat_constate direct
@@ -597,12 +611,18 @@ class ScanController extends Controller
                         $photoPath = $this->savePhotoFromBase64($photoBase64, 'GS' . $numOrdre);
                     }
 
+                    // Détecter si le bien est déplacé (emplacement initial ≠ emplacement scanné)
+                    $statutScan = 'present';
+                    if ($bien && $bien->idEmplacement != $idEmplacement) {
+                        $statutScan = 'deplace';
+                    }
+
                     InventaireScan::create([
                         'inventaire_id' => $inventaire->id,
                         'inventaire_localisation_id' => $inventaireLocalisation->id,
                         'bien_id' => $numOrdre,
                         'date_scan' => now(),
-                        'statut_scan' => 'present',
+                        'statut_scan' => $statutScan,
                         'localisation_reelle_id' => $emplacement->idLocalisation,
                         'etat_constate' => $etatConstate,
                         'photo_path' => $photoPath,
@@ -646,9 +666,9 @@ class ScanController extends Controller
                 ];
             });
 
-        // Détails des biens en trop (scannés mais pas dans cet emplacement)
+        // Détails des biens déplacés (scannés mais pas dans cet emplacement)
         $detailsEnTrop = Gesimmo::whereIn('NumOrdre', $biensEnTrop)
-            ->with(['designation', 'categorie', 'emplacement'])
+            ->with(['designation', 'categorie', 'emplacement.localisation', 'emplacement.affectation'])
             ->get()
             ->map(function ($bien) {
                 return [
@@ -656,7 +676,14 @@ class ScanController extends Controller
                     'code_inventaire' => $bien->code_inventaire ?? "GS{$bien->NumOrdre}",
                     'designation' => $bien->designation->designation ?? 'N/A',
                     'categorie' => $bien->categorie->Categorie ?? 'N/A',
-                    'emplacement_reel' => $bien->emplacement ? $bien->emplacement->Emplacement : 'Inconnu',
+                    'statut' => 'deplace',
+                    'emplacement_initial' => $bien->emplacement ? [
+                        'id' => $bien->emplacement->idEmplacement,
+                        'nom' => $bien->emplacement->Emplacement,
+                        'code' => $bien->emplacement->CodeEmplacement ?? null,
+                        'localisation' => $bien->emplacement->localisation->Localisation ?? null,
+                        'affectation' => $bien->emplacement->affectation->Affectation ?? null,
+                    ] : null,
                 ];
             });
 
