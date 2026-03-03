@@ -15,6 +15,7 @@ const AppState = {
 const els = {
     viewLogin: document.getElementById('view-login'),
     viewApp: document.getElementById('view-app'),
+    voiceSupportNotice: document.getElementById('voice-support-notice'),
     loginForm: document.getElementById('login-form'),
     loginUsers: document.getElementById('login-users'),
     loginMdp: document.getElementById('login-mdp'),
@@ -229,6 +230,28 @@ function newUuid() {
 
 function getSpeechRecognition() {
     return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+function isVoiceSupported() {
+    return Boolean(getSpeechRecognition());
+}
+
+function applyVoiceSupportUI() {
+    const supported = isVoiceSupported();
+    if (supported) {
+        els.voiceSupportNotice.classList.add('hidden');
+        els.voiceContextBtn.disabled = false;
+        els.voiceItemBtn.disabled = false;
+        els.voiceContextBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+        els.voiceItemBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+        return;
+    }
+
+    els.voiceSupportNotice.classList.remove('hidden');
+    els.voiceContextBtn.disabled = true;
+    els.voiceItemBtn.disabled = true;
+    els.voiceContextBtn.classList.add('opacity-60', 'cursor-not-allowed');
+    els.voiceItemBtn.classList.add('opacity-60', 'cursor-not-allowed');
 }
 
 function startVoiceCapture(onResult) {
@@ -452,6 +475,7 @@ function init() {
     AppState.user = userRaw ? JSON.parse(userRaw) : null;
 
     setAuthenticatedUI(Boolean(AppState.token));
+    applyVoiceSupportUI();
     bindEvents();
     renderQuickList();
 }
