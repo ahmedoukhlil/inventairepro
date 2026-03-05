@@ -38,6 +38,24 @@
                 La dictee vocale n'est pas disponible sur cet appareil/navigateur. Utilisez la saisie manuelle.
             </div>
 
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                <div class="flex flex-wrap items-center gap-2 text-sm">
+                    <span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">Etape 1: Contexte</span>
+                    <span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">Etape 2: Dictée biens</span>
+                    <span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">Etape 3: Validation</span>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div class="bg-gray-50 rounded-lg p-2">
+                        <p class="text-gray-500">Lignes</p>
+                        <p id="stats-lines" class="font-semibold">0</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-2">
+                        <p class="text-gray-500">Quantite totale</p>
+                        <p id="stats-qty" class="font-semibold">0</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                 <div class="flex items-center justify-between gap-2">
                     <div>
@@ -70,6 +88,12 @@
                     <button id="parse-context-btn" type="button" class="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg text-sm hover:bg-gray-200">
                         Appliquer transcription
                     </button>
+                    <button id="save-draft-btn" type="button" class="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg text-sm hover:bg-gray-200">
+                        Sauver brouillon
+                    </button>
+                    <button id="reset-draft-btn" type="button" class="bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm hover:bg-red-100">
+                        Reinitialiser
+                    </button>
                 </div>
             </div>
 
@@ -88,6 +112,9 @@
                     </button>
                     <button id="add-item-btn" type="button" class="bg-emerald-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-emerald-700">
                         Ajouter a la liste
+                    </button>
+                    <button id="add-many-btn" type="button" class="bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg text-sm hover:bg-emerald-100">
+                        Ajouter plusieurs biens
                     </button>
                     <button id="show-list-btn" type="button" class="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg text-sm hover:bg-gray-200">
                         Afficher la liste
@@ -124,6 +151,9 @@
                 <div class="mt-4 flex flex-wrap gap-2">
                     <button id="submit-lot-btn" type="button" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
                         Valider l'emplacement
+                    </button>
+                    <button id="sync-pending-btn" type="button" class="bg-amber-50 text-amber-800 px-4 py-2 rounded-lg hover:bg-amber-100">
+                        Synchroniser les lots en attente (<span id="pending-count">0</span>)
                     </button>
                     <button id="hide-list-btn" type="button" class="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-200">
                         Masquer la liste
