@@ -20,7 +20,7 @@ class CollecteInitialeController extends Controller
         $validated = $request->validate([
             'lot_uid' => 'required|uuid',
             'emplacement_label' => 'required|string|max:255',
-            'affectation_label' => 'required|string|max:255',
+            'affectation_label' => 'nullable|string|max:255',
             'localisation_label' => 'nullable|string|max:255',
             'agent_label' => 'nullable|string|max:255',
             'items' => 'required|array|min:1|max:500',
@@ -34,6 +34,7 @@ class CollecteInitialeController extends Controller
         ]);
 
         $lotUid = $validated['lot_uid'];
+        $affectationLabel = trim((string) ($validated['affectation_label'] ?? 'Non renseignee'));
 
         // Idempotence: si le lot existe deja, on retourne un recap sans reinsertion.
         $existing = CollecteBienInitiale::where('lot_uid', $lotUid)
@@ -55,7 +56,7 @@ class CollecteInitialeController extends Controller
 
         $createdIds = [];
 
-        DB::transaction(function () use ($validated, $lotUid, $request, &$createdIds): void {
+        DB::transaction(function () use ($validated, $lotUid, $affectationLabel, $request, &$createdIds): void {
             $rows = [];
             $now = now();
             $createdBy = $request->user()->idUser ?? null;
@@ -65,7 +66,7 @@ class CollecteInitialeController extends Controller
                     'lot_uid' => $lotUid,
                     'line_index' => $index + 1,
                     'emplacement_label' => trim($validated['emplacement_label']),
-                    'affectation_label' => trim($validated['affectation_label']),
+                    'affectation_label' => $affectationLabel,
                     'localisation_label' => isset($validated['localisation_label']) ? trim((string) $validated['localisation_label']) : null,
                     'designation' => trim($item['designation']),
                     'quantite' => (int) ($item['quantite'] ?? 1),
@@ -93,7 +94,7 @@ class CollecteInitialeController extends Controller
             'message' => 'Lot enregistre avec succes',
             'lot_uid' => $lotUid,
             'emplacement_label' => $validated['emplacement_label'],
-            'affectation_label' => $validated['affectation_label'],
+            'affectation_label' => $affectationLabel,
             'resume' => [
                 'items_recus' => count($validated['items']),
                 'lignes_enregistrees' => count($createdIds),

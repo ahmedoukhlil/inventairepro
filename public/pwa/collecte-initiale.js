@@ -31,7 +31,6 @@ const els = {
     loginError: document.getElementById('login-error'),
     logoutBtn: document.getElementById('logout-btn'),
     emplacementLabel: document.getElementById('emplacement-label'),
-    affectationLabel: document.getElementById('affectation-label'),
     contexteTranscript: document.getElementById('contexte-transcript'),
     voiceContextBtn: document.getElementById('voice-context-btn'),
     parseContextBtn: document.getElementById('parse-context-btn'),
@@ -188,16 +187,8 @@ function parseContext(transcript) {
     if (!text) {
         return null;
     }
-
-    const lower = text.toLowerCase();
-    const marker = lower.indexOf('affectation');
-    if (marker === -1) {
-        return { emplacement: text, affectation: '' };
-    }
-
-    const left = normalizeText(text.slice(0, marker).replace(/[,:\-]+$/g, ''));
-    const right = normalizeText(text.slice(marker).replace(/^affectation\s*[:\-]?\s*/i, ''));
-    return { emplacement: left, affectation: right };
+    const emplacement = normalizeText(text.split(',')[0] || text);
+    return { emplacement };
 }
 
 function parseNumberPrefix(text) {
@@ -255,7 +246,6 @@ function parseManyItems(transcript) {
 function getDraftPayload() {
     return {
         emplacement_label: normalizeText(els.emplacementLabel.value),
-        affectation_label: normalizeText(els.affectationLabel.value),
         contexte_transcript: els.contexteTranscript.value || '',
         item_transcript: els.itemTranscript.value || '',
         items: AppState.items,
@@ -274,7 +264,6 @@ function loadDraft() {
     try {
         const draft = JSON.parse(raw);
         els.emplacementLabel.value = draft.emplacement_label || '';
-        els.affectationLabel.value = draft.affectation_label || '';
         els.contexteTranscript.value = draft.contexte_transcript || '';
         els.itemTranscript.value = draft.item_transcript || '';
         AppState.items = Array.isArray(draft.items) ? draft.items : [];
@@ -457,9 +446,8 @@ function logout() {
 
 function buildPayload() {
     const emplacementLabel = normalizeText(els.emplacementLabel.value);
-    const affectationLabel = normalizeText(els.affectationLabel.value);
-    if (!emplacementLabel || !affectationLabel) {
-        throw new Error('Emplacement et affectation sont obligatoires.');
+    if (!emplacementLabel) {
+        throw new Error('Emplacement obligatoire.');
     }
     const validItems = AppState.items.filter((it) => normalizeText(it.designation).length > 0);
     if (validItems.length === 0) {
@@ -468,7 +456,6 @@ function buildPayload() {
     return {
         lot_uid: newUuid(),
         emplacement_label: emplacementLabel,
-        affectation_label: affectationLabel,
         items: validItems.map((it) => ({
             designation: normalizeText(it.designation),
             quantite: Math.max(1, parseInt(it.quantite, 10) || 1),
@@ -558,7 +545,6 @@ function bindEvents() {
             const parsed = parseContext(text);
             if (parsed) {
                 els.emplacementLabel.value = parsed.emplacement;
-                els.affectationLabel.value = parsed.affectation;
             }
             saveDraft();
             updateContextLockUI();
@@ -572,7 +558,6 @@ function bindEvents() {
             return;
         }
         els.emplacementLabel.value = parsed.emplacement;
-        els.affectationLabel.value = parsed.affectation;
         clearError();
         saveDraft();
         updateContextLockUI();
@@ -709,7 +694,6 @@ function bindEvents() {
         }
         AppState.items = [];
         els.emplacementLabel.value = '';
-        els.affectationLabel.value = '';
         els.contexteTranscript.value = '';
         els.itemTranscript.value = '';
         clearDraft();
@@ -719,7 +703,7 @@ function bindEvents() {
     });
 
     // Autosave contexte
-    [els.emplacementLabel, els.affectationLabel, els.contexteTranscript, els.itemTranscript].forEach((input) => {
+    [els.emplacementLabel, els.contexteTranscript, els.itemTranscript].forEach((input) => {
         input.addEventListener('input', () => {
             saveDraft();
             updateContextLockUI();
