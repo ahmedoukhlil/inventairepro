@@ -233,11 +233,11 @@ class User extends Authenticatable
 
     /**
      * Vérifie si l'utilisateur peut gérer les inventaires
-     * Admin et Agent peuvent gérer les inventaires
+     * Admin, Admin_stock et Agent peuvent gérer les inventaires
      */
     public function canManageInventaire(): bool
     {
-        return in_array($this->role, ['admin', 'agent']);
+        return in_array($this->role, ['admin', 'admin_stock', 'agent']);
     }
 
     /**

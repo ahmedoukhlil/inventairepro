@@ -39,7 +39,7 @@
                 </li>
 
                 @auth
-                    @if(auth()->user()->role === 'admin' || auth()->user()->role === 'agent')
+                    @if(auth()->user()->canManageInventaire())
                         <!-- Localisations -->
                         <li>
                             <a href="{{ route('localisations.index') }}" 
