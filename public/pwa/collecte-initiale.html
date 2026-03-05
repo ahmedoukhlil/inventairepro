@@ -2,169 +2,219 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#4F46E5">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#4F46E5" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#312E81" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Collecte Initiale">
     <title>Collecte Initiale - PWA</title>
     <link rel="manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --safe-area-inset-top: env(safe-area-inset-top, 0px);
+            --safe-area-inset-right: env(safe-area-inset-right, 0px);
+            --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-area-inset-left: env(safe-area-inset-left, 0px);
+        }
+        * { -webkit-overflow-scrolling: touch; }
+        button, a, input, select, textarea { touch-action: manipulation; }
+        .touch-target { min-width: 44px; min-height: 44px; }
+        .touch-feedback:active { opacity: 0.7; transform: scale(0.98); }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-900">
-    <main class="max-w-3xl mx-auto p-4 sm:p-6">
-        <header class="mb-6">
-            <h1 class="text-2xl font-bold">Collecte Initiale des Biens</h1>
-            <p class="text-sm text-gray-600">Dictée emplacement + affectation, puis dictée des biens, validation et enregistrement.</p>
+<body class="bg-gray-50 font-sans antialiased overflow-x-hidden">
+    <div id="app" class="min-h-screen flex flex-col">
+        <header id="app-header" class="bg-indigo-600 text-white shadow-md fixed top-0 left-0 right-0 z-50" style="padding-top: var(--safe-area-inset-top);">
+            <div class="px-4 py-3" style="padding-left: max(1rem, var(--safe-area-inset-left)); padding-right: max(1rem, var(--safe-area-inset-right));">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                        </svg>
+                        <div>
+                            <h1 class="text-lg font-bold">Inventaire Pro v2</h1>
+                            <p class="text-xs text-indigo-200" id="user-name">Collecte initiale</p>
+                        </div>
+                    </div>
+                    <button id="menu-btn" class="touch-target touch-feedback p-2 rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition" aria-label="Menu">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
         </header>
 
-        <section id="view-login" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-            <h2 class="font-semibold text-lg mb-4">Connexion</h2>
-            <form id="login-form" class="space-y-3">
-                <div>
-                    <label for="login-users" class="block text-sm font-medium mb-1">Nom d'utilisateur</label>
-                    <input id="login-users" type="text" class="w-full border rounded-lg px-3 py-2" required>
-                </div>
-                <div>
-                    <label for="login-mdp" class="block text-sm font-medium mb-1">Mot de passe</label>
-                    <input id="login-mdp" type="password" class="w-full border rounded-lg px-3 py-2" required>
-                </div>
-                <p id="login-error" class="hidden text-sm text-red-600"></p>
-                <button id="login-btn" type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
-                    Se connecter
-                </button>
-            </form>
-        </section>
-
-        <section id="view-app" class="hidden space-y-4">
-            <div id="voice-support-notice" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
-                La dictee vocale n'est pas disponible sur cet appareil/navigateur. Utilisez la saisie manuelle.
-            </div>
-
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <div class="flex flex-wrap items-center gap-2 text-sm">
-                    <span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">Etape 1: Contexte</span>
-                    <span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">Etape 2: Dictée biens</span>
-                    <span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">Etape 3: Validation</span>
-                </div>
-                <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
-                    <div class="bg-gray-50 rounded-lg p-2">
-                        <p class="text-gray-500">Lignes</p>
-                        <p id="stats-lines" class="font-semibold">0</p>
+        <div id="menu-drawer" class="fixed inset-0 z-40 hidden">
+            <div id="menu-overlay" class="absolute inset-0 bg-black bg-opacity-50 touch-feedback"></div>
+            <div class="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-white shadow-xl transform transition-transform" style="padding-top: var(--safe-area-inset-top); padding-bottom: var(--safe-area-inset-bottom);">
+                <div class="p-5" style="padding-right: max(1.25rem, var(--safe-area-inset-right));">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold text-gray-800">Menu</h2>
+                        <button id="close-menu" class="touch-target touch-feedback p-2 rounded-lg hover:bg-gray-100 active:bg-gray-200">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
-                    <div class="bg-gray-50 rounded-lg p-2">
-                        <p class="text-gray-500">Quantite totale</p>
-                        <p id="stats-qty" class="font-semibold">0</p>
+
+                    <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                        <p class="text-sm text-gray-600">Connecte en tant que</p>
+                        <p class="font-semibold text-gray-800" id="menu-user-name">-</p>
                     </div>
+
+                    <nav class="space-y-2">
+                        <a href="./index-v2.html" class="touch-target touch-feedback flex items-center space-x-3 p-4 rounded-lg hover:bg-gray-100 transition">
+                            <span class="text-base text-gray-700">Retour PWA Scan</span>
+                        </a>
+                        <button id="logout-btn" class="touch-target touch-feedback flex items-center space-x-3 p-4 rounded-lg hover:bg-red-50 active:bg-red-100 text-red-600 w-full transition">
+                            <span class="text-base font-medium">Deconnexion</span>
+                        </button>
+                    </nav>
                 </div>
             </div>
+        </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-                <div class="flex items-center justify-between gap-2">
-                    <div>
-                        <h2 class="font-semibold text-lg">Contexte emplacement</h2>
-                        <p class="text-sm text-gray-600">Exemple: Bureau DG, affectation Direction generale</p>
+        <main id="main-content" class="flex-1 pb-6 px-4" style="padding-top: calc(5rem + var(--safe-area-inset-top)); padding-bottom: max(1.5rem, var(--safe-area-inset-bottom)); padding-left: max(1rem, var(--safe-area-inset-left)); padding-right: max(1rem, var(--safe-area-inset-right));">
+            <section id="view-login" class="max-w-sm mx-auto">
+                <div class="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                    <div class="text-center mb-8">
+                        <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl mb-4 shadow-lg">
+                            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                            </svg>
+                        </div>
+                        <h1 class="text-2xl font-bold text-gray-900 mb-1">Collecte Initiale</h1>
+                        <p class="text-gray-500 text-sm">Premiere saisie des biens par dictee</p>
                     </div>
-                    <button id="logout-btn" class="text-sm text-red-600 hover:underline">Deconnexion</button>
+
+                    <form id="login-form" class="space-y-5">
+                        <div>
+                            <label for="login-users" class="block text-sm font-semibold text-gray-700 mb-2">Nom d'utilisateur</label>
+                            <input id="login-users" type="text" class="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" required>
+                        </div>
+                        <div>
+                            <label for="login-mdp" class="block text-sm font-semibold text-gray-700 mb-2">Mot de passe</label>
+                            <input id="login-mdp" type="password" class="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" required>
+                        </div>
+                        <p id="login-error" class="hidden text-sm text-red-600"></p>
+                        <button id="login-btn" type="submit" class="touch-target touch-feedback w-full bg-gradient-to-r from-indigo-600 to-indigo-700 text-white py-4 rounded-xl font-semibold text-base hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-lg">
+                            Se connecter
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <section id="view-app" class="hidden max-w-3xl mx-auto space-y-4">
+                <div id="voice-support-notice" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
+                    La dictee vocale n'est pas disponible sur cet appareil/navigateur. Utilisez la saisie manuelle.
                 </div>
 
-                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-sm font-medium mb-1" for="emplacement-label">Emplacement</label>
-                        <input id="emplacement-label" type="text" class="w-full border rounded-lg px-3 py-2" placeholder="Bureau DG">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                    <div class="flex flex-wrap items-center gap-2 text-sm">
+                        <span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">Etape 1: Contexte</span>
+                        <span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">Etape 2: Dictee biens</span>
+                        <span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">Etape 3: Validation</span>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1" for="affectation-label">Affectation</label>
-                        <input id="affectation-label" type="text" class="w-full border rounded-lg px-3 py-2" placeholder="Direction generale">
+                    <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+                        <div class="bg-gray-50 rounded-lg p-2">
+                            <p class="text-gray-500">Lignes</p>
+                            <p id="stats-lines" class="font-semibold">0</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-2">
+                            <p class="text-gray-500">Quantite totale</p>
+                            <p id="stats-qty" class="font-semibold">0</p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="mt-3">
-                    <label class="block text-sm font-medium mb-1" for="contexte-transcript">Transcription contexte</label>
-                    <textarea id="contexte-transcript" rows="2" class="w-full border rounded-lg px-3 py-2" placeholder="Bureau DG, affectation Direction generale"></textarea>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                    <h2 class="font-semibold text-lg">Contexte emplacement</h2>
+                    <p class="text-sm text-gray-600">Exemple: Bureau DG, affectation Direction generale</p>
+
+                    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1" for="emplacement-label">Emplacement</label>
+                            <input id="emplacement-label" type="text" class="w-full border rounded-lg px-3 py-2" placeholder="Bureau DG">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1" for="affectation-label">Affectation</label>
+                            <input id="affectation-label" type="text" class="w-full border rounded-lg px-3 py-2" placeholder="Direction generale">
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="block text-sm font-medium mb-1" for="contexte-transcript">Transcription contexte</label>
+                        <textarea id="contexte-transcript" rows="2" class="w-full border rounded-lg px-3 py-2" placeholder="Bureau DG, affectation Direction generale"></textarea>
+                    </div>
+
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <button id="voice-context-btn" type="button" class="touch-target bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-indigo-700">Dicter contexte</button>
+                        <button id="parse-context-btn" type="button" class="touch-target bg-gray-100 text-gray-800 px-3 py-2 rounded-lg text-sm hover:bg-gray-200">Appliquer transcription</button>
+                        <button id="save-draft-btn" type="button" class="touch-target bg-gray-100 text-gray-800 px-3 py-2 rounded-lg text-sm hover:bg-gray-200">Sauver brouillon</button>
+                        <button id="reset-draft-btn" type="button" class="touch-target bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm hover:bg-red-100">Reinitialiser</button>
+                    </div>
                 </div>
 
-                <div class="mt-3 flex flex-wrap gap-2">
-                    <button id="voice-context-btn" type="button" class="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-indigo-700">
-                        Dicter contexte
-                    </button>
-                    <button id="parse-context-btn" type="button" class="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg text-sm hover:bg-gray-200">
-                        Appliquer transcription
-                    </button>
-                    <button id="save-draft-btn" type="button" class="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg text-sm hover:bg-gray-200">
-                        Sauver brouillon
-                    </button>
-                    <button id="reset-draft-btn" type="button" class="bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm hover:bg-red-100">
-                        Reinitialiser
-                    </button>
-                </div>
-            </div>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                    <h2 class="font-semibold text-lg">Dictee des biens</h2>
+                    <p class="text-sm text-gray-600">Exemples: un bureau, 2 chaises, un ordinateur portable</p>
+                    <div id="context-required-notice" class="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2 text-sm text-amber-800">
+                        Commencez par renseigner l'emplacement avant de dicter les biens.
+                    </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-                <h2 class="font-semibold text-lg">Dictée des biens</h2>
-                <p class="text-sm text-gray-600">Exemples: un bureau, 2 chaises, un ordinateur portable</p>
+                    <div class="mt-3">
+                        <label class="block text-sm font-medium mb-1" for="item-transcript">Transcription bien</label>
+                        <textarea id="item-transcript" rows="2" class="w-full border rounded-lg px-3 py-2" placeholder="2 chaises"></textarea>
+                    </div>
 
-                <div class="mt-3">
-                    <label class="block text-sm font-medium mb-1" for="item-transcript">Transcription bien</label>
-                    <textarea id="item-transcript" rows="2" class="w-full border rounded-lg px-3 py-2" placeholder="2 chaises"></textarea>
-                </div>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <button id="voice-item-btn" type="button" class="touch-target bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-indigo-700">Dicter bien</button>
+                        <button id="add-item-btn" type="button" class="touch-target bg-emerald-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-emerald-700">Ajouter a la liste</button>
+                        <button id="add-many-btn" type="button" class="touch-target bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg text-sm hover:bg-emerald-100">Ajouter plusieurs biens</button>
+                        <button id="show-list-btn" type="button" class="touch-target bg-gray-100 text-gray-800 px-3 py-2 rounded-lg text-sm hover:bg-gray-200">Afficher la liste</button>
+                    </div>
 
-                <div class="mt-3 flex flex-wrap gap-2">
-                    <button id="voice-item-btn" type="button" class="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-indigo-700">
-                        Dicter bien
-                    </button>
-                    <button id="add-item-btn" type="button" class="bg-emerald-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-emerald-700">
-                        Ajouter a la liste
-                    </button>
-                    <button id="add-many-btn" type="button" class="bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg text-sm hover:bg-emerald-100">
-                        Ajouter plusieurs biens
-                    </button>
-                    <button id="show-list-btn" type="button" class="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg text-sm hover:bg-gray-200">
-                        Afficher la liste
-                    </button>
+                    <div class="mt-4">
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Apercu rapide</h3>
+                        <div id="quick-list" class="text-sm text-gray-700 space-y-1"></div>
+                    </div>
                 </div>
 
-                <div class="mt-4">
-                    <h3 class="text-sm font-medium text-gray-700 mb-2">Apercu rapide</h3>
-                    <div id="quick-list" class="text-sm text-gray-700 space-y-1"></div>
+                <div id="validation-panel" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="font-semibold text-lg">Validation des biens dictes</h2>
+                        <button id="add-empty-row-btn" type="button" class="text-sm text-indigo-600 hover:underline">Ajouter ligne</button>
+                    </div>
+                    <div class="overflow-auto mt-3">
+                        <table class="min-w-full text-sm">
+                            <thead>
+                                <tr class="text-left border-b">
+                                    <th class="py-2 pr-3">Designation</th>
+                                    <th class="py-2 pr-3">Quantite</th>
+                                    <th class="py-2 pr-3">Etat</th>
+                                    <th class="py-2 pr-3">Observations</th>
+                                    <th class="py-2 pr-3">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="validation-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <button id="submit-lot-btn" type="button" class="touch-target bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Valider l'emplacement</button>
+                        <button id="sync-pending-btn" type="button" class="touch-target bg-amber-50 text-amber-800 px-4 py-2 rounded-lg hover:bg-amber-100">Synchroniser les lots en attente (<span id="pending-count">0</span>)</button>
+                        <button id="hide-list-btn" type="button" class="touch-target bg-gray-100 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-200">Masquer la liste</button>
+                    </div>
                 </div>
-            </div>
 
-            <div id="validation-panel" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-                <div class="flex items-center justify-between">
-                    <h2 class="font-semibold text-lg">Validation des biens dictes</h2>
-                    <button id="add-empty-row-btn" type="button" class="text-sm text-indigo-600 hover:underline">Ajouter ligne</button>
-                </div>
-
-                <div class="overflow-auto mt-3">
-                    <table class="min-w-full text-sm">
-                        <thead>
-                            <tr class="text-left border-b">
-                                <th class="py-2 pr-3">Designation</th>
-                                <th class="py-2 pr-3">Quantite</th>
-                                <th class="py-2 pr-3">Etat</th>
-                                <th class="py-2 pr-3">Observations</th>
-                                <th class="py-2 pr-3">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="validation-body"></tbody>
-                    </table>
-                </div>
-
-                <div class="mt-4 flex flex-wrap gap-2">
-                    <button id="submit-lot-btn" type="button" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
-                        Valider l'emplacement
-                    </button>
-                    <button id="sync-pending-btn" type="button" class="bg-amber-50 text-amber-800 px-4 py-2 rounded-lg hover:bg-amber-100">
-                        Synchroniser les lots en attente (<span id="pending-count">0</span>)
-                    </button>
-                    <button id="hide-list-btn" type="button" class="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-200">
-                        Masquer la liste
-                    </button>
-                </div>
-            </div>
-
-            <div id="result-box" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm"></div>
-            <div id="app-error" class="hidden bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700"></div>
-        </section>
-    </main>
+                <div id="result-box" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm"></div>
+                <div id="app-error" class="hidden bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700"></div>
+            </section>
+        </main>
+    </div>
 
     <script src="collecte-initiale.js"></script>
 </body>

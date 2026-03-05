@@ -15,6 +15,13 @@ const AppState = {
 };
 
 const els = {
+    appHeader: document.getElementById('app-header'),
+    userName: document.getElementById('user-name'),
+    menuUserName: document.getElementById('menu-user-name'),
+    menuBtn: document.getElementById('menu-btn'),
+    menuDrawer: document.getElementById('menu-drawer'),
+    closeMenu: document.getElementById('close-menu'),
+    menuOverlay: document.getElementById('menu-overlay'),
     viewLogin: document.getElementById('view-login'),
     viewApp: document.getElementById('view-app'),
     voiceSupportNotice: document.getElementById('voice-support-notice'),
@@ -35,6 +42,7 @@ const els = {
     addItemBtn: document.getElementById('add-item-btn'),
     addManyBtn: document.getElementById('add-many-btn'),
     showListBtn: document.getElementById('show-list-btn'),
+    contextRequiredNotice: document.getElementById('context-required-notice'),
     quickList: document.getElementById('quick-list'),
     statsLines: document.getElementById('stats-lines'),
     statsQty: document.getElementById('stats-qty'),
@@ -62,6 +70,38 @@ function clearError() {
 function showResult(messageHtml) {
     els.resultBox.innerHTML = messageHtml;
     els.resultBox.classList.remove('hidden');
+}
+
+function hasContextForItems() {
+    return normalizeText(els.emplacementLabel.value).length > 0;
+}
+
+function toggleDisabledState(element, disabled) {
+    element.disabled = disabled;
+    if (disabled) {
+        element.classList.add('opacity-60', 'cursor-not-allowed');
+    } else {
+        element.classList.remove('opacity-60', 'cursor-not-allowed');
+    }
+}
+
+function updateContextLockUI() {
+    const locked = !hasContextForItems();
+    if (locked) {
+        els.contextRequiredNotice.classList.remove('hidden');
+        els.itemTranscript.setAttribute('disabled', 'disabled');
+    } else {
+        els.contextRequiredNotice.classList.add('hidden');
+        els.itemTranscript.removeAttribute('disabled');
+    }
+
+    toggleDisabledState(els.addItemBtn, locked);
+    toggleDisabledState(els.addManyBtn, locked);
+    toggleDisabledState(els.showListBtn, locked);
+
+    // Le bouton vocal de biens reste aussi verrouillé si contexte absent.
+    const voiceBlockedByContext = locked || !Boolean(getSpeechRecognition());
+    toggleDisabledState(els.voiceItemBtn, voiceBlockedByContext);
 }
 
 function normalizeText(value) {
@@ -124,9 +164,22 @@ function setAuthenticatedUI(authenticated) {
     if (authenticated) {
         els.viewLogin.classList.add('hidden');
         els.viewApp.classList.remove('hidden');
+        if (els.appHeader) {
+            els.appHeader.classList.remove('hidden');
+        }
+        const name = AppState.user?.name || AppState.user?.users || 'Agent';
+        if (els.userName) {
+            els.userName.textContent = name;
+        }
+        if (els.menuUserName) {
+            els.menuUserName.textContent = name;
+        }
     } else {
         els.viewApp.classList.add('hidden');
         els.viewLogin.classList.remove('hidden');
+        if (els.appHeader) {
+            els.appHeader.classList.add('hidden');
+        }
     }
 }
 
@@ -353,9 +406,8 @@ function applyVoiceSupportUI() {
     if (supported) {
         els.voiceSupportNotice.classList.add('hidden');
         els.voiceContextBtn.disabled = false;
-        els.voiceItemBtn.disabled = false;
         els.voiceContextBtn.classList.remove('opacity-60', 'cursor-not-allowed');
-        els.voiceItemBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+        updateContextLockUI();
         return;
     }
     els.voiceSupportNotice.classList.remove('hidden');
@@ -398,6 +450,9 @@ function logout() {
     localStorage.removeItem(CONFIG.TOKEN_KEY);
     localStorage.removeItem(CONFIG.USER_KEY);
     setAuthenticatedUI(false);
+    if (els.menuDrawer) {
+        els.menuDrawer.classList.add('hidden');
+    }
 }
 
 function buildPayload() {
@@ -463,6 +518,22 @@ async function submitLot() {
 }
 
 function bindEvents() {
+    if (els.menuBtn && els.menuDrawer) {
+        els.menuBtn.addEventListener('click', () => {
+            els.menuDrawer.classList.remove('hidden');
+        });
+    }
+    if (els.closeMenu && els.menuDrawer) {
+        els.closeMenu.addEventListener('click', () => {
+            els.menuDrawer.classList.add('hidden');
+        });
+    }
+    if (els.menuOverlay && els.menuDrawer) {
+        els.menuOverlay.addEventListener('click', () => {
+            els.menuDrawer.classList.add('hidden');
+        });
+    }
+
     els.loginForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         els.loginError.classList.add('hidden');
@@ -490,6 +561,7 @@ function bindEvents() {
                 els.affectationLabel.value = parsed.affectation;
             }
             saveDraft();
+            updateContextLockUI();
         });
     });
 
@@ -503,9 +575,14 @@ function bindEvents() {
         els.affectationLabel.value = parsed.affectation;
         clearError();
         saveDraft();
+        updateContextLockUI();
     });
 
     els.voiceItemBtn.addEventListener('click', () => {
+        if (!hasContextForItems()) {
+            showError("Renseigne d'abord l'emplacement.");
+            return;
+        }
         startVoiceCapture((text) => {
             els.itemTranscript.value = text;
             saveDraft();
@@ -513,6 +590,10 @@ function bindEvents() {
     });
 
     els.addItemBtn.addEventListener('click', () => {
+        if (!hasContextForItems()) {
+            showError("Renseigne d'abord l'emplacement.");
+            return;
+        }
         const item = parseItem(els.itemTranscript.value);
         if (!item) {
             showError('Transcription bien vide.');
@@ -527,6 +608,10 @@ function bindEvents() {
     });
 
     els.addManyBtn.addEventListener('click', () => {
+        if (!hasContextForItems()) {
+            showError("Renseigne d'abord l'emplacement.");
+            return;
+        }
         const items = parseManyItems(els.itemTranscript.value);
         if (items.length === 0) {
             showError('Aucun bien detecte dans la transcription.');
@@ -542,6 +627,10 @@ function bindEvents() {
     });
 
     els.showListBtn.addEventListener('click', () => {
+        if (!hasContextForItems()) {
+            showError("Renseigne d'abord l'emplacement.");
+            return;
+        }
         els.validationPanel.classList.remove('hidden');
         renderValidationTable();
     });
@@ -631,7 +720,10 @@ function bindEvents() {
 
     // Autosave contexte
     [els.emplacementLabel, els.affectationLabel, els.contexteTranscript, els.itemTranscript].forEach((input) => {
-        input.addEventListener('input', saveDraft);
+        input.addEventListener('input', () => {
+            saveDraft();
+            updateContextLockUI();
+        });
     });
 }
 
@@ -647,6 +739,7 @@ function init() {
     renderQuickList();
     renderValidationTable();
     updatePendingCount();
+    updateContextLockUI();
 }
 
 document.addEventListener('DOMContentLoaded', init);
