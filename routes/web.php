@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BienController;
+use App\Http\Controllers\CollecteInitialeController;
 use App\Http\Controllers\InventaireController;
 use App\Http\Controllers\LocalisationController;
 use App\Http\Controllers\QRCodeEmplacementController;
@@ -256,6 +257,16 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
             
             // Clôture d'un inventaire
             Route::post('/{inventaire}/cloturer', [InventaireController::class, 'cloturer'])->name('cloturer');
+        });
+
+        /*
+        |------------------------------------------------------------------
+        | Collecte Initiale (table dediee)
+        |------------------------------------------------------------------
+        */
+        Route::prefix('collecte-initiale')->name('collecte-initiale.')->group(function () {
+            Route::get('/', [CollecteInitialeController::class, 'index'])->name('index');
+            Route::get('/export/excel', [CollecteInitialeController::class, 'exportExcel'])->name('export-excel');
         });
 
         /*
