@@ -166,67 +166,68 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2">
-                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-                            Afficher
-                        </button>
-                        <a href="{{ route('corbeille.immobilisations.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                            Reinitialiser
-                        </a>
-                        <a href="{{ route('corbeille.immobilisations.export-excel', request()->query()) }}" class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
-                            Export Excel
-                        </a>
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                                Afficher
+                            </button>
+                            <a href="{{ route('corbeille.immobilisations.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                                Réinitialiser
+                            </a>
+                            <a href="{{ route('corbeille.immobilisations.export-excel', request()->query()) }}" class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                                Export Excel
+                            </a>
+                        </div>
                     </div>
                 </form>
 
-                <div class="mt-4 pt-4 border-t border-gray-200">
-                    <h2 class="text-sm font-semibold text-gray-900 mb-3">Récupération groupée</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <form method="POST" action="{{ route('corbeille.immobilisations.restore-by-designation-selection') }}" class="flex items-end gap-2">
-                            @csrf
-                            <input type="hidden" name="designation_id" value="{{ $filterDesignation }}">
-                            <div class="flex-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Par désignation (depuis filtre)</label>
-                                <div class="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                @if(!empty($filterDesignation) || !empty($filterEmplacement))
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <span class="text-sm font-semibold text-gray-700">Restaurer en lot :</span>
+
+                            @if(!empty($filterDesignation))
+                                <form method="POST" action="{{ route('corbeille.immobilisations.restore-by-designation-selection') }}" class="inline">
+                                    @csrf
+                                    <input type="hidden" name="designation_id" value="{{ $filterDesignation }}">
                                     @php
                                         $selectedDesignation = collect($designationOptions)->firstWhere('id', (int) $filterDesignation);
                                     @endphp
-                                    {{ $selectedDesignation['label'] ?? 'Aucune désignation filtrée' }}
-                                </div>
-                            </div>
-                            <button
-                                type="submit"
-                                class="inline-flex items-center px-4 py-2 rounded-lg transition-colors {{ !empty($filterDesignation) ? 'bg-sky-600 text-white hover:bg-sky-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed' }}"
-                                {{ empty($filterDesignation) ? 'disabled' : '' }}
-                                onclick="return confirm('Restaurer toutes les immobilisations de la désignation sélectionnée ?')"
-                            >
-                                Restaurer désignation
-                            </button>
-                        </form>
+                                    <button
+                                        type="submit"
+                                        class="inline-flex items-center px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors text-sm"
+                                        onclick="return confirm('Restaurer toutes les immobilisations de la désignation : {{ addslashes($selectedDesignation['label'] ?? '') }} ?')"
+                                    >
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                        Restaurer désignation : {{ Str::limit($selectedDesignation['label'] ?? '?', 30) }}
+                                    </button>
+                                </form>
+                            @endif
 
-                        <form method="POST" action="{{ route('corbeille.immobilisations.restore-by-emplacement-selection') }}" class="flex items-end gap-2">
-                            @csrf
-                            <input type="hidden" name="emplacement_id" value="{{ $filterEmplacement }}">
-                            <div class="flex-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Par emplacement (depuis filtre)</label>
-                                <div class="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                            @if(!empty($filterEmplacement))
+                                <form method="POST" action="{{ route('corbeille.immobilisations.restore-by-emplacement-selection') }}" class="inline">
+                                    @csrf
+                                    <input type="hidden" name="emplacement_id" value="{{ $filterEmplacement }}">
                                     @php
                                         $selectedEmplacement = collect($emplacementOptions)->firstWhere('id', (int) $filterEmplacement);
                                     @endphp
-                                    {{ $selectedEmplacement['label'] ?? 'Aucun emplacement filtré' }}
-                                </div>
-                            </div>
-                            <button
-                                type="submit"
-                                class="inline-flex items-center px-4 py-2 rounded-lg transition-colors {{ !empty($filterEmplacement) ? 'bg-violet-600 text-white hover:bg-violet-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed' }}"
-                                {{ empty($filterEmplacement) ? 'disabled' : '' }}
-                                onclick="return confirm('Restaurer toutes les immobilisations de l\'emplacement sélectionné ?')"
-                            >
-                                Restaurer emplacement
-                            </button>
-                        </form>
+                                    <button
+                                        type="submit"
+                                        class="inline-flex items-center px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm"
+                                        onclick="return confirm('Restaurer toutes les immobilisations de l\'emplacement : {{ addslashes($selectedEmplacement['label'] ?? '') }} ?')"
+                                    >
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                        Restaurer emplacement : {{ Str::limit($selectedEmplacement['label'] ?? '?', 30) }}
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
                     </div>
-                </div>
+                @endif
             </div>
         </div>
 
