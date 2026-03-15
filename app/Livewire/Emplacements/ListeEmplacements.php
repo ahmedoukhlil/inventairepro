@@ -128,7 +128,8 @@ class ListeEmplacements extends Component
     }
 
     /**
-     * Supprime un emplacement
+     * Vide un emplacement: deplace ses immobilisations vers la corbeille.
+     * L'emplacement lui-meme n'est pas supprime.
      */
     public function deleteEmplacement($emplacementId): void
     {
@@ -190,12 +191,13 @@ class ListeEmplacements extends Component
                     Code::whereIn('idGesimmo', $immobilisations->pluck('NumOrdre'))->delete();
                     $emplacement->immobilisations()->delete();
                 }
-
-                $emplacement->delete();
             });
 
-            Cache::forget('emplacements_total_count');
-            session()->flash('success', "L'emplacement a été supprimé avec succès. {$nombreImmobilisations} immobilisation(s) déplacée(s) vers la corbeille.");
+            if ($nombreImmobilisations > 0) {
+                session()->flash('success', "{$nombreImmobilisations} immobilisation(s) deplacee(s) vers la corbeille. L'emplacement est conserve.");
+            } else {
+                session()->flash('warning', "Aucune immobilisation a supprimer pour cet emplacement. L'emplacement est conserve.");
+            }
             
             $this->selectedEmplacements = array_diff($this->selectedEmplacements, [$emplacementId]);
         } catch (\Exception $e) {
