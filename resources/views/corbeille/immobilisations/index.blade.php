@@ -36,72 +36,120 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_designation">Désignation</label>
-                            <select id="filter_designation" name="filter_designation" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">Toutes les désignations</option>
-                                @foreach($designationOptions as $option)
-                                    <option value="{{ $option['id'] }}" @selected((string) $filterDesignation === (string) $option['id'])>
-                                        {{ $option['label'] }} ({{ $option['id'] }})
-                                    </option>
-                                @endforeach
-                            </select>
+                            <livewire:components.searchable-select
+                                name="filter_designation"
+                                :value="(string) ($filterDesignation ?? '')"
+                                :options="collect($designationOptions)->map(fn ($option) => [
+                                    'value' => (string) $option['id'],
+                                    'text' => $option['label'] . ' (' . $option['id'] . ')',
+                                ])->prepend([
+                                    'value' => '',
+                                    'text' => 'Toutes les désignations',
+                                ])->toArray()"
+                                placeholder="Toutes les désignations"
+                                search-placeholder="Rechercher une désignation..."
+                                no-results-text="Aucune désignation trouvée"
+                                :allow-clear="true"
+                                :key="'corbeille-filter-designation-' . ($filterDesignation ?: 'all')"
+                            />
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_categorie">Catégorie</label>
-                            <select id="filter_categorie" name="filter_categorie" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">Toutes les catégories</option>
-                                @foreach($categorieOptions as $option)
-                                    <option value="{{ $option['id'] }}" @selected((string) $filterCategorie === (string) $option['id'])>
-                                        {{ $option['label'] }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <livewire:components.searchable-select
+                                name="filter_categorie"
+                                :value="(string) ($filterCategorie ?? '')"
+                                :options="collect($categorieOptions)->map(fn ($option) => [
+                                    'value' => (string) $option['id'],
+                                    'text' => $option['label'],
+                                ])->prepend([
+                                    'value' => '',
+                                    'text' => 'Toutes les catégories',
+                                ])->toArray()"
+                                placeholder="Toutes les catégories"
+                                search-placeholder="Rechercher une catégorie..."
+                                no-results-text="Aucune catégorie trouvée"
+                                :allow-clear="true"
+                                :key="'corbeille-filter-categorie-' . ($filterCategorie ?: 'all')"
+                            />
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_emplacement">Emplacement</label>
-                            <select id="filter_emplacement" name="filter_emplacement" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">Tous les emplacements</option>
-                                @foreach($emplacementOptions as $option)
-                                    <option value="{{ $option['id'] }}" @selected((string) $filterEmplacement === (string) $option['id'])>
-                                        {{ $option['label'] }} ({{ $option['id'] }})
-                                    </option>
-                                @endforeach
-                            </select>
+                            <livewire:components.searchable-select
+                                name="filter_emplacement"
+                                :value="(string) ($filterEmplacement ?? '')"
+                                :options="collect($emplacementOptions)->map(fn ($option) => [
+                                    'value' => (string) $option['id'],
+                                    'text' => $option['label'] . ' (' . $option['id'] . ')',
+                                ])->prepend([
+                                    'value' => '',
+                                    'text' => 'Tous les emplacements',
+                                ])->toArray()"
+                                placeholder="Tous les emplacements"
+                                search-placeholder="Rechercher un emplacement..."
+                                no-results-text="Aucun emplacement trouvé"
+                                :allow-clear="true"
+                                :key="'corbeille-filter-emplacement-' . ($filterEmplacement ?: 'all')"
+                            />
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_etat">État</label>
-                            <select id="filter_etat" name="filter_etat" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">Tous les états</option>
-                                @foreach($etatOptions as $option)
-                                    <option value="{{ $option['id'] }}" @selected((string) $filterEtat === (string) $option['id'])>
-                                        {{ $option['label'] }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <livewire:components.searchable-select
+                                name="filter_etat"
+                                :value="(string) ($filterEtat ?? '')"
+                                :options="collect($etatOptions)->map(fn ($option) => [
+                                    'value' => (string) $option['id'],
+                                    'text' => $option['label'],
+                                ])->prepend([
+                                    'value' => '',
+                                    'text' => 'Tous les états',
+                                ])->toArray()"
+                                placeholder="Tous les états"
+                                search-placeholder="Rechercher un état..."
+                                no-results-text="Aucun état trouvé"
+                                :allow-clear="true"
+                                :key="'corbeille-filter-etat-' . ($filterEtat ?: 'all')"
+                            />
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_natjur">Nature Juridique</label>
-                            <select id="filter_natjur" name="filter_natjur" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">Toutes les natures juridiques</option>
-                                @foreach($natJurOptions as $option)
-                                    <option value="{{ $option['id'] }}" @selected((string) $filterNatJur === (string) $option['id'])>
-                                        {{ $option['label'] }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <livewire:components.searchable-select
+                                name="filter_natjur"
+                                :value="(string) ($filterNatJur ?? '')"
+                                :options="collect($natJurOptions)->map(fn ($option) => [
+                                    'value' => (string) $option['id'],
+                                    'text' => $option['label'],
+                                ])->prepend([
+                                    'value' => '',
+                                    'text' => 'Toutes les natures juridiques',
+                                ])->toArray()"
+                                placeholder="Toutes les natures juridiques"
+                                search-placeholder="Rechercher une nature juridique..."
+                                no-results-text="Aucune nature juridique trouvée"
+                                :allow-clear="true"
+                                :key="'corbeille-filter-natjur-' . ($filterNatJur ?: 'all')"
+                            />
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_sf">Source de Financement</label>
-                            <select id="filter_sf" name="filter_sf" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">Toutes les sources</option>
-                                @foreach($sourceFinOptions as $option)
-                                    <option value="{{ $option['id'] }}" @selected((string) $filterSF === (string) $option['id'])>
-                                        {{ $option['label'] }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <livewire:components.searchable-select
+                                name="filter_sf"
+                                :value="(string) ($filterSF ?? '')"
+                                :options="collect($sourceFinOptions)->map(fn ($option) => [
+                                    'value' => (string) $option['id'],
+                                    'text' => $option['label'],
+                                ])->prepend([
+                                    'value' => '',
+                                    'text' => 'Toutes les sources',
+                                ])->toArray()"
+                                placeholder="Toutes les sources"
+                                search-placeholder="Rechercher une source de financement..."
+                                no-results-text="Aucune source trouvée"
+                                :allow-clear="true"
+                                :key="'corbeille-filter-sf-' . ($filterSF ?: 'all')"
+                            />
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_date_acquisition">Année d'acquisition</label>
@@ -140,19 +188,18 @@
                     @csrf
                     <div class="flex-1">
                         <label class="block text-sm font-medium text-gray-700 mb-1" for="designation_id">Par désignation</label>
-                        <select
-                            id="designation_id"
+                        <livewire:components.searchable-select
                             name="designation_id"
-                            required
-                            class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                        >
-                            <option value="">Sélectionner une désignation</option>
-                            @foreach($designationOptions as $option)
-                                <option value="{{ $option['id'] }}">
-                                    {{ $option['label'] }} ({{ $option['id'] }})
-                                </option>
-                            @endforeach
-                        </select>
+                            :options="collect($designationOptions)->map(fn ($option) => [
+                                'value' => (string) $option['id'],
+                                'text' => $option['label'] . ' (' . $option['id'] . ')',
+                            ])->toArray()"
+                            placeholder="Sélectionner une désignation"
+                            search-placeholder="Rechercher une désignation..."
+                            no-results-text="Aucune désignation trouvée"
+                            :allow-clear="true"
+                            :key="'corbeille-restore-designation'"
+                        />
                     </div>
                     <button
                         type="submit"
@@ -167,19 +214,18 @@
                     @csrf
                     <div class="flex-1">
                         <label class="block text-sm font-medium text-gray-700 mb-1" for="emplacement_id">Par emplacement</label>
-                        <select
-                            id="emplacement_id"
+                        <livewire:components.searchable-select
                             name="emplacement_id"
-                            required
-                            class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                        >
-                            <option value="">Sélectionner un emplacement</option>
-                            @foreach($emplacementOptions as $option)
-                                <option value="{{ $option['id'] }}">
-                                    {{ $option['label'] }} ({{ $option['id'] }})
-                                </option>
-                            @endforeach
-                        </select>
+                            :options="collect($emplacementOptions)->map(fn ($option) => [
+                                'value' => (string) $option['id'],
+                                'text' => $option['label'] . ' (' . $option['id'] . ')',
+                            ])->toArray()"
+                            placeholder="Sélectionner un emplacement"
+                            search-placeholder="Rechercher un emplacement..."
+                            no-results-text="Aucun emplacement trouvé"
+                            :allow-clear="true"
+                            :key="'corbeille-restore-emplacement'"
+                        />
                     </div>
                     <button
                         type="submit"
