@@ -195,7 +195,7 @@
 
                                             <button 
                                                 wire:click="deleteEmplacement({{ $emplacement->idEmplacement }})"
-                                                wire:confirm="Êtes-vous sûr de vouloir supprimer cet emplacement ?"
+                                                wire:confirm="Êtes-vous sûr ? Cet emplacement sera supprimé et ses immobilisations seront déplacées vers la corbeille."
                                                 class="text-red-600 hover:text-red-900 transition-colors"
                                                 title="Supprimer">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

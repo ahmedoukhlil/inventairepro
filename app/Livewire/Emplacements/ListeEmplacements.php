@@ -5,8 +5,11 @@ namespace App\Livewire\Emplacements;
 use App\Models\Emplacement;
 use App\Models\LocalisationImmo;
 use App\Models\Affectation;
+use App\Models\Code;
+use App\Models\CorbeilleImmobilisation;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -141,18 +144,58 @@ class ListeEmplacements extends Component
             return;
         }
 
-        // Vérifier qu'aucune immobilisation n'est associée à cet emplacement
-        $nombreImmobilisations = $emplacement->immobilisations()->count();
-        
-        if ($nombreImmobilisations > 0) {
-            session()->flash('error', "Impossible de supprimer cet emplacement : {$nombreImmobilisations} immobilisation(s) y sont associée(s).");
-            return;
-        }
-
         try {
-            $emplacement->delete();
+            $nombreImmobilisations = 0;
+
+            DB::transaction(function () use ($emplacement, &$nombreImmobilisations): void {
+                $immobilisations = $emplacement->immobilisations()
+                    ->with(['designation', 'code', 'emplacement.localisation', 'emplacement.affectation'])
+                    ->get();
+
+                foreach ($immobilisations as $immo) {
+                    $dateAcquisitionCorbeille = null;
+                    if (!empty($immo->DateAcquisition)) {
+                        $year = (int) $immo->DateAcquisition;
+                        if ($year >= 1900 && $year <= 9999) {
+                            $dateAcquisitionCorbeille = sprintf('%04d-01-01', $year);
+                        }
+                    }
+
+                    CorbeilleImmobilisation::create([
+                        'original_num_ordre' => $immo->NumOrdre,
+                        'idDesignation' => $immo->idDesignation,
+                        'idCategorie' => $immo->idCategorie,
+                        'idEtat' => $immo->idEtat,
+                        'idEmplacement' => $immo->idEmplacement,
+                        'idNatJur' => $immo->idNatJur,
+                        'idSF' => $immo->idSF,
+                        'DateAcquisition' => $dateAcquisitionCorbeille,
+                        'Observations' => $immo->Observations,
+                        'barcode' => $immo->code?->barcode,
+                        'emplacement_label' => $emplacement->Emplacement,
+                        'emplacement_code' => $emplacement->CodeEmplacement,
+                        'emplacement_id_affectation' => $emplacement->idAffectation,
+                        'emplacement_id_localisation' => $emplacement->idLocalisation,
+                        'affectation_label' => $emplacement->affectation?->Affectation,
+                        'localisation_label' => $emplacement->localisation?->Localisation,
+                        'designation_label' => $immo->designation?->designation,
+                        'deleted_reason' => 'Suppression de emplacement',
+                        'deleted_by_user_id' => auth()->id(),
+                        'deleted_at' => now(),
+                    ]);
+                    $nombreImmobilisations++;
+                }
+
+                if ($immobilisations->isNotEmpty()) {
+                    Code::whereIn('idGesimmo', $immobilisations->pluck('NumOrdre'))->delete();
+                    $emplacement->immobilisations()->delete();
+                }
+
+                $emplacement->delete();
+            });
+
             Cache::forget('emplacements_total_count');
-            session()->flash('success', 'L\'emplacement a été supprimé avec succès.');
+            session()->flash('success', "L'emplacement a été supprimé avec succès. {$nombreImmobilisations} immobilisation(s) déplacée(s) vers la corbeille.");
             
             $this->selectedEmplacements = array_diff($this->selectedEmplacements, [$emplacementId]);
         } catch (\Exception $e) {

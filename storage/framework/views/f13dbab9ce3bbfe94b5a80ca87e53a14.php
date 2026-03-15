@@ -85,7 +85,7 @@
             </div>
 
             <!-- Navigation -->
-            <nav class="flex-1 overflow-y-auto py-4 px-3" x-data="{ openMenu: '<?php echo e(request()->routeIs('biens.*') || request()->routeIs('localisations.*') || request()->routeIs('affectations.*') || request()->routeIs('emplacements.*') || request()->routeIs('designations.*') ? 'immobilisations' : (request()->routeIs('stock.*') ? 'stock' : '')); ?>' }">
+            <nav class="flex-1 overflow-y-auto py-4 px-3" x-data="{ openMenu: '<?php echo e(request()->routeIs('biens.*') || request()->routeIs('localisations.*') || request()->routeIs('affectations.*') || request()->routeIs('emplacements.*') || request()->routeIs('designations.*') || request()->routeIs('corbeille.immobilisations.*') ? 'immobilisations' : (request()->routeIs('stock.*') ? 'stock' : '')); ?>' }">
                 <ul class="space-y-1">
                     <!-- Dashboard -->
                     <li>
@@ -150,6 +150,15 @@
                                            class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors <?php echo e(request()->routeIs('biens.transfert.historique') ? 'bg-gray-700 text-white' : ''); ?>">
                                             <span class="mr-2">📜</span>
                                             <span>Historique Transferts</span>
+                                        </a>
+                                    </li>
+
+                                    <!-- Corbeille immos -->
+                                    <li>
+                                        <a href="<?php echo e(route('corbeille.immobilisations.index')); ?>"
+                                           class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors <?php echo e(request()->routeIs('corbeille.immobilisations.*') ? 'bg-gray-700 text-white' : ''); ?>">
+                                            <span class="mr-2">🗑️</span>
+                                            <span>Corbeille immos</span>
                                         </a>
                                     </li>
 

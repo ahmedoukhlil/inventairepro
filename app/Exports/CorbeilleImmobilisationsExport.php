@@ -63,7 +63,7 @@ class CorbeilleImmobilisationsExport implements FromCollection, WithHeadings, Wi
             $row->idEmplacement,
             $row->idNatJur,
             $row->idSF,
-            optional($row->DateAcquisition)?->format('Y-m-d'),
+            ($row->DateAcquisition && (int) $row->DateAcquisition > 1970) ? (int) $row->DateAcquisition : null,
             $row->Observations,
             $row->barcode,
             $row->deleted_reason,

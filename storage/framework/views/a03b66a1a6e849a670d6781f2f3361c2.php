@@ -1,10 +1,10 @@
 <div>
-    @php
+    <?php
         $isAdmin = auth()->user()->isAdmin();
-    @endphp
+    ?>
 
     <div class="space-y-6">
-        {{-- Header avec titre et actions --}}
+        
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">Gestion des Immobilisations</h1>
@@ -12,18 +12,18 @@
             </div>
             
             <div class="flex flex-wrap items-center gap-2">
-                @if(count($selectedBiens) > 0)
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(count($selectedBiens) > 0): ?>
                     <button 
                         wire:click="exportSelected"
                         class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        Exporter sélection ({{ count($selectedBiens) }})
+                        Exporter sélection (<?php echo e(count($selectedBiens)); ?>)
                     </button>
                     
                     <a 
-                        href="{{ route('biens.imprimer-etiquettes') }}"
+                        href="<?php echo e(route('biens.imprimer-etiquettes')); ?>"
                         class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                         onclick="event.preventDefault(); document.getElementById('print-form').submit();">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,16 +31,16 @@
                         </svg>
                         Imprimer étiquettes sélectionnées
                     </a>
-                    <form id="print-form" action="{{ route('biens.imprimer-etiquettes') }}" method="POST" class="hidden">
-                        @csrf
-                        @foreach($selectedBiens as $id)
-                            <input type="hidden" name="biens[]" value="{{ $id }}">
-                        @endforeach
+                    <form id="print-form" action="<?php echo e(route('biens.imprimer-etiquettes')); ?>" method="POST" class="hidden">
+                        <?php echo csrf_field(); ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $selectedBiens; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $id): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <input type="hidden" name="biens[]" value="<?php echo e($id); ?>">
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </form>
-                @endif
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                 <a 
-                    href="{{ route('biens.export-excel') }}"
+                    href="<?php echo e(route('biens.export-excel')); ?>"
                     class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -51,7 +51,7 @@
             </div>
         </div>
 
-        {{-- Barre de filtres (collapsible) --}}
+        
         <div 
             x-data="{ open: false }"
             class="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -75,9 +75,9 @@
                 class="border-t border-gray-200 p-4"
                 style="overflow: visible !important;">
                 <div class="space-y-4">
-                    {{-- Première ligne : Recherche globale et filtres principaux --}}
+                    
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {{-- Recherche globale --}}
+                        
                         <div class="lg:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Recherche globale
@@ -96,23 +96,37 @@
                             </div>
                         </div>
 
-                        {{-- Filtre Désignation --}}
+                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Désignation
                             </label>
-                            <livewire:components.searchable-select
-                                wire:model.live="filterDesignation"
-                                :options="$this->designations->map(fn($d) => [
+                            <?php
+$__split = function ($name, $params = []) {
+    return [$name, $params];
+};
+[$__name, $__params] = $__split('components.searchable-select', ['wire:model.live' => 'filterDesignation','options' => $this->designations->map(fn($d) => [
                                     'value' => (string)$d->id,
                                     'text' => $d->designation . ($d->categorie ? ' (' . $d->categorie->Categorie . ')' : '')
-                                ])->prepend(['value' => '', 'text' => 'Toutes les désignations'])->toArray()"
-                                placeholder="Toutes les désignations"
-                                :key="'filter-designation'"
-                            />
+                                ])->prepend(['value' => '', 'text' => 'Toutes les désignations'])->toArray(),'placeholder' => 'Toutes les désignations']);
+
+$key = 'filter-designation';
+
+$key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-2653712863-0', 'filter-designation');
+
+$__html = app('livewire')->mount($__name, $__params, $key);
+
+echo $__html;
+
+unset($__html);
+unset($__name);
+unset($__params);
+unset($__split);
+if (isset($__slots)) unset($__slots);
+?>
                         </div>
 
-                        {{-- Filtre Catégorie (select natif - peu d'options) --}}
+                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Catégorie
@@ -121,14 +135,14 @@
                                 wire:model.live="filterCategorie"
                                 class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                                 <option value="">Toutes les catégories</option>
-                                @foreach($this->categories as $c)
-                                    <option value="{{ $c->idCategorie }}">{{ $c->Categorie }}</option>
-                                @endforeach
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->categories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $c): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <option value="<?php echo e($c->idCategorie); ?>"><?php echo e($c->Categorie); ?></option>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </select>
                         </div>
                     </div>
 
-                    {{-- Deuxième ligne : Filtres hiérarchiques Localisation → Affectation → Emplacement --}}
+                    
                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                         <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
                             <svg class="w-4 h-4 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -137,7 +151,7 @@
                             Filtrage hiérarchique par emplacement
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {{-- Filtre Localisation --}}
+                            
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">
                                     Localisation
@@ -149,25 +163,39 @@
                                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
                                     </div>
-                                    <livewire:components.searchable-select
-                                        wire:model.live="filterLocalisation"
-                                        :options="$this->localisations->map(fn($l) => [
+                                    <?php
+$__split = function ($name, $params = []) {
+    return [$name, $params];
+};
+[$__name, $__params] = $__split('components.searchable-select', ['wire:model.live' => 'filterLocalisation','options' => $this->localisations->map(fn($l) => [
                                             'value' => (string)$l->idLocalisation,
                                             'text' => $l->Localisation . ($l->CodeLocalisation ? ' (' . $l->CodeLocalisation . ')' : '')
-                                        ])->prepend(['value' => '', 'text' => 'Toutes les localisations'])->toArray()"
-                                        placeholder="Toutes les localisations"
-                                        :key="'localisation-select-static'"
-                                    />
+                                        ])->prepend(['value' => '', 'text' => 'Toutes les localisations'])->toArray(),'placeholder' => 'Toutes les localisations']);
+
+$key = 'localisation-select-static';
+
+$key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-2653712863-1', 'localisation-select-static');
+
+$__html = app('livewire')->mount($__name, $__params, $key);
+
+echo $__html;
+
+unset($__html);
+unset($__name);
+unset($__params);
+unset($__split);
+if (isset($__slots)) unset($__slots);
+?>
                                 </div>
                             </div>
 
-                            {{-- Filtre Affectation --}}
+                            
                             <div class="relative">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">
                                     Affectation
-                                    @if($filterLocalisation)
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($filterLocalisation): ?>
                                         <span class="text-xs text-gray-500 font-normal">(filtrée)</span>
-                                    @endif
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <span wire:loading wire:target="filterLocalisation" class="text-xs text-indigo-600 ml-2">
                                         <svg class="inline w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -182,32 +210,41 @@
                                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
                                     </div>
-                                    <livewire:components.searchable-select
-                                        wire:model.live="filterAffectation"
-                                        :options="$this->affectationOptions"
-                                        placeholder="Toutes les affectations"
-                                        search-placeholder="Rechercher une affectation..."
-                                        no-results-text="Aucune affectation trouvée"
-                                        :allow-clear="true"
-                                        :disabled="empty($filterLocalisation)"
-                                        :container-class="empty($filterLocalisation) && !empty($filterAffectation) ? 'ring-2 ring-yellow-300' : ''"
-                                        :key="'affectation-select-' . ($filterLocalisation ?? 'none')"
-                                    />
+                                    <?php
+$__split = function ($name, $params = []) {
+    return [$name, $params];
+};
+[$__name, $__params] = $__split('components.searchable-select', ['wire:model.live' => 'filterAffectation','options' => $this->affectationOptions,'placeholder' => 'Toutes les affectations','searchPlaceholder' => 'Rechercher une affectation...','noResultsText' => 'Aucune affectation trouvée','allowClear' => true,'disabled' => empty($filterLocalisation),'containerClass' => empty($filterLocalisation) && !empty($filterAffectation) ? 'ring-2 ring-yellow-300' : '']);
+
+$key = 'affectation-select-' . ($filterLocalisation ?? 'none');
+
+$key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-2653712863-2', 'affectation-select-' . ($filterLocalisation ?? 'none'));
+
+$__html = app('livewire')->mount($__name, $__params, $key);
+
+echo $__html;
+
+unset($__html);
+unset($__name);
+unset($__params);
+unset($__split);
+if (isset($__slots)) unset($__slots);
+?>
                                 </div>
-                                @if(empty($filterLocalisation) && !empty($filterAffectation))
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(empty($filterLocalisation) && !empty($filterAffectation)): ?>
                                     <p class="mt-1 text-xs text-yellow-600">
                                         Sélectionnez une localisation pour filtrer les affectations disponibles
                                     </p>
-                                @endif
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </div>
 
-                            {{-- Filtre Emplacement --}}
+                            
                             <div class="relative">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">
                                     Emplacement
-                                    @if($filterLocalisation || $filterAffectation)
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($filterLocalisation || $filterAffectation): ?>
                                         <span class="text-xs text-gray-500 font-normal">(filtré)</span>
-                                    @endif
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <span wire:loading wire:target="filterLocalisation, filterAffectation" class="text-xs text-indigo-600 ml-2">
                                         <svg class="inline w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -223,34 +260,43 @@
                                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
                                         </div>
-                                        <livewire:components.searchable-select
-                                            wire:model.live="filterEmplacement"
-                                            :options="$this->emplacementOptions"
-                                            placeholder="Tous les emplacements"
-                                            search-placeholder="Rechercher un emplacement..."
-                                            no-results-text="Aucun emplacement trouvé"
-                                            :allow-clear="true"
-                                            :disabled="empty($filterAffectation)"
-                                            :container-class="empty($filterAffectation) && !empty($filterEmplacement) ? 'ring-2 ring-yellow-300' : ''"
-                                            :key="'emplacement-select-' . ($filterLocalisation ?? 'none') . '-' . ($filterAffectation ?? 'none')"
-                                        />
+                                        <?php
+$__split = function ($name, $params = []) {
+    return [$name, $params];
+};
+[$__name, $__params] = $__split('components.searchable-select', ['wire:model.live' => 'filterEmplacement','options' => $this->emplacementOptions,'placeholder' => 'Tous les emplacements','searchPlaceholder' => 'Rechercher un emplacement...','noResultsText' => 'Aucun emplacement trouvé','allowClear' => true,'disabled' => empty($filterAffectation),'containerClass' => empty($filterAffectation) && !empty($filterEmplacement) ? 'ring-2 ring-yellow-300' : '']);
+
+$key = 'emplacement-select-' . ($filterLocalisation ?? 'none') . '-' . ($filterAffectation ?? 'none');
+
+$key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-2653712863-3', 'emplacement-select-' . ($filterLocalisation ?? 'none') . '-' . ($filterAffectation ?? 'none'));
+
+$__html = app('livewire')->mount($__name, $__params, $key);
+
+echo $__html;
+
+unset($__html);
+unset($__name);
+unset($__params);
+unset($__split);
+if (isset($__slots)) unset($__slots);
+?>
                                     </div>
-                                    @if(empty($filterAffectation) && !empty($filterEmplacement))
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(empty($filterAffectation) && !empty($filterEmplacement)): ?>
                                         <p class="text-xs text-yellow-600">
                                             Sélectionnez une affectation pour filtrer les emplacements disponibles
                                         </p>
-                                    @endif
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 </div>
                             </div>
                         </div>
-                        @if($filterEmplacement)
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($filterEmplacement): ?>
                             <div class="mt-3 pt-3 border-t border-gray-200">
                                 <form 
-                                    action="{{ route('biens.imprimer-etiquettes-par-emplacement') }}" 
+                                    action="<?php echo e(route('biens.imprimer-etiquettes-par-emplacement')); ?>" 
                                     method="POST" 
                                     class="inline-block">
-                                    @csrf
-                                    <input type="hidden" name="idEmplacement" value="{{ $filterEmplacement }}">
+                                    <?php echo csrf_field(); ?>
+                                    <input type="hidden" name="idEmplacement" value="<?php echo e($filterEmplacement); ?>">
                                     <button 
                                         type="submit"
                                         class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
@@ -268,12 +314,12 @@
                                     Format: 33 étiquettes par page A4
                                 </p>
                             </div>
-                        @endif
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
 
-                    {{-- Troisième ligne : Autres filtres --}}
+                    
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {{-- Filtre État (select natif - peu d'options) --}}
+                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 État
@@ -282,13 +328,13 @@
                                 wire:model.live="filterEtat"
                                 class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                                 <option value="">Tous les états</option>
-                                @foreach($this->etats as $e)
-                                    <option value="{{ $e->idEtat }}">{{ $e->Etat }}</option>
-                                @endforeach
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->etats; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $e): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <option value="<?php echo e($e->idEtat); ?>"><?php echo e($e->Etat); ?></option>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </select>
                         </div>
 
-                        {{-- Filtre Nature Juridique (select natif - peu d'options) --}}
+                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Nature Juridique
@@ -297,13 +343,13 @@
                                 wire:model.live="filterNatJur"
                                 class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                                 <option value="">Toutes les natures juridiques</option>
-                                @foreach($this->natureJuridiques as $n)
-                                    <option value="{{ $n->idNatJur }}">{{ $n->NatJur }}</option>
-                                @endforeach
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->natureJuridiques; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $n): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <option value="<?php echo e($n->idNatJur); ?>"><?php echo e($n->NatJur); ?></option>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </select>
                         </div>
 
-                        {{-- Filtre Source de Financement (select natif - peu d'options) --}}
+                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Source de Financement
@@ -312,13 +358,13 @@
                                 wire:model.live="filterSF"
                                 class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                                 <option value="">Toutes les sources de financement</option>
-                                @foreach($this->sourceFinancements as $s)
-                                    <option value="{{ $s->idSF }}">{{ $s->SourceFin }}</option>
-                                @endforeach
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->sourceFinancements; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <option value="<?php echo e($s->idSF); ?>"><?php echo e($s->SourceFin); ?></option>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </select>
                         </div>
 
-                        {{-- Filtre Année d'acquisition --}}
+                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Année d'acquisition
@@ -327,8 +373,8 @@
                                 type="number"
                                 wire:model.live.debounce.300ms="filterDateAcquisition"
                                 min="1900"
-                                max="{{ now()->year + 1 }}"
-                                placeholder="Ex: {{ now()->year }}"
+                                max="<?php echo e(now()->year + 1); ?>"
+                                placeholder="Ex: <?php echo e(now()->year); ?>"
                                 class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                         </div>
                     </div>
@@ -345,13 +391,13 @@
                     </button>
 
                     <div class="text-sm text-gray-600">
-                        <span class="font-medium">{{ $biens->total() }}</span> immobilisation(s) trouvée(s)
+                        <span class="font-medium"><?php echo e($biens->total()); ?></span> immobilisation(s) trouvée(s)
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Tableau des biens --}}
+        
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
@@ -362,16 +408,16 @@
                                     type="checkbox"
                                     wire:click="toggleSelectAll"
                                     class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                    @if($this->allSelected) checked @endif>
+                                    <?php if($this->allSelected): ?> checked <?php endif; ?>>
                             </th>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" wire:click="sortBy('NumOrdre')">
                                 <div class="flex items-center">
                                     NumOrdre
-                                    @if($sortField === 'NumOrdre')
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($sortField === 'NumOrdre'): ?>
                                         <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7' }}" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<?php echo e($sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'); ?>" />
                                         </svg>
-                                    @endif
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 </div>
                             </th>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -398,72 +444,77 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        @forelse($biens as $bien)
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $biens; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $bien): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <input 
                                         type="checkbox"
                                         wire:model="selectedBiens"
-                                        value="{{ $bien->NumOrdre }}"
+                                        value="<?php echo e($bien->NumOrdre); ?>"
                                         class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-gray-900">{{ $bien->NumOrdre }}</div>
+                                    <div class="text-sm font-medium text-gray-900"><?php echo e($bien->NumOrdre); ?></div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="text-sm font-mono text-gray-600">{{ $bien->code_formate ?? 'N/A' }}</div>
+                                    <div class="text-sm font-mono text-gray-600"><?php echo e($bien->code_formate ?? 'N/A'); ?></div>
                                 </td>
                                 <td class="px-4 py-3">
                                     <div class="text-sm text-gray-900">
-                                        {{ $bien->designation ? Str::limit($bien->designation->designation, 50) : 'N/A' }}
+                                        <?php echo e($bien->designation ? Str::limit($bien->designation->designation, 50) : 'N/A'); ?>
+
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    @if($bien->categorie)
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($bien->categorie): ?>
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                            {{ $bien->categorie->Categorie }}
+                                            <?php echo e($bien->categorie->Categorie); ?>
+
                                         </span>
-                                    @else
+                                    <?php else: ?>
                                         <span class="text-gray-400 text-sm">N/A</span>
-                                    @endif
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    @if($bien->etat)
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($bien->etat): ?>
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                            {{ $bien->etat->Etat }}
+                                            <?php echo e($bien->etat->Etat); ?>
+
                                         </span>
-                                    @else
+                                    <?php else: ?>
                                         <span class="text-gray-400 text-sm">N/A</span>
-                                    @endif
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">
-                                        @if($bien->emplacement)
-                                            {{ $bien->emplacement->Emplacement }}
-                                            @if($bien->emplacement->affectation)
-                                                <br><span class="text-xs text-gray-500">{{ $bien->emplacement->affectation->Affectation }}</span>
-                                            @endif
-                                            @if($bien->emplacement->localisation)
-                                                <br><span class="text-xs text-gray-500">{{ $bien->emplacement->localisation->Localisation }}</span>
-                                            @endif
-                                        @else
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($bien->emplacement): ?>
+                                            <?php echo e($bien->emplacement->Emplacement); ?>
+
+                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($bien->emplacement->affectation): ?>
+                                                <br><span class="text-xs text-gray-500"><?php echo e($bien->emplacement->affectation->Affectation); ?></span>
+                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($bien->emplacement->localisation): ?>
+                                                <br><span class="text-xs text-gray-500"><?php echo e($bien->emplacement->localisation->Localisation); ?></span>
+                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                        <?php else: ?>
                                             <span class="text-gray-400">N/A</span>
-                                        @endif
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">
-                                        @if($bien->DateAcquisition && $bien->DateAcquisition > 1970)
-                                            {{ $bien->DateAcquisition }}
-                                        @else
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($bien->DateAcquisition && $bien->DateAcquisition > 1970): ?>
+                                            <?php echo e($bien->DateAcquisition); ?>
+
+                                        <?php else: ?>
                                             <span class="text-gray-400">N/A</span>
-                                        @endif
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end gap-2">
                                         <a 
-                                            href="{{ route('biens.show', $bien) }}"
+                                            href="<?php echo e(route('biens.show', $bien)); ?>"
                                             class="text-indigo-600 hover:text-indigo-900 transition-colors"
                                             title="Voir">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -472,19 +523,19 @@
                                             </svg>
                                         </a>
 
-                                        @if($isAdmin)
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($isAdmin): ?>
                                             <a 
-                                                href="{{ route('biens.edit', $bien) }}"
+                                                href="<?php echo e(route('biens.edit', $bien)); ?>"
                                                 class="text-yellow-600 hover:text-yellow-900 transition-colors"
                                                 title="Modifier">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                 </svg>
                                             </a>
-                                        @endif
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                                         <a 
-                                            href="{{ route('biens.qr-code', $bien) }}"
+                                            href="<?php echo e(route('biens.qr-code', $bien)); ?>"
                                             class="text-blue-600 hover:text-blue-900 transition-colors"
                                             title="Code-barres">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -492,9 +543,9 @@
                                             </svg>
                                         </a>
 
-                                        @if($isAdmin)
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($isAdmin): ?>
                                             <button 
-                                                wire:click="deleteBien({{ $bien->NumOrdre }})"
+                                                wire:click="deleteBien(<?php echo e($bien->NumOrdre); ?>)"
                                                 wire:confirm="Êtes-vous sûr ? Ce bien sera déplacé vers la corbeille."
                                                 class="text-red-600 hover:text-red-900 transition-colors"
                                                 title="Supprimer">
@@ -502,11 +553,11 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                 </svg>
                                             </button>
-                                        @endif
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                             <tr>
                                 <td colspan="9" class="px-4 py-12 text-center">
                                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -514,21 +565,21 @@
                                     </svg>
                                     <h3 class="mt-2 text-sm font-medium text-gray-900">Aucun bien trouvé</h3>
                                     <p class="mt-1 text-sm text-gray-500">
-                                        @if($search || $filterDesignation || $filterCategorie || $filterLocalisation || $filterAffectation || $filterEmplacement || $filterEtat || $filterNatJur || $filterSF || $filterDateAcquisition)
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($search || $filterDesignation || $filterCategorie || $filterLocalisation || $filterAffectation || $filterEmplacement || $filterEtat || $filterNatJur || $filterSF || $filterDateAcquisition): ?>
                                             Essayez de modifier vos critères de recherche.
-                                        @else
+                                        <?php else: ?>
                                             Commencez par créer une nouvelle immobilisation.
-                                        @endif
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     </p>
                                 </td>
                             </tr>
-                        @endforelse
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </tbody>
                 </table>
             </div>
 
-            {{-- Pagination --}}
-            @if($biens->hasPages())
+            
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($biens->hasPages()): ?>
                 <div class="px-4 py-3 border-t border-gray-200 bg-gray-50 sm:px-6">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div class="flex items-center gap-2">
@@ -543,47 +594,52 @@
                             </select>
                         </div>
                         <div>
-                            {{ $biens->links() }}
+                            <?php echo e($biens->links()); ?>
+
                         </div>
                     </div>
                 </div>
-            @endif
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
     </div>
 
-    {{-- Messages flash --}}
-    @if(session()->has('success'))
+    
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session()->has('success')): ?>
         <div 
             x-data="{ show: true }"
             x-show="show"
             x-init="setTimeout(() => show = false, 3000)"
             x-transition
             class="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-            {{ session('success') }}
-        </div>
-    @endif
+            <?php echo e(session('success')); ?>
 
-    @if(session()->has('error'))
+        </div>
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+    <?php if(session()->has('error')): ?>
         <div 
             x-data="{ show: true }"
             x-show="show"
             x-init="setTimeout(() => show = false, 5000)"
             x-transition
             class="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-            {{ session('error') }}
-        </div>
-    @endif
+            <?php echo e(session('error')); ?>
 
-    @if(session()->has('warning'))
+        </div>
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+    <?php if(session()->has('warning')): ?>
         <div 
             x-data="{ show: true }"
             x-show="show"
             x-init="setTimeout(() => show = false, 4000)"
             x-transition
             class="fixed bottom-4 right-4 bg-yellow-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-            {{ session('warning') }}
+            <?php echo e(session('warning')); ?>
+
         </div>
-    @endif
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
 </div>
 
+<?php /**PATH C:\xampp\htdocs\gesimmos\resources\views/livewire/biens/liste-biens.blade.php ENDPATH**/ ?>

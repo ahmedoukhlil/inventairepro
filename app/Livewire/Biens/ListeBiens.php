@@ -8,11 +8,14 @@ use App\Models\Emplacement;
 use App\Models\Affectation;
 use App\Models\Designation;
 use App\Models\Categorie;
+use App\Models\Code;
+use App\Models\CorbeilleImmobilisation;
 use App\Models\Etat;
 use App\Models\NatureJuridique;
 use App\Models\SourceFinancement;
 use App\Livewire\Traits\WithCachedOptions;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -433,11 +436,51 @@ class ListeBiens extends Component
             return;
         }
 
-        $bien = Gesimmo::find($bienId);
+        $bien = Gesimmo::with(['designation', 'code', 'emplacement.localisation', 'emplacement.affectation'])->find($bienId);
 
         if ($bien) {
-            $bien->delete();
-            session()->flash('success', 'L\'immobilisation a été supprimée avec succès.');
+            try {
+                DB::transaction(function () use ($bien): void {
+                    $dateAcquisitionCorbeille = null;
+                    if (!empty($bien->DateAcquisition)) {
+                        $year = (int) $bien->DateAcquisition;
+                        if ($year >= 1900 && $year <= 9999) {
+                            $dateAcquisitionCorbeille = sprintf('%04d-01-01', $year);
+                        }
+                    }
+
+                    CorbeilleImmobilisation::create([
+                        'original_num_ordre' => $bien->NumOrdre,
+                        'idDesignation' => $bien->idDesignation,
+                        'idCategorie' => $bien->idCategorie,
+                        'idEtat' => $bien->idEtat,
+                        'idEmplacement' => $bien->idEmplacement,
+                        'idNatJur' => $bien->idNatJur,
+                        'idSF' => $bien->idSF,
+                        'DateAcquisition' => $dateAcquisitionCorbeille,
+                        'Observations' => $bien->Observations,
+                        'barcode' => $bien->code?->barcode,
+                        'emplacement_label' => $bien->emplacement?->Emplacement,
+                        'emplacement_code' => $bien->emplacement?->CodeEmplacement,
+                        'emplacement_id_affectation' => $bien->emplacement?->idAffectation,
+                        'emplacement_id_localisation' => $bien->emplacement?->idLocalisation,
+                        'affectation_label' => $bien->emplacement?->affectation?->Affectation,
+                        'localisation_label' => $bien->emplacement?->localisation?->Localisation,
+                        'designation_label' => $bien->designation?->designation,
+                        'deleted_reason' => 'Suppression depuis /biens',
+                        'deleted_by_user_id' => auth()->id(),
+                        'deleted_at' => now(),
+                    ]);
+
+                    Code::where('idGesimmo', $bien->NumOrdre)->delete();
+                    $bien->delete();
+                });
+
+                session()->flash('success', 'L\'immobilisation a été déplacée vers la corbeille avec succès.');
+            } catch (\Throwable $e) {
+                session()->flash('error', "Suppression impossible: {$e->getMessage()}");
+                return;
+            }
             
             // Retirer de la sélection si présent
             $this->selectedBiens = array_diff($this->selectedBiens, [$bienId]);

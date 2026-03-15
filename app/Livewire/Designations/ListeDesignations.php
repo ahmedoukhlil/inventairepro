@@ -120,10 +120,18 @@ class ListeDesignations extends Component
         try {
             DB::transaction(function () use ($designation, &$movedToTrash) {
                 $immos = $designation->immobilisations()
-                    ->with('code')
+                    ->with(['code', 'emplacement.localisation', 'emplacement.affectation'])
                     ->get();
 
                 foreach ($immos as $immo) {
+                    $dateAcquisitionCorbeille = null;
+                    if (!empty($immo->DateAcquisition)) {
+                        $year = (int) $immo->DateAcquisition;
+                        if ($year >= 1900 && $year <= 9999) {
+                            $dateAcquisitionCorbeille = sprintf('%04d-01-01', $year);
+                        }
+                    }
+
                     CorbeilleImmobilisation::create([
                         'original_num_ordre' => $immo->NumOrdre,
                         'idDesignation' => $immo->idDesignation,
@@ -132,9 +140,15 @@ class ListeDesignations extends Component
                         'idEmplacement' => $immo->idEmplacement,
                         'idNatJur' => $immo->idNatJur,
                         'idSF' => $immo->idSF,
-                        'DateAcquisition' => $immo->DateAcquisition,
+                        'DateAcquisition' => $dateAcquisitionCorbeille,
                         'Observations' => $immo->Observations,
                         'barcode' => $immo->code?->barcode,
+                        'emplacement_label' => $immo->emplacement?->Emplacement,
+                        'emplacement_code' => $immo->emplacement?->CodeEmplacement,
+                        'emplacement_id_affectation' => $immo->emplacement?->idAffectation,
+                        'emplacement_id_localisation' => $immo->emplacement?->idLocalisation,
+                        'affectation_label' => $immo->emplacement?->affectation?->Affectation,
+                        'localisation_label' => $immo->emplacement?->localisation?->Localisation,
                         'designation_label' => $designation->designation,
                         'deleted_reason' => 'Suppression de designation',
                         'deleted_by_user_id' => auth()->id(),

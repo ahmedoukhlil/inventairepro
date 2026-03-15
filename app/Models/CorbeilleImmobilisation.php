@@ -22,6 +22,12 @@ class CorbeilleImmobilisation extends Model
         'DateAcquisition',
         'Observations',
         'barcode',
+        'emplacement_label',
+        'emplacement_code',
+        'emplacement_id_affectation',
+        'emplacement_id_localisation',
+        'affectation_label',
+        'localisation_label',
         'designation_label',
         'deleted_reason',
         'deleted_by_user_id',
@@ -29,7 +35,7 @@ class CorbeilleImmobilisation extends Model
     ];
 
     protected $casts = [
-        'DateAcquisition' => 'date',
+        'DateAcquisition' => 'integer',
         'deleted_at' => 'datetime',
     ];
 }
