@@ -92,7 +92,7 @@
                                     <div class="text-sm text-gray-600">{{ optional($row->deleted_at)->format('d/m/Y H:i') }}</div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                                    <div class="flex justify-end gap-2">
+                                    <div class="flex flex-wrap justify-end gap-2">
                                         <form method="POST" action="{{ route('corbeille.immobilisations.restore', $row->id) }}">
                                             @csrf
                                             <button
@@ -101,6 +101,26 @@
                                                 onclick="return confirm('Restaurer cette immobilisation ?')"
                                             >
                                                 Restaurer
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ route('corbeille.immobilisations.restore-by-designation', $row->idDesignation) }}">
+                                            @csrf
+                                            <button
+                                                type="submit"
+                                                class="px-3 py-1.5 text-xs font-medium bg-sky-600 text-white rounded hover:bg-sky-700"
+                                                onclick="return confirm('Restaurer toutes les immobilisations de cette designation ?')"
+                                            >
+                                                Restaurer designation
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ route('corbeille.immobilisations.restore-by-emplacement', $row->idEmplacement) }}">
+                                            @csrf
+                                            <button
+                                                type="submit"
+                                                class="px-3 py-1.5 text-xs font-medium bg-violet-600 text-white rounded hover:bg-violet-700"
+                                                onclick="return confirm('Restaurer toutes les immobilisations de cet emplacement ?')"
+                                            >
+                                                Restaurer emplacement
                                             </button>
                                         </form>
                                         <form method="POST" action="{{ route('corbeille.immobilisations.force-delete', $row->id) }}">

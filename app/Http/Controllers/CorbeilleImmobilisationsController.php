@@ -118,131 +118,7 @@ class CorbeilleImmobilisationsController extends Controller
 
         try {
             DB::transaction(function () use ($item): void {
-                $dateAcquisitionYear = null;
-                if (!empty($item->DateAcquisition)) {
-                    if ($item->DateAcquisition instanceof \DateTimeInterface) {
-                        $dateAcquisitionYear = (int) $item->DateAcquisition->format('Y');
-                    } elseif (is_numeric($item->DateAcquisition)) {
-                        $dateAcquisitionYear = (int) $item->DateAcquisition;
-                    } elseif (is_string($item->DateAcquisition)) {
-                        $dateAcquisitionYear = (int) substr($item->DateAcquisition, 0, 4);
-                    }
-                }
-
-                if ($dateAcquisitionYear !== null && ($dateAcquisitionYear < 1900 || $dateAcquisitionYear > 9999)) {
-                    $dateAcquisitionYear = null;
-                }
-
-                // Compatibilite: la colonne peut etre de type DATE ou entier selon l'environnement.
-                // En envoyant YYYY-01-01, MySQL DATE conserve l'annee et un entier convertit en YYYY.
-                $dateAcquisitionForInsert = $dateAcquisitionYear !== null
-                    ? sprintf('%04d-01-01', $dateAcquisitionYear)
-                    : null;
-
-                if (!Emplacement::where('idEmplacement', $item->idEmplacement)->exists()) {
-                    $localisationId = $item->emplacement_id_localisation;
-
-                    if (empty($localisationId)) {
-                        $localisationId = LocalisationImmo::query()->value('idLocalisation');
-                    }
-
-                    if (empty($localisationId)) {
-                        $localisationId = DB::table('localisation')->insertGetId([
-                            'Localisation' => $item->localisation_label ?: 'Localisation corbeille',
-                            'CodeLocalisation' => null,
-                        ]);
-                    } elseif (!LocalisationImmo::where('idLocalisation', $localisationId)->exists()) {
-                        DB::table('localisation')->insert([
-                            'idLocalisation' => $localisationId,
-                            'Localisation' => $item->localisation_label ?: ('Localisation ' . $localisationId),
-                            'CodeLocalisation' => null,
-                        ]);
-                    }
-
-                    $affectationId = $item->emplacement_id_affectation;
-
-                    if (empty($affectationId)) {
-                        $affectationId = Affectation::query()->value('idAffectation');
-                    }
-
-                    if (empty($affectationId)) {
-                        $affectationId = DB::table('affectation')->insertGetId([
-                            'Affectation' => $item->affectation_label ?: 'Affectation corbeille',
-                            'CodeAffectation' => null,
-                            'idLocalisation' => $localisationId,
-                        ]);
-                    } elseif (!Affectation::where('idAffectation', $affectationId)->exists()) {
-                        DB::table('affectation')->insert([
-                            'idAffectation' => $affectationId,
-                            'Affectation' => $item->affectation_label ?: ('Affectation ' . $affectationId),
-                            'CodeAffectation' => null,
-                            'idLocalisation' => $localisationId,
-                        ]);
-                    }
-
-                    DB::table('emplacement')->insert([
-                        'idEmplacement' => $item->idEmplacement,
-                        'Emplacement' => $item->emplacement_label ?: ('Emplacement ' . $item->idEmplacement),
-                        'CodeEmplacement' => $item->emplacement_code,
-                        'idAffectation' => $affectationId,
-                        'idLocalisation' => $localisationId,
-                    ]);
-                }
-
-                $categorieId = $item->idCategorie;
-                if (!Categorie::where('idCategorie', $categorieId)->exists()) {
-                    $categorieId = Categorie::query()->value('idCategorie');
-                }
-
-                $etatId = $item->idEtat;
-                if (!Etat::where('idEtat', $etatId)->exists()) {
-                    $etatId = Etat::query()->value('idEtat');
-                }
-
-                $natJurId = $item->idNatJur;
-                if (!NatureJuridique::where('idNatJur', $natJurId)->exists()) {
-                    $natJurId = NatureJuridique::query()->value('idNatJur');
-                }
-
-                $sourceFinId = $item->idSF;
-                if (!SourceFinancement::where('idSF', $sourceFinId)->exists()) {
-                    $sourceFinId = SourceFinancement::query()->value('idSF');
-                }
-
-                if (empty($categorieId) || empty($etatId) || empty($natJurId) || empty($sourceFinId)) {
-                    throw new \RuntimeException('Impossible de restaurer: tables de reference manquantes (categorie/etat/nature juridique/source financement).');
-                }
-
-                // Re-creer la designation si elle a ete supprimee.
-                if (!Designation::where('id', $item->idDesignation)->exists()) {
-                    DB::table('designation')->insert([
-                        'id' => $item->idDesignation,
-                        'designation' => $item->designation_label ?: ('Designation ' . $item->idDesignation),
-                        'CodeDesignation' => null,
-                        'idCat' => $categorieId,
-                    ]);
-                }
-
-                DB::table('gesimmo')->insert([
-                    'NumOrdre' => $item->original_num_ordre,
-                    'idDesignation' => $item->idDesignation,
-                    'idCategorie' => $categorieId,
-                    'idEtat' => $etatId,
-                    'idEmplacement' => $item->idEmplacement,
-                    'idNatJur' => $natJurId,
-                    'idSF' => $sourceFinId,
-                    'DateAcquisition' => $dateAcquisitionForInsert,
-                    'Observations' => $item->Observations,
-                ]);
-
-                if (!empty($item->barcode)) {
-                    Code::create([
-                        'idGesimmo' => $item->original_num_ordre,
-                        'barcode' => $item->barcode,
-                    ]);
-                }
-
-                $item->delete();
+                $this->restoreItemFromTrash($item);
             });
 
             return back()->with('success', 'Immobilisation restauree avec succes.');
@@ -250,6 +126,213 @@ class CorbeilleImmobilisationsController extends Controller
             report($e);
             return back()->with('error', "Restauration impossible: {$e->getMessage()}");
         }
+    }
+
+    public function restoreByDesignation(int $designationId): RedirectResponse
+    {
+        $items = CorbeilleImmobilisation::query()
+            ->where('idDesignation', $designationId)
+            ->orderBy('id')
+            ->get();
+
+        if ($items->isEmpty()) {
+            return back()->with('error', 'Aucune immobilisation en corbeille pour cette designation.');
+        }
+
+        $restored = 0;
+        $skipped = 0;
+        $failed = 0;
+
+        foreach ($items as $item) {
+            if (Gesimmo::where('NumOrdre', $item->original_num_ordre)->exists()) {
+                $skipped++;
+                continue;
+            }
+
+            try {
+                DB::transaction(function () use ($item): void {
+                    $this->restoreItemFromTrash($item);
+                });
+                $restored++;
+            } catch (\Throwable $e) {
+                report($e);
+                $failed++;
+            }
+        }
+
+        if ($restored === 0) {
+            return back()->with('error', "Aucune restauration effectuee (ignores: {$skipped}, echecs: {$failed}).");
+        }
+
+        return back()->with('success', "Restauration par designation terminee: {$restored} restauree(s), {$skipped} ignoree(s), {$failed} en echec.");
+    }
+
+    public function restoreByEmplacement(int $emplacementId): RedirectResponse
+    {
+        $items = CorbeilleImmobilisation::query()
+            ->where('idEmplacement', $emplacementId)
+            ->orderBy('id')
+            ->get();
+
+        if ($items->isEmpty()) {
+            return back()->with('error', 'Aucune immobilisation en corbeille pour cet emplacement.');
+        }
+
+        $restored = 0;
+        $skipped = 0;
+        $failed = 0;
+
+        foreach ($items as $item) {
+            if (Gesimmo::where('NumOrdre', $item->original_num_ordre)->exists()) {
+                $skipped++;
+                continue;
+            }
+
+            try {
+                DB::transaction(function () use ($item): void {
+                    $this->restoreItemFromTrash($item);
+                });
+                $restored++;
+            } catch (\Throwable $e) {
+                report($e);
+                $failed++;
+            }
+        }
+
+        if ($restored === 0) {
+            return back()->with('error', "Aucune restauration effectuee (ignores: {$skipped}, echecs: {$failed}).");
+        }
+
+        return back()->with('success', "Restauration par emplacement terminee: {$restored} restauree(s), {$skipped} ignoree(s), {$failed} en echec.");
+    }
+
+    private function restoreItemFromTrash(CorbeilleImmobilisation $item): void
+    {
+        $dateAcquisitionYear = null;
+        if (!empty($item->DateAcquisition)) {
+            if ($item->DateAcquisition instanceof \DateTimeInterface) {
+                $dateAcquisitionYear = (int) $item->DateAcquisition->format('Y');
+            } elseif (is_numeric($item->DateAcquisition)) {
+                $dateAcquisitionYear = (int) $item->DateAcquisition;
+            } elseif (is_string($item->DateAcquisition)) {
+                $dateAcquisitionYear = (int) substr($item->DateAcquisition, 0, 4);
+            }
+        }
+
+        if ($dateAcquisitionYear !== null && ($dateAcquisitionYear < 1900 || $dateAcquisitionYear > 9999)) {
+            $dateAcquisitionYear = null;
+        }
+
+        // Compatibilite: la colonne peut etre de type DATE ou entier selon l'environnement.
+        // En envoyant YYYY-01-01, MySQL DATE conserve l'annee et un entier convertit en YYYY.
+        $dateAcquisitionForInsert = $dateAcquisitionYear !== null
+            ? sprintf('%04d-01-01', $dateAcquisitionYear)
+            : null;
+
+        if (!Emplacement::where('idEmplacement', $item->idEmplacement)->exists()) {
+            $localisationId = $item->emplacement_id_localisation;
+
+            if (empty($localisationId)) {
+                $localisationId = LocalisationImmo::query()->value('idLocalisation');
+            }
+
+            if (empty($localisationId)) {
+                $localisationId = DB::table('localisation')->insertGetId([
+                    'Localisation' => $item->localisation_label ?: 'Localisation corbeille',
+                    'CodeLocalisation' => null,
+                ]);
+            } elseif (!LocalisationImmo::where('idLocalisation', $localisationId)->exists()) {
+                DB::table('localisation')->insert([
+                    'idLocalisation' => $localisationId,
+                    'Localisation' => $item->localisation_label ?: ('Localisation ' . $localisationId),
+                    'CodeLocalisation' => null,
+                ]);
+            }
+
+            $affectationId = $item->emplacement_id_affectation;
+
+            if (empty($affectationId)) {
+                $affectationId = Affectation::query()->value('idAffectation');
+            }
+
+            if (empty($affectationId)) {
+                $affectationId = DB::table('affectation')->insertGetId([
+                    'Affectation' => $item->affectation_label ?: 'Affectation corbeille',
+                    'CodeAffectation' => null,
+                    'idLocalisation' => $localisationId,
+                ]);
+            } elseif (!Affectation::where('idAffectation', $affectationId)->exists()) {
+                DB::table('affectation')->insert([
+                    'idAffectation' => $affectationId,
+                    'Affectation' => $item->affectation_label ?: ('Affectation ' . $affectationId),
+                    'CodeAffectation' => null,
+                    'idLocalisation' => $localisationId,
+                ]);
+            }
+
+            DB::table('emplacement')->insert([
+                'idEmplacement' => $item->idEmplacement,
+                'Emplacement' => $item->emplacement_label ?: ('Emplacement ' . $item->idEmplacement),
+                'CodeEmplacement' => $item->emplacement_code,
+                'idAffectation' => $affectationId,
+                'idLocalisation' => $localisationId,
+            ]);
+        }
+
+        $categorieId = $item->idCategorie;
+        if (!Categorie::where('idCategorie', $categorieId)->exists()) {
+            $categorieId = Categorie::query()->value('idCategorie');
+        }
+
+        $etatId = $item->idEtat;
+        if (!Etat::where('idEtat', $etatId)->exists()) {
+            $etatId = Etat::query()->value('idEtat');
+        }
+
+        $natJurId = $item->idNatJur;
+        if (!NatureJuridique::where('idNatJur', $natJurId)->exists()) {
+            $natJurId = NatureJuridique::query()->value('idNatJur');
+        }
+
+        $sourceFinId = $item->idSF;
+        if (!SourceFinancement::where('idSF', $sourceFinId)->exists()) {
+            $sourceFinId = SourceFinancement::query()->value('idSF');
+        }
+
+        if (empty($categorieId) || empty($etatId) || empty($natJurId) || empty($sourceFinId)) {
+            throw new \RuntimeException('Impossible de restaurer: tables de reference manquantes (categorie/etat/nature juridique/source financement).');
+        }
+
+        // Re-creer la designation si elle a ete supprimee.
+        if (!Designation::where('id', $item->idDesignation)->exists()) {
+            DB::table('designation')->insert([
+                'id' => $item->idDesignation,
+                'designation' => $item->designation_label ?: ('Designation ' . $item->idDesignation),
+                'CodeDesignation' => null,
+                'idCat' => $categorieId,
+            ]);
+        }
+
+        DB::table('gesimmo')->insert([
+            'NumOrdre' => $item->original_num_ordre,
+            'idDesignation' => $item->idDesignation,
+            'idCategorie' => $categorieId,
+            'idEtat' => $etatId,
+            'idEmplacement' => $item->idEmplacement,
+            'idNatJur' => $natJurId,
+            'idSF' => $sourceFinId,
+            'DateAcquisition' => $dateAcquisitionForInsert,
+            'Observations' => $item->Observations,
+        ]);
+
+        if (!empty($item->barcode)) {
+            Code::create([
+                'idGesimmo' => $item->original_num_ordre,
+                'barcode' => $item->barcode,
+            ]);
+        }
+
+        $item->delete();
     }
 
     public function forceDelete(int $corbeilleId): RedirectResponse
