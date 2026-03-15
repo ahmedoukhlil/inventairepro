@@ -26,6 +26,8 @@ class CorbeilleImmobilisationsController extends Controller
     {
         $validated = $request->validate([
             'search' => 'nullable|string|max:255',
+            'filter_designation' => 'nullable|integer',
+            'filter_emplacement' => 'nullable|integer',
         ]);
 
         $query = CorbeilleImmobilisation::query()->orderByDesc('id');
@@ -39,6 +41,14 @@ class CorbeilleImmobilisationsController extends Controller
             });
         }
 
+        if (!empty($validated['filter_designation'])) {
+            $query->where('idDesignation', (int) $validated['filter_designation']);
+        }
+
+        if (!empty($validated['filter_emplacement'])) {
+            $query->where('idEmplacement', (int) $validated['filter_emplacement']);
+        }
+
         $rows = $query->paginate(25)->withQueryString();
 
         $designationMap = Designation::query()->pluck('designation', 'id');
@@ -48,6 +58,35 @@ class CorbeilleImmobilisationsController extends Controller
         $etatMap = Etat::query()->pluck('Etat', 'idEtat');
         $natureJuridiqueCodeMap = NatureJuridique::query()->pluck('CodeNatJur', 'idNatJur');
         $sourceFinancementCodeMap = SourceFinancement::query()->pluck('CodeSourceFin', 'idSF');
+
+        $designationOptionsRows = DB::table('corbeille_immobilisations')
+            ->select('idDesignation', DB::raw('MAX(designation_label) as designation_label'))
+            ->groupBy('idDesignation')
+            ->orderBy('idDesignation')
+            ->get();
+
+        $designationOptions = $designationOptionsRows->map(function ($row) use ($designationMap) {
+            $label = $designationMap[$row->idDesignation] ?? ($row->designation_label ?: ('Designation ' . $row->idDesignation));
+            return [
+                'id' => (int) $row->idDesignation,
+                'label' => $label,
+            ];
+        })->values();
+
+        $emplacementOptionsRows = DB::table('corbeille_immobilisations')
+            ->select('idEmplacement', DB::raw('MAX(emplacement_label) as emplacement_label'))
+            ->groupBy('idEmplacement')
+            ->orderBy('idEmplacement')
+            ->get();
+
+        $emplacementMap = Emplacement::query()->pluck('Emplacement', 'idEmplacement');
+        $emplacementOptions = $emplacementOptionsRows->map(function ($row) use ($emplacementMap) {
+            $label = $emplacementMap[$row->idEmplacement] ?? ($row->emplacement_label ?: ('Emplacement ' . $row->idEmplacement));
+            return [
+                'id' => (int) $row->idEmplacement,
+                'label' => $label,
+            ];
+        })->values();
 
         $emplacementIds = $rows->getCollection()->pluck('idEmplacement')->unique()->filter()->values();
         $emplacements = Emplacement::with(['localisation', 'affectation'])
@@ -101,6 +140,10 @@ class CorbeilleImmobilisationsController extends Controller
         return view('corbeille.immobilisations.index', [
             'rows' => $rows,
             'search' => $validated['search'] ?? '',
+            'filterDesignation' => $validated['filter_designation'] ?? '',
+            'filterEmplacement' => $validated['filter_emplacement'] ?? '',
+            'designationOptions' => $designationOptions,
+            'emplacementOptions' => $emplacementOptions,
         ]);
     }
 
@@ -167,6 +210,15 @@ class CorbeilleImmobilisationsController extends Controller
         return back()->with('success', "Restauration par designation terminee: {$restored} restauree(s), {$skipped} ignoree(s), {$failed} en echec.");
     }
 
+    public function restoreByDesignationSelection(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'designation_id' => 'required|integer',
+        ]);
+
+        return $this->restoreByDesignation((int) $validated['designation_id']);
+    }
+
     public function restoreByEmplacement(int $emplacementId): RedirectResponse
     {
         $items = CorbeilleImmobilisation::query()
@@ -204,6 +256,15 @@ class CorbeilleImmobilisationsController extends Controller
         }
 
         return back()->with('success', "Restauration par emplacement terminee: {$restored} restauree(s), {$skipped} ignoree(s), {$failed} en echec.");
+    }
+
+    public function restoreByEmplacementSelection(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'emplacement_id' => 'required|integer',
+        ]);
+
+        return $this->restoreByEmplacement((int) $validated['emplacement_id']);
     }
 
     private function restoreItemFromTrash(CorbeilleImmobilisation $item): void

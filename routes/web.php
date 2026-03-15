@@ -280,6 +280,8 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
             Route::post('/{corbeilleId}/restore', [CorbeilleImmobilisationsController::class, 'restore'])->name('restore');
             Route::post('/designation/{designationId}/restore', [CorbeilleImmobilisationsController::class, 'restoreByDesignation'])->name('restore-by-designation');
             Route::post('/emplacement/{emplacementId}/restore', [CorbeilleImmobilisationsController::class, 'restoreByEmplacement'])->name('restore-by-emplacement');
+            Route::post('/restore/designation', [CorbeilleImmobilisationsController::class, 'restoreByDesignationSelection'])->name('restore-by-designation-selection');
+            Route::post('/restore/emplacement', [CorbeilleImmobilisationsController::class, 'restoreByEmplacementSelection'])->name('restore-by-emplacement-selection');
             Route::delete('/{corbeilleId}', [CorbeilleImmobilisationsController::class, 'forceDelete'])->name('force-delete');
             Route::get('/export/excel', [CorbeilleImmobilisationsController::class, 'exportExcel'])->name('export-excel');
         });
