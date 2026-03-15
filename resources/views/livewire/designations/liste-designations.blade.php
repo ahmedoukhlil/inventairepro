@@ -174,7 +174,7 @@
 
                                             <button 
                                                 wire:click="deleteDesignation({{ $designation->id }})"
-                                                wire:confirm="Supprimer la désignation '{{ $designation->designation }}' ? {{ $designation->immobilisations_count }} immobilisation(s) liee(s) et leurs codes-barres seront aussi supprimes."
+                                                wire:confirm="Supprimer la désignation '{{ $designation->designation }}' ? {{ $designation->immobilisations_count }} immobilisation(s) liee(s) seront placees dans la corbeille."
                                                 class="text-red-600 hover:text-red-900 transition-colors"
                                                 title="Supprimer">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

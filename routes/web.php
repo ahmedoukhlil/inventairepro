@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BienController;
+use App\Http\Controllers\CorbeilleImmobilisationsController;
 use App\Http\Controllers\CollecteInitialeController;
 use App\Http\Controllers\InventaireController;
 use App\Http\Controllers\LocalisationController;
@@ -267,6 +268,18 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
         Route::prefix('collecte-initiale')->name('collecte-initiale.')->group(function () {
             Route::get('/', [CollecteInitialeController::class, 'index'])->name('index');
             Route::get('/export/excel', [CollecteInitialeController::class, 'exportExcel'])->name('export-excel');
+        });
+
+        /*
+        |------------------------------------------------------------------
+        | Corbeille des immobilisations
+        |------------------------------------------------------------------
+        */
+        Route::prefix('corbeille/immobilisations')->name('corbeille.immobilisations.')->group(function () {
+            Route::get('/', [CorbeilleImmobilisationsController::class, 'index'])->name('index');
+            Route::post('/{corbeilleId}/restore', [CorbeilleImmobilisationsController::class, 'restore'])->name('restore');
+            Route::delete('/{corbeilleId}', [CorbeilleImmobilisationsController::class, 'forceDelete'])->name('force-delete');
+            Route::get('/export/excel', [CorbeilleImmobilisationsController::class, 'exportExcel'])->name('export-excel');
         });
 
         /*

@@ -5,6 +5,7 @@ namespace App\Livewire\Designations;
 use App\Models\Designation;
 use App\Models\Categorie;
 use App\Models\Code;
+use App\Models\CorbeilleImmobilisation;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Layout;
@@ -114,35 +115,50 @@ class ListeDesignations extends Component
             return;
         }
 
-        $deletedImmobilisations = 0;
-        $deletedCodes = 0;
+        $movedToTrash = 0;
 
         try {
-            DB::transaction(function () use ($designation, &$deletedImmobilisations, &$deletedCodes) {
-                $numOrdres = $designation->immobilisations()->pluck('NumOrdre');
-                $deletedImmobilisations = $numOrdres->count();
+            DB::transaction(function () use ($designation, &$movedToTrash) {
+                $immos = $designation->immobilisations()
+                    ->with('code')
+                    ->get();
 
-                if ($deletedImmobilisations > 0) {
-                    // Supprimer d'abord les codes-barres liés pour respecter la contrainte FK codes -> gesimmo
-                    $deletedCodes = Code::whereIn('idGesimmo', $numOrdres)->delete();
-
-                    // Supprimer ensuite les immobilisations de cette désignation
-                    $designation->immobilisations()->delete();
-                } else {
-                    $deletedCodes = 0;
+                foreach ($immos as $immo) {
+                    CorbeilleImmobilisation::create([
+                        'original_num_ordre' => $immo->NumOrdre,
+                        'idDesignation' => $immo->idDesignation,
+                        'idCategorie' => $immo->idCategorie,
+                        'idEtat' => $immo->idEtat,
+                        'idEmplacement' => $immo->idEmplacement,
+                        'idNatJur' => $immo->idNatJur,
+                        'idSF' => $immo->idSF,
+                        'DateAcquisition' => $immo->DateAcquisition,
+                        'Observations' => $immo->Observations,
+                        'barcode' => $immo->code?->barcode,
+                        'designation_label' => $designation->designation,
+                        'deleted_reason' => 'Suppression de designation',
+                        'deleted_by_user_id' => auth()->id(),
+                        'deleted_at' => now(),
+                    ]);
+                    $movedToTrash++;
                 }
 
-                // Enfin, supprimer la désignation
+                // Supprimer d'abord les codes-barres liés pour respecter la contrainte FK codes -> gesimmo
+                if ($immos->isNotEmpty()) {
+                    Code::whereIn('idGesimmo', $immos->pluck('NumOrdre'))->delete();
+                }
+
+                // Supprimer ensuite les immobilisations de la table principale
+                $designation->immobilisations()->delete();
+
+                // Enfin, supprimer la designation
                 $designation->delete();
             });
 
-            if ($deletedImmobilisations > 0) {
-                session()->flash(
-                    'success',
-                    "Désignation supprimée avec succès. {$deletedImmobilisations} immobilisation(s) et {$deletedCodes} code(s)-barres liés ont été supprimés."
-                );
+            if ($movedToTrash > 0) {
+                session()->flash('success', "Designation supprimee. {$movedToTrash} immobilisation(s) deplacee(s) dans la corbeille.");
             } else {
-                session()->flash('success', 'Désignation supprimée avec succès.');
+                session()->flash('success', 'Designation supprimee avec succes.');
             }
         } catch (\Throwable $e) {
             session()->flash('error', "Suppression impossible: {$e->getMessage()}");
