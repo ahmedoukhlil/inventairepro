@@ -188,18 +188,19 @@
                     @csrf
                     <div class="flex-1">
                         <label class="block text-sm font-medium text-gray-700 mb-1" for="designation_id">Par désignation</label>
-                        <livewire:components.searchable-select
+                        <select
+                            id="designation_id"
                             name="designation_id"
-                            :options="collect($designationOptions)->map(fn ($option) => [
-                                'value' => (string) $option['id'],
-                                'text' => $option['label'] . ' (' . $option['id'] . ')',
-                            ])->toArray()"
-                            placeholder="Sélectionner une désignation"
-                            search-placeholder="Rechercher une désignation..."
-                            no-results-text="Aucune désignation trouvée"
-                            :allow-clear="true"
-                            :key="'corbeille-restore-designation'"
-                        />
+                            required
+                            class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                        >
+                            <option value="">Sélectionner une désignation</option>
+                            @foreach($designationOptions as $option)
+                                <option value="{{ $option['id'] }}">
+                                    {{ $option['label'] }} ({{ $option['id'] }})
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                     <button
                         type="submit"
@@ -214,18 +215,19 @@
                     @csrf
                     <div class="flex-1">
                         <label class="block text-sm font-medium text-gray-700 mb-1" for="emplacement_id">Par emplacement</label>
-                        <livewire:components.searchable-select
+                        <select
+                            id="emplacement_id"
                             name="emplacement_id"
-                            :options="collect($emplacementOptions)->map(fn ($option) => [
-                                'value' => (string) $option['id'],
-                                'text' => $option['label'] . ' (' . $option['id'] . ')',
-                            ])->toArray()"
-                            placeholder="Sélectionner un emplacement"
-                            search-placeholder="Rechercher un emplacement..."
-                            no-results-text="Aucun emplacement trouvé"
-                            :allow-clear="true"
-                            :key="'corbeille-restore-emplacement'"
-                        />
+                            required
+                            class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                        >
+                            <option value="">Sélectionner un emplacement</option>
+                            @foreach($emplacementOptions as $option)
+                                <option value="{{ $option['id'] }}">
+                                    {{ $option['label'] }} ({{ $option['id'] }})
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                     <button
                         type="submit"
@@ -303,26 +305,6 @@
                                                 onclick="return confirm('Restaurer cette immobilisation ?')"
                                             >
                                                 Restaurer
-                                            </button>
-                                        </form>
-                                        <form method="POST" action="{{ route('corbeille.immobilisations.restore-by-designation', $row->idDesignation) }}">
-                                            @csrf
-                                            <button
-                                                type="submit"
-                                                class="px-3 py-1.5 text-xs font-medium bg-sky-600 text-white rounded hover:bg-sky-700"
-                                                onclick="return confirm('Restaurer toutes les immobilisations de cette designation ?')"
-                                            >
-                                                Restaurer designation
-                                            </button>
-                                        </form>
-                                        <form method="POST" action="{{ route('corbeille.immobilisations.restore-by-emplacement', $row->idEmplacement) }}">
-                                            @csrf
-                                            <button
-                                                type="submit"
-                                                class="px-3 py-1.5 text-xs font-medium bg-violet-600 text-white rounded hover:bg-violet-700"
-                                                onclick="return confirm('Restaurer toutes les immobilisations de cet emplacement ?')"
-                                            >
-                                                Restaurer emplacement
                                             </button>
                                         </form>
                                         <form method="POST" action="{{ route('corbeille.immobilisations.force-delete', $row->id) }}">
