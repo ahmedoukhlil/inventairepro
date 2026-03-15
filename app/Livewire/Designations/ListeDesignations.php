@@ -4,9 +4,11 @@ namespace App\Livewire\Designations;
 
 use App\Models\Designation;
 use App\Models\Categorie;
+use App\Models\Code;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Layout;
+use Illuminate\Support\Facades\DB;
 
 #[Layout('components.layouts.app')]
 
@@ -112,14 +114,39 @@ class ListeDesignations extends Component
             return;
         }
 
-        // Vérifier si la désignation est utilisée
-        if ($designation->immobilisations()->count() > 0) {
-            session()->flash('error', 'Cette désignation ne peut pas être supprimée car elle est utilisée par des immobilisations.');
-            return;
-        }
+        $deletedImmobilisations = 0;
+        $deletedCodes = 0;
 
-        $designation->delete();
-        session()->flash('success', 'Désignation supprimée avec succès.');
+        try {
+            DB::transaction(function () use ($designation, &$deletedImmobilisations, &$deletedCodes) {
+                $numOrdres = $designation->immobilisations()->pluck('NumOrdre');
+                $deletedImmobilisations = $numOrdres->count();
+
+                if ($deletedImmobilisations > 0) {
+                    // Supprimer d'abord les codes-barres liés pour respecter la contrainte FK codes -> gesimmo
+                    $deletedCodes = Code::whereIn('idGesimmo', $numOrdres)->delete();
+
+                    // Supprimer ensuite les immobilisations de cette désignation
+                    $designation->immobilisations()->delete();
+                } else {
+                    $deletedCodes = 0;
+                }
+
+                // Enfin, supprimer la désignation
+                $designation->delete();
+            });
+
+            if ($deletedImmobilisations > 0) {
+                session()->flash(
+                    'success',
+                    "Désignation supprimée avec succès. {$deletedImmobilisations} immobilisation(s) et {$deletedCodes} code(s)-barres liés ont été supprimés."
+                );
+            } else {
+                session()->flash('success', 'Désignation supprimée avec succès.');
+            }
+        } catch (\Throwable $e) {
+            session()->flash('error', "Suppression impossible: {$e->getMessage()}");
+        }
     }
 
     /**
