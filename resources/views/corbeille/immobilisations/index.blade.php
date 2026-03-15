@@ -178,79 +178,79 @@
                         </a>
                     </div>
                 </form>
-            </div>
-        </div>
 
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <h2 class="text-sm font-semibold text-gray-900 mb-3">Récupération groupée</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <form method="POST" action="{{ route('corbeille.immobilisations.restore-by-designation-selection') }}" class="flex items-end gap-2">
-                    @csrf
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-gray-700 mb-1" for="designation_id">Par désignation</label>
-                        <input
-                            id="designation_search_group"
-                            type="text"
-                            placeholder="Rechercher une désignation..."
-                            class="w-full mb-2 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                            oninput="filterGroupedSelect('designation_search_group', 'designation_id')"
-                        >
-                        <select
-                            id="designation_id"
-                            name="designation_id"
-                            required
-                            class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                        >
-                            <option value="">Sélectionner une désignation</option>
-                            @foreach($designationOptions as $option)
-                                <option value="{{ $option['id'] }}">
-                                    {{ $option['label'] }} ({{ $option['id'] }})
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <button
-                        type="submit"
-                        class="inline-flex items-center px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors"
-                        onclick="return confirm('Restaurer toutes les immobilisations de la désignation sélectionnée ?')"
-                    >
-                        Restaurer désignation
-                    </button>
-                </form>
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">Récupération groupée</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <form method="POST" action="{{ route('corbeille.immobilisations.restore-by-designation-selection') }}" class="flex items-end gap-2">
+                            @csrf
+                            <div class="flex-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-1" for="designation_id">Par désignation</label>
+                                <input
+                                    id="designation_search_group"
+                                    type="text"
+                                    placeholder="Rechercher une désignation..."
+                                    class="w-full mb-2 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                                    oninput="filterGroupedSelect('designation_search_group', 'designation_id')"
+                                >
+                                <select
+                                    id="designation_id"
+                                    name="designation_id"
+                                    required
+                                    class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                                >
+                                    <option value="">Sélectionner une désignation</option>
+                                    @foreach($designationOptions as $option)
+                                        <option value="{{ $option['id'] }}">
+                                            {{ $option['label'] }} ({{ $option['id'] }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <button
+                                type="submit"
+                                class="inline-flex items-center px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors"
+                                onclick="return confirm('Restaurer toutes les immobilisations de la désignation sélectionnée ?')"
+                            >
+                                Restaurer désignation
+                            </button>
+                        </form>
 
-                <form method="POST" action="{{ route('corbeille.immobilisations.restore-by-emplacement-selection') }}" class="flex items-end gap-2">
-                    @csrf
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-gray-700 mb-1" for="emplacement_id">Par emplacement</label>
-                        <input
-                            id="emplacement_search_group"
-                            type="text"
-                            placeholder="Rechercher un emplacement..."
-                            class="w-full mb-2 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                            oninput="filterGroupedSelect('emplacement_search_group', 'emplacement_id')"
-                        >
-                        <select
-                            id="emplacement_id"
-                            name="emplacement_id"
-                            required
-                            class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                        >
-                            <option value="">Sélectionner un emplacement</option>
-                            @foreach($emplacementOptions as $option)
-                                <option value="{{ $option['id'] }}">
-                                    {{ $option['label'] }} ({{ $option['id'] }})
-                                </option>
-                            @endforeach
-                        </select>
+                        <form method="POST" action="{{ route('corbeille.immobilisations.restore-by-emplacement-selection') }}" class="flex items-end gap-2">
+                            @csrf
+                            <div class="flex-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-1" for="emplacement_id">Par emplacement</label>
+                                <input
+                                    id="emplacement_search_group"
+                                    type="text"
+                                    placeholder="Rechercher un emplacement..."
+                                    class="w-full mb-2 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                                    oninput="filterGroupedSelect('emplacement_search_group', 'emplacement_id')"
+                                >
+                                <select
+                                    id="emplacement_id"
+                                    name="emplacement_id"
+                                    required
+                                    class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                                >
+                                    <option value="">Sélectionner un emplacement</option>
+                                    @foreach($emplacementOptions as $option)
+                                        <option value="{{ $option['id'] }}">
+                                            {{ $option['label'] }} ({{ $option['id'] }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <button
+                                type="submit"
+                                class="inline-flex items-center px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
+                                onclick="return confirm('Restaurer toutes les immobilisations de l\'emplacement sélectionné ?')"
+                            >
+                                Restaurer emplacement
+                            </button>
+                        </form>
                     </div>
-                    <button
-                        type="submit"
-                        class="inline-flex items-center px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
-                        onclick="return confirm('Restaurer toutes les immobilisations de l\'emplacement sélectionné ?')"
-                    >
-                        Restaurer emplacement
-                    </button>
-                </form>
+                </div>
             </div>
         </div>
 
