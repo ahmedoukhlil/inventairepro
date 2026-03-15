@@ -188,6 +188,13 @@
                     @csrf
                     <div class="flex-1">
                         <label class="block text-sm font-medium text-gray-700 mb-1" for="designation_id">Par désignation</label>
+                        <input
+                            id="designation_search_group"
+                            type="text"
+                            placeholder="Rechercher une désignation..."
+                            class="w-full mb-2 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                            oninput="filterGroupedSelect('designation_search_group', 'designation_id')"
+                        >
                         <select
                             id="designation_id"
                             name="designation_id"
@@ -215,6 +222,13 @@
                     @csrf
                     <div class="flex-1">
                         <label class="block text-sm font-medium text-gray-700 mb-1" for="emplacement_id">Par emplacement</label>
+                        <input
+                            id="emplacement_search_group"
+                            type="text"
+                            placeholder="Rechercher un emplacement..."
+                            class="w-full mb-2 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                            oninput="filterGroupedSelect('emplacement_search_group', 'emplacement_id')"
+                        >
                         <select
                             id="emplacement_id"
                             name="emplacement_id"
@@ -337,4 +351,21 @@
             {{ $rows->links() }}
         </div>
     </div>
+
+    <script>
+        function filterGroupedSelect(searchInputId, selectId) {
+            const input = document.getElementById(searchInputId);
+            const select = document.getElementById(selectId);
+            if (!input || !select) return;
+
+            const term = input.value.trim().toLowerCase();
+            Array.from(select.options).forEach((option, index) => {
+                if (index === 0) {
+                    option.hidden = false;
+                    return;
+                }
+                option.hidden = term !== '' && !option.text.toLowerCase().includes(term);
+            });
+        }
+    </script>
 </x-layouts.app>
