@@ -184,32 +184,20 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <form method="POST" action="{{ route('corbeille.immobilisations.restore-by-designation-selection') }}" class="flex items-end gap-2">
                             @csrf
+                            <input type="hidden" name="designation_id" value="{{ $filterDesignation }}">
                             <div class="flex-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-1" for="designation_id">Par désignation</label>
-                                <input
-                                    id="designation_search_group"
-                                    type="text"
-                                    placeholder="Rechercher une désignation..."
-                                    class="w-full mb-2 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                                    oninput="filterGroupedSelect('designation_search_group', 'designation_id')"
-                                >
-                                <select
-                                    id="designation_id"
-                                    name="designation_id"
-                                    required
-                                    class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                                >
-                                    <option value="">Sélectionner une désignation</option>
-                                    @foreach($designationOptions as $option)
-                                        <option value="{{ $option['id'] }}">
-                                            {{ $option['label'] }} ({{ $option['id'] }})
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Par désignation (depuis filtre)</label>
+                                <div class="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                                    @php
+                                        $selectedDesignation = collect($designationOptions)->firstWhere('id', (int) $filterDesignation);
+                                    @endphp
+                                    {{ $selectedDesignation['label'] ?? 'Aucune désignation filtrée' }}
+                                </div>
                             </div>
                             <button
                                 type="submit"
-                                class="inline-flex items-center px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors"
+                                class="inline-flex items-center px-4 py-2 rounded-lg transition-colors {{ !empty($filterDesignation) ? 'bg-sky-600 text-white hover:bg-sky-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed' }}"
+                                {{ empty($filterDesignation) ? 'disabled' : '' }}
                                 onclick="return confirm('Restaurer toutes les immobilisations de la désignation sélectionnée ?')"
                             >
                                 Restaurer désignation
@@ -218,32 +206,20 @@
 
                         <form method="POST" action="{{ route('corbeille.immobilisations.restore-by-emplacement-selection') }}" class="flex items-end gap-2">
                             @csrf
+                            <input type="hidden" name="emplacement_id" value="{{ $filterEmplacement }}">
                             <div class="flex-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-1" for="emplacement_id">Par emplacement</label>
-                                <input
-                                    id="emplacement_search_group"
-                                    type="text"
-                                    placeholder="Rechercher un emplacement..."
-                                    class="w-full mb-2 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                                    oninput="filterGroupedSelect('emplacement_search_group', 'emplacement_id')"
-                                >
-                                <select
-                                    id="emplacement_id"
-                                    name="emplacement_id"
-                                    required
-                                    class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                                >
-                                    <option value="">Sélectionner un emplacement</option>
-                                    @foreach($emplacementOptions as $option)
-                                        <option value="{{ $option['id'] }}">
-                                            {{ $option['label'] }} ({{ $option['id'] }})
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Par emplacement (depuis filtre)</label>
+                                <div class="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                                    @php
+                                        $selectedEmplacement = collect($emplacementOptions)->firstWhere('id', (int) $filterEmplacement);
+                                    @endphp
+                                    {{ $selectedEmplacement['label'] ?? 'Aucun emplacement filtré' }}
+                                </div>
                             </div>
                             <button
                                 type="submit"
-                                class="inline-flex items-center px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
+                                class="inline-flex items-center px-4 py-2 rounded-lg transition-colors {{ !empty($filterEmplacement) ? 'bg-violet-600 text-white hover:bg-violet-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed' }}"
+                                {{ empty($filterEmplacement) ? 'disabled' : '' }}
                                 onclick="return confirm('Restaurer toutes les immobilisations de l\'emplacement sélectionné ?')"
                             >
                                 Restaurer emplacement
@@ -352,20 +328,4 @@
         </div>
     </div>
 
-    <script>
-        function filterGroupedSelect(searchInputId, selectId) {
-            const input = document.getElementById(searchInputId);
-            const select = document.getElementById(selectId);
-            if (!input || !select) return;
-
-            const term = input.value.trim().toLowerCase();
-            Array.from(select.options).forEach((option, index) => {
-                if (index === 0) {
-                    option.hidden = false;
-                    return;
-                }
-                option.hidden = term !== '' && !option.text.toLowerCase().includes(term);
-            });
-        }
-    </script>
 </x-layouts.app>
