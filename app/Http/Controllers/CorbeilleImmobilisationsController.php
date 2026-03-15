@@ -28,6 +28,11 @@ class CorbeilleImmobilisationsController extends Controller
             'search' => 'nullable|string|max:255',
             'filter_designation' => 'nullable|integer',
             'filter_emplacement' => 'nullable|integer',
+            'filter_categorie' => 'nullable|integer',
+            'filter_etat' => 'nullable|integer',
+            'filter_natjur' => 'nullable|integer',
+            'filter_sf' => 'nullable|integer',
+            'filter_date_acquisition' => 'nullable|integer|min:1900|max:' . (now()->year + 1),
         ]);
 
         $query = CorbeilleImmobilisation::query()->orderByDesc('id');
@@ -36,8 +41,15 @@ class CorbeilleImmobilisationsController extends Controller
             $search = $validated['search'];
             $query->where(function ($q) use ($search): void {
                 $q->where('designation_label', 'like', '%' . $search . '%')
+                    ->orWhere('emplacement_label', 'like', '%' . $search . '%')
                     ->orWhere('original_num_ordre', 'like', '%' . $search . '%')
-                    ->orWhere('idDesignation', 'like', '%' . $search . '%');
+                    ->orWhere('idDesignation', 'like', '%' . $search . '%')
+                    ->orWhere('idCategorie', 'like', '%' . $search . '%')
+                    ->orWhere('idEtat', 'like', '%' . $search . '%')
+                    ->orWhere('idEmplacement', 'like', '%' . $search . '%')
+                    ->orWhere('idNatJur', 'like', '%' . $search . '%')
+                    ->orWhere('idSF', 'like', '%' . $search . '%')
+                    ->orWhere('Observations', 'like', '%' . $search . '%');
             });
         }
 
@@ -47,6 +59,27 @@ class CorbeilleImmobilisationsController extends Controller
 
         if (!empty($validated['filter_emplacement'])) {
             $query->where('idEmplacement', (int) $validated['filter_emplacement']);
+        }
+
+        if (!empty($validated['filter_categorie'])) {
+            $query->where('idCategorie', (int) $validated['filter_categorie']);
+        }
+
+        if (!empty($validated['filter_etat'])) {
+            $query->where('idEtat', (int) $validated['filter_etat']);
+        }
+
+        if (!empty($validated['filter_natjur'])) {
+            $query->where('idNatJur', (int) $validated['filter_natjur']);
+        }
+
+        if (!empty($validated['filter_sf'])) {
+            $query->where('idSF', (int) $validated['filter_sf']);
+        }
+
+        if (!empty($validated['filter_date_acquisition'])) {
+            $year = (int) $validated['filter_date_acquisition'];
+            $query->whereYear('DateAcquisition', $year);
         }
 
         $rows = $query->paginate(25)->withQueryString();
@@ -87,6 +120,34 @@ class CorbeilleImmobilisationsController extends Controller
                 'label' => $label,
             ];
         })->values();
+
+        $categorieOptions = Categorie::query()
+            ->select('idCategorie', 'Categorie')
+            ->orderBy('Categorie')
+            ->get()
+            ->map(fn ($row) => ['id' => (int) $row->idCategorie, 'label' => $row->Categorie])
+            ->values();
+
+        $etatOptions = Etat::query()
+            ->select('idEtat', 'Etat')
+            ->orderBy('Etat')
+            ->get()
+            ->map(fn ($row) => ['id' => (int) $row->idEtat, 'label' => $row->Etat])
+            ->values();
+
+        $natJurOptions = NatureJuridique::query()
+            ->select('idNatJur', 'NatJur')
+            ->orderBy('NatJur')
+            ->get()
+            ->map(fn ($row) => ['id' => (int) $row->idNatJur, 'label' => $row->NatJur])
+            ->values();
+
+        $sourceFinOptions = SourceFinancement::query()
+            ->select('idSF', 'SourceFin')
+            ->orderBy('SourceFin')
+            ->get()
+            ->map(fn ($row) => ['id' => (int) $row->idSF, 'label' => $row->SourceFin])
+            ->values();
 
         $emplacementIds = $rows->getCollection()->pluck('idEmplacement')->unique()->filter()->values();
         $emplacements = Emplacement::with(['localisation', 'affectation'])
@@ -142,8 +203,17 @@ class CorbeilleImmobilisationsController extends Controller
             'search' => $validated['search'] ?? '',
             'filterDesignation' => $validated['filter_designation'] ?? '',
             'filterEmplacement' => $validated['filter_emplacement'] ?? '',
+            'filterCategorie' => $validated['filter_categorie'] ?? '',
+            'filterEtat' => $validated['filter_etat'] ?? '',
+            'filterNatJur' => $validated['filter_natjur'] ?? '',
+            'filterSF' => $validated['filter_sf'] ?? '',
+            'filterDateAcquisition' => $validated['filter_date_acquisition'] ?? '',
             'designationOptions' => $designationOptions,
             'emplacementOptions' => $emplacementOptions,
+            'categorieOptions' => $categorieOptions,
+            'etatOptions' => $etatOptions,
+            'natJurOptions' => $natJurOptions,
+            'sourceFinOptions' => $sourceFinOptions,
         ]);
     }
 

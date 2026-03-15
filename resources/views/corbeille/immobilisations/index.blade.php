@@ -9,61 +9,128 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <form method="GET" action="{{ route('corbeille.immobilisations.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for="search">Recherche</label>
-                    <input
-                        id="search"
-                        name="search"
-                        type="text"
-                        value="{{ $search }}"
-                        placeholder="NumOrdre, designation, idDesignation..."
-                        class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                    >
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_designation">Désignation</label>
-                    <select
-                        id="filter_designation"
-                        name="filter_designation"
-                        class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                    >
-                        <option value="">Toutes les désignations</option>
-                        @foreach($designationOptions as $option)
-                            <option value="{{ $option['id'] }}" @selected((string) $filterDesignation === (string) $option['id'])>
-                                {{ $option['label'] }} ({{ $option['id'] }})
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_emplacement">Emplacement</label>
-                    <select
-                        id="filter_emplacement"
-                        name="filter_emplacement"
-                        class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                    >
-                        <option value="">Tous les emplacements</option>
-                        @foreach($emplacementOptions as $option)
-                            <option value="{{ $option['id'] }}" @selected((string) $filterEmplacement === (string) $option['id'])>
-                                {{ $option['label'] }} ({{ $option['id'] }})
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="flex items-end gap-2">
-                    <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-                        Afficher
-                    </button>
-                    <a href="{{ route('corbeille.immobilisations.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                        Reinitialiser
-                    </a>
-                    <a href="{{ route('corbeille.immobilisations.export-excel', request()->query()) }}" class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
-                        Export Excel
-                    </a>
-                </div>
-            </form>
+        <div x-data="{ open: false }" class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <button
+                @click="open = !open"
+                class="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+            >
+                <span class="font-medium text-gray-900">Filtres de recherche</span>
+                <svg class="w-5 h-5 text-gray-500 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            <div x-show="open" x-collapse class="border-t border-gray-200 p-4">
+                <form method="GET" action="{{ route('corbeille.immobilisations.index') }}" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="lg:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="search">Recherche globale</label>
+                            <input
+                                id="search"
+                                name="search"
+                                type="text"
+                                value="{{ $search }}"
+                                placeholder="NumOrdre, designation, emplacement, categorie..."
+                                class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_designation">Désignation</label>
+                            <select id="filter_designation" name="filter_designation" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">Toutes les désignations</option>
+                                @foreach($designationOptions as $option)
+                                    <option value="{{ $option['id'] }}" @selected((string) $filterDesignation === (string) $option['id'])>
+                                        {{ $option['label'] }} ({{ $option['id'] }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_categorie">Catégorie</label>
+                            <select id="filter_categorie" name="filter_categorie" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">Toutes les catégories</option>
+                                @foreach($categorieOptions as $option)
+                                    <option value="{{ $option['id'] }}" @selected((string) $filterCategorie === (string) $option['id'])>
+                                        {{ $option['label'] }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_emplacement">Emplacement</label>
+                            <select id="filter_emplacement" name="filter_emplacement" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">Tous les emplacements</option>
+                                @foreach($emplacementOptions as $option)
+                                    <option value="{{ $option['id'] }}" @selected((string) $filterEmplacement === (string) $option['id'])>
+                                        {{ $option['label'] }} ({{ $option['id'] }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_etat">État</label>
+                            <select id="filter_etat" name="filter_etat" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">Tous les états</option>
+                                @foreach($etatOptions as $option)
+                                    <option value="{{ $option['id'] }}" @selected((string) $filterEtat === (string) $option['id'])>
+                                        {{ $option['label'] }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_natjur">Nature Juridique</label>
+                            <select id="filter_natjur" name="filter_natjur" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">Toutes les natures juridiques</option>
+                                @foreach($natJurOptions as $option)
+                                    <option value="{{ $option['id'] }}" @selected((string) $filterNatJur === (string) $option['id'])>
+                                        {{ $option['label'] }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_sf">Source de Financement</label>
+                            <select id="filter_sf" name="filter_sf" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">Toutes les sources</option>
+                                @foreach($sourceFinOptions as $option)
+                                    <option value="{{ $option['id'] }}" @selected((string) $filterSF === (string) $option['id'])>
+                                        {{ $option['label'] }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="filter_date_acquisition">Année d'acquisition</label>
+                            <input
+                                id="filter_date_acquisition"
+                                name="filter_date_acquisition"
+                                type="number"
+                                min="1900"
+                                max="{{ now()->year + 1 }}"
+                                value="{{ $filterDateAcquisition }}"
+                                placeholder="Ex: {{ now()->year }}"
+                                class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                            Afficher
+                        </button>
+                        <a href="{{ route('corbeille.immobilisations.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                            Reinitialiser
+                        </a>
+                        <a href="{{ route('corbeille.immobilisations.export-excel', request()->query()) }}" class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                            Export Excel
+                        </a>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -126,8 +193,8 @@
         </div>
 
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div class="overflow-auto">
-                <table class="min-w-full divide-y divide-gray-200">
+            <div class="w-full overflow-x-auto overflow-y-hidden">
+                <table class="min-w-[1300px] divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NumOrdre</th>
