@@ -255,6 +255,7 @@ class CorbeilleImmobilisationsController extends Controller
         $restored = 0;
         $skipped = 0;
         $failed = 0;
+        $lastError = '';
 
         foreach ($items as $item) {
             if (Gesimmo::where('NumOrdre', $item->original_num_ordre)->exists()) {
@@ -270,11 +271,18 @@ class CorbeilleImmobilisationsController extends Controller
             } catch (\Throwable $e) {
                 report($e);
                 $failed++;
+                if (empty($lastError)) {
+                    $lastError = $e->getMessage();
+                }
             }
         }
 
         if ($restored === 0) {
-            return back()->with('error', "Aucune restauration effectuee (ignores: {$skipped}, echecs: {$failed}).");
+            $msg = "Aucune restauration effectuee (ignores: {$skipped}, echecs: {$failed}).";
+            if ($lastError) {
+                $msg .= " Erreur: " . \Illuminate\Support\Str::limit($lastError, 300);
+            }
+            return back()->with('error', $msg);
         }
 
         return back()->with('success', "Restauration par designation terminee: {$restored} restauree(s), {$skipped} ignoree(s), {$failed} en echec.");
@@ -303,6 +311,7 @@ class CorbeilleImmobilisationsController extends Controller
         $restored = 0;
         $skipped = 0;
         $failed = 0;
+        $lastError = '';
 
         foreach ($items as $item) {
             if (Gesimmo::where('NumOrdre', $item->original_num_ordre)->exists()) {
@@ -318,11 +327,18 @@ class CorbeilleImmobilisationsController extends Controller
             } catch (\Throwable $e) {
                 report($e);
                 $failed++;
+                if (empty($lastError)) {
+                    $lastError = $e->getMessage();
+                }
             }
         }
 
         if ($restored === 0) {
-            return back()->with('error', "Aucune restauration effectuee (ignores: {$skipped}, echecs: {$failed}).");
+            $msg = "Aucune restauration effectuee (ignores: {$skipped}, echecs: {$failed}).";
+            if ($lastError) {
+                $msg .= " Erreur: " . \Illuminate\Support\Str::limit($lastError, 300);
+            }
+            return back()->with('error', $msg);
         }
 
         return back()->with('success', "Restauration par emplacement terminee: {$restored} restauree(s), {$skipped} ignoree(s), {$failed} en echec.");
@@ -354,11 +370,7 @@ class CorbeilleImmobilisationsController extends Controller
             $dateAcquisitionYear = null;
         }
 
-        // Compatibilite: la colonne peut etre de type DATE ou entier selon l'environnement.
-        // En envoyant YYYY-01-01, MySQL DATE conserve l'annee et un entier convertit en YYYY.
-        $dateAcquisitionForInsert = $dateAcquisitionYear !== null
-            ? sprintf('%04d-01-01', $dateAcquisitionYear)
-            : null;
+        $dateAcquisitionForInsert = $dateAcquisitionYear;
 
         if (!Emplacement::where('idEmplacement', $item->idEmplacement)->exists()) {
             $localisationId = $item->emplacement_id_localisation;
