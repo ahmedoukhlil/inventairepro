@@ -266,93 +266,96 @@ class ListeDesignations extends Component
         $userId = auth()->id();
         $maxRetries = 3;
 
-        DB::statement('SET SESSION innodb_lock_wait_timeout = 3');
+        try {
+            DB::statement('SET SESSION innodb_lock_wait_timeout = 3');
 
-        foreach ($batches as $batchIds) {
-            $success = false;
+            foreach ($batches as $batchIds) {
+                $success = false;
 
-            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
-                try {
-                    $rows = $this->fetchEnrichedRows($batchIds);
+                for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                    try {
+                        $rows = $this->fetchEnrichedRows($batchIds);
 
-                    if ($rows->isEmpty()) {
+                        if ($rows->isEmpty()) {
+                            $success = true;
+                            break;
+                        }
+
+                        $insertData = [];
+                        foreach ($rows as $row) {
+                            $dateAcq = null;
+                            if (!empty($row->DateAcquisition)) {
+                                $year = (int) $row->DateAcquisition;
+                                if ($year >= 1900 && $year <= 9999) {
+                                    $dateAcq = sprintf('%04d-01-01', $year);
+                                }
+                            }
+                            $insertData[$row->NumOrdre] = [
+                                'original_num_ordre' => $row->NumOrdre,
+                                'idDesignation'      => $row->idDesignation,
+                                'idCategorie'        => $row->idCategorie,
+                                'idEtat'             => $row->idEtat,
+                                'idEmplacement'      => $row->idEmplacement,
+                                'idNatJur'           => $row->idNatJur,
+                                'idSF'               => $row->idSF,
+                                'DateAcquisition'    => $dateAcq,
+                                'Observations'       => $row->Observations,
+                                'barcode'            => $row->barcode,
+                                'emplacement_label'  => $row->emplacement_label,
+                                'emplacement_code'   => $row->emplacement_code,
+                                'emplacement_id_affectation'   => $row->emplacement_id_affectation,
+                                'emplacement_id_localisation'  => $row->emplacement_id_localisation,
+                                'affectation_label'  => $row->affectation_label,
+                                'localisation_label' => $row->localisation_label,
+                                'designation_label'  => $row->designation_label,
+                                'deleted_reason'     => $batchReason,
+                                'deleted_by_user_id' => $userId,
+                                'deleted_at'         => $now,
+                                'created_at'         => $now,
+                                'updated_at'         => $now,
+                            ];
+                        }
+
+                        $actualIds = array_keys($insertData);
+
+                        DB::transaction(function () use (&$insertData, $actualIds, &$moved) {
+                            $existing = DB::table('corbeille_immobilisations')
+                                ->whereIn('original_num_ordre', $actualIds)
+                                ->pluck('original_num_ordre')
+                                ->map(fn ($v) => (int) $v)
+                                ->all();
+
+                            $toInsert = array_values(
+                                array_filter($insertData, fn ($r) => !in_array((int) $r['original_num_ordre'], $existing, true))
+                            );
+                            $idsToDelete = array_values(array_diff($actualIds, $existing));
+
+                            if (!empty($toInsert)) {
+                                DB::table('corbeille_immobilisations')->insert($toInsert);
+                            }
+                            if (!empty($idsToDelete)) {
+                                DB::table('codes')->whereIn('idGesimmo', $idsToDelete)->delete();
+                                $moved += DB::table('gesimmo')->whereIn('NumOrdre', $idsToDelete)->delete();
+                            }
+                        });
+
                         $success = true;
                         break;
-                    }
-
-                    $insertData = [];
-                    foreach ($rows as $row) {
-                        $dateAcq = null;
-                        if (!empty($row->DateAcquisition)) {
-                            $year = (int) $row->DateAcquisition;
-                            if ($year >= 1900 && $year <= 9999) {
-                                $dateAcq = sprintf('%04d-01-01', $year);
-                            }
+                    } catch (\Illuminate\Database\QueryException $e) {
+                        $code = (int) ($e->errorInfo[1] ?? 0);
+                        if (in_array($code, [1205, 1213], true) && $attempt < $maxRetries) {
+                            usleep(150000 * $attempt);
+                            continue;
                         }
-                        $insertData[$row->NumOrdre] = [
-                            'original_num_ordre' => $row->NumOrdre,
-                            'idDesignation'      => $row->idDesignation,
-                            'idCategorie'        => $row->idCategorie,
-                            'idEtat'             => $row->idEtat,
-                            'idEmplacement'      => $row->idEmplacement,
-                            'idNatJur'           => $row->idNatJur,
-                            'idSF'               => $row->idSF,
-                            'DateAcquisition'    => $dateAcq,
-                            'Observations'       => $row->Observations,
-                            'barcode'            => $row->barcode,
-                            'emplacement_label'  => $row->emplacement_label,
-                            'emplacement_code'   => $row->emplacement_code,
-                            'emplacement_id_affectation'   => $row->emplacement_id_affectation,
-                            'emplacement_id_localisation'  => $row->emplacement_id_localisation,
-                            'affectation_label'  => $row->affectation_label,
-                            'localisation_label' => $row->localisation_label,
-                            'designation_label'  => $row->designation_label,
-                            'deleted_reason'     => $batchReason,
-                            'deleted_by_user_id' => $userId,
-                            'deleted_at'         => $now,
-                            'created_at'         => $now,
-                            'updated_at'         => $now,
-                        ];
+                        $batchErrors++;
+                        \Log::error("Bulk trash batch error", ['error' => $e->getMessage(), 'batch' => $batchIds]);
+                        break;
                     }
-
-                    $actualIds = array_keys($insertData);
-
-                    DB::transaction(function () use (&$insertData, $actualIds, &$moved) {
-                        $existing = DB::table('corbeille_immobilisations')
-                            ->whereIn('original_num_ordre', $actualIds)
-                            ->pluck('original_num_ordre')
-                            ->map(fn ($v) => (int) $v)
-                            ->all();
-
-                        $toInsert = array_values(
-                            array_filter($insertData, fn ($r) => !in_array((int) $r['original_num_ordre'], $existing, true))
-                        );
-                        $idsToDelete = array_values(array_diff($actualIds, $existing));
-
-                        if (!empty($toInsert)) {
-                            DB::table('corbeille_immobilisations')->insert($toInsert);
-                        }
-                        if (!empty($idsToDelete)) {
-                            DB::table('codes')->whereIn('idGesimmo', $idsToDelete)->delete();
-                            $moved += DB::table('gesimmo')->whereIn('NumOrdre', $idsToDelete)->delete();
-                        }
-                    });
-
-                    $success = true;
-                    break;
-                } catch (\Illuminate\Database\QueryException $e) {
-                    $code = (int) ($e->errorInfo[1] ?? 0);
-                    if (in_array($code, [1205, 1213], true) && $attempt < $maxRetries) {
-                        usleep(150_000 * $attempt);
-                        continue;
-                    }
-                    throw $e;
                 }
             }
-
-            if (!$success) {
-                $batchErrors++;
-            }
+        } catch (\Throwable $e) {
+            $this->setBulkFeedback('error', "Erreur: {$e->getMessage()}");
+            return;
         }
 
         $message = "Traitement termine: {$moved} immobilisation(s) envoyee(s) en corbeille";
@@ -363,7 +366,7 @@ class ListeDesignations extends Component
             $message .= ', ' . count($missingDesignationIds) . ' idDesignation introuvable(s)';
         }
         if ($batchErrors > 0) {
-            $message .= ", {$batchErrors} lot(s) en echec (verrou)";
+            $message .= ", {$batchErrors} lot(s) en echec";
         }
         $message .= '.';
 
