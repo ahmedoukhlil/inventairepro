@@ -257,102 +257,91 @@ class ListeDesignations extends Component
             return;
         }
 
-        // --- Étape 3 : traitement par lots de 200 ---
-        $batches = array_chunk($toProcess, 200);
+        // --- Étape 3 : lire les données enrichies (hors verrou) ---
         $moved = 0;
-        $batchErrors = 0;
+        $skippedRows = 0;
+        $failedRows = 0;
         $lastError = '';
         $batchReason = 'Suppression en lot par idDesignation depuis /designations';
         $now = now();
         $userId = auth()->id();
-        $maxRetries = 3;
 
         try {
-            DB::statement('SET SESSION innodb_lock_wait_timeout = 3');
+            $allRows = collect();
+            foreach (array_chunk($toProcess, 500) as $chunk) {
+                $allRows = $allRows->merge($this->fetchEnrichedRows($chunk));
+            }
 
-            foreach ($batches as $batchIds) {
-                $success = false;
+            // --- Étape 4 : traitement ligne par ligne en autocommit ---
+            foreach ($allRows as $row) {
+                $numOrdre = (int) $row->NumOrdre;
 
-                for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                $alreadyExists = DB::table('corbeille_immobilisations')
+                    ->where('original_num_ordre', $numOrdre)->exists();
+                if ($alreadyExists) {
+                    DB::table('codes')->where('idGesimmo', $numOrdre)->delete();
+                    DB::table('gesimmo')->where('NumOrdre', $numOrdre)->delete();
+                    $skippedRows++;
+                    continue;
+                }
+
+                $dateAcq = null;
+                if (!empty($row->DateAcquisition)) {
+                    $year = (int) $row->DateAcquisition;
+                    if ($year >= 1900 && $year <= 9999) {
+                        $dateAcq = sprintf('%04d-01-01', $year);
+                    }
+                }
+
+                $payload = [
+                    'original_num_ordre' => $numOrdre,
+                    'idDesignation'      => $row->idDesignation,
+                    'idCategorie'        => $row->idCategorie,
+                    'idEtat'             => $row->idEtat,
+                    'idEmplacement'      => $row->idEmplacement,
+                    'idNatJur'           => $row->idNatJur,
+                    'idSF'               => $row->idSF,
+                    'DateAcquisition'    => $dateAcq,
+                    'Observations'       => $row->Observations,
+                    'barcode'            => $row->barcode,
+                    'emplacement_label'  => $row->emplacement_label,
+                    'emplacement_code'   => $row->emplacement_code,
+                    'emplacement_id_affectation'   => $row->emplacement_id_affectation,
+                    'emplacement_id_localisation'  => $row->emplacement_id_localisation,
+                    'affectation_label'  => $row->affectation_label,
+                    'localisation_label' => $row->localisation_label,
+                    'designation_label'  => $row->designation_label,
+                    'deleted_reason'     => $batchReason,
+                    'deleted_by_user_id' => $userId,
+                    'deleted_at'         => $now,
+                    'created_at'         => $now,
+                    'updated_at'         => $now,
+                ];
+
+                $ok = false;
+                for ($attempt = 1; $attempt <= 3; $attempt++) {
                     try {
-                        $rows = $this->fetchEnrichedRows($batchIds);
-
-                        if ($rows->isEmpty()) {
-                            $success = true;
-                            break;
-                        }
-
-                        $insertData = [];
-                        foreach ($rows as $row) {
-                            $dateAcq = null;
-                            if (!empty($row->DateAcquisition)) {
-                                $year = (int) $row->DateAcquisition;
-                                if ($year >= 1900 && $year <= 9999) {
-                                    $dateAcq = sprintf('%04d-01-01', $year);
-                                }
-                            }
-                            $insertData[$row->NumOrdre] = [
-                                'original_num_ordre' => $row->NumOrdre,
-                                'idDesignation'      => $row->idDesignation,
-                                'idCategorie'        => $row->idCategorie,
-                                'idEtat'             => $row->idEtat,
-                                'idEmplacement'      => $row->idEmplacement,
-                                'idNatJur'           => $row->idNatJur,
-                                'idSF'               => $row->idSF,
-                                'DateAcquisition'    => $dateAcq,
-                                'Observations'       => $row->Observations,
-                                'barcode'            => $row->barcode,
-                                'emplacement_label'  => $row->emplacement_label,
-                                'emplacement_code'   => $row->emplacement_code,
-                                'emplacement_id_affectation'   => $row->emplacement_id_affectation,
-                                'emplacement_id_localisation'  => $row->emplacement_id_localisation,
-                                'affectation_label'  => $row->affectation_label,
-                                'localisation_label' => $row->localisation_label,
-                                'designation_label'  => $row->designation_label,
-                                'deleted_reason'     => $batchReason,
-                                'deleted_by_user_id' => $userId,
-                                'deleted_at'         => $now,
-                                'created_at'         => $now,
-                                'updated_at'         => $now,
-                            ];
-                        }
-
-                        $actualIds = array_keys($insertData);
-
-                        DB::transaction(function () use (&$insertData, $actualIds, &$moved) {
-                            $existing = DB::table('corbeille_immobilisations')
-                                ->whereIn('original_num_ordre', $actualIds)
-                                ->pluck('original_num_ordre')
-                                ->map(fn ($v) => (int) $v)
-                                ->all();
-
-                            $toInsert = array_values(
-                                array_filter($insertData, fn ($r) => !in_array((int) $r['original_num_ordre'], $existing, true))
-                            );
-                            $idsToDelete = array_values(array_diff($actualIds, $existing));
-
-                            if (!empty($toInsert)) {
-                                DB::table('corbeille_immobilisations')->insert($toInsert);
-                            }
-                            if (!empty($idsToDelete)) {
-                                DB::table('codes')->whereIn('idGesimmo', $idsToDelete)->delete();
-                                $moved += DB::table('gesimmo')->whereIn('NumOrdre', $idsToDelete)->delete();
-                            }
-                        });
-
-                        $success = true;
+                        DB::table('corbeille_immobilisations')->insert($payload);
+                        DB::table('codes')->where('idGesimmo', $numOrdre)->delete();
+                        DB::table('gesimmo')->where('NumOrdre', $numOrdre)->delete();
+                        $ok = true;
                         break;
                     } catch (\Illuminate\Database\QueryException $e) {
                         $code = (int) ($e->errorInfo[1] ?? 0);
-                        if (in_array($code, [1205, 1213], true) && $attempt < $maxRetries) {
-                            usleep(150000 * $attempt);
+                        if (in_array($code, [1205, 1213], true) && $attempt < 3) {
+                            sleep($attempt);
                             continue;
                         }
-                        $batchErrors++;
                         $lastError = $e->getMessage();
-                        \Log::error("Bulk trash batch error", ['error' => $lastError, 'batch' => $batchIds]);
+                        \Log::warning("Bulk trash row error", ['numOrdre' => $numOrdre, 'error' => $lastError]);
                         break;
                     }
+                }
+
+                if ($ok) {
+                    $moved++;
+                } else {
+                    $failedRows++;
                 }
             }
         } catch (\Throwable $e) {
@@ -360,15 +349,16 @@ class ListeDesignations extends Component
             return;
         }
 
-        $message = "Traitement termine: {$moved} immobilisation(s) envoyee(s) en corbeille";
-        if ($skippedAlreadyInTrash > 0) {
-            $message .= ", {$skippedAlreadyInTrash} ignoree(s) (deja en corbeille)";
+        $message = "Traitement termine: {$moved} deplacee(s) en corbeille";
+        if ($skippedAlreadyInTrash > 0 || $skippedRows > 0) {
+            $total = $skippedAlreadyInTrash + $skippedRows;
+            $message .= ", {$total} ignoree(s) (deja en corbeille)";
         }
         if (!empty($missingDesignationIds)) {
             $message .= ', ' . count($missingDesignationIds) . ' idDesignation introuvable(s)';
         }
-        if ($batchErrors > 0) {
-            $message .= ", {$batchErrors} lot(s) en echec: {$lastError}";
+        if ($failedRows > 0) {
+            $message .= ", {$failedRows} echec(s): {$lastError}";
         }
         $message .= '.';
 
