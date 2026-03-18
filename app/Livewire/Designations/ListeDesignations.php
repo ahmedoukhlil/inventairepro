@@ -261,6 +261,7 @@ class ListeDesignations extends Component
         $batches = array_chunk($toProcess, 200);
         $moved = 0;
         $batchErrors = 0;
+        $lastError = '';
         $batchReason = 'Suppression en lot par idDesignation depuis /designations';
         $now = now();
         $userId = auth()->id();
@@ -348,7 +349,8 @@ class ListeDesignations extends Component
                             continue;
                         }
                         $batchErrors++;
-                        \Log::error("Bulk trash batch error", ['error' => $e->getMessage(), 'batch' => $batchIds]);
+                        $lastError = $e->getMessage();
+                        \Log::error("Bulk trash batch error", ['error' => $lastError, 'batch' => $batchIds]);
                         break;
                     }
                 }
@@ -366,7 +368,7 @@ class ListeDesignations extends Component
             $message .= ', ' . count($missingDesignationIds) . ' idDesignation introuvable(s)';
         }
         if ($batchErrors > 0) {
-            $message .= ", {$batchErrors} lot(s) en echec";
+            $message .= ", {$batchErrors} lot(s) en echec: {$lastError}";
         }
         $message .= '.';
 
