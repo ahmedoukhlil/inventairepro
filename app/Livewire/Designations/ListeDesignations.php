@@ -28,6 +28,8 @@ class ListeDesignations extends Component
     public $perPage = 20;
     public $selectedDesignations = [];
     public $bulkDesignationIds = '';
+    public $bulkFeedbackType = null;
+    public $bulkFeedbackMessage = null;
 
     /**
      * Initialisation du composant
@@ -187,9 +189,12 @@ class ListeDesignations extends Component
      */
     public function moveImmosToTrashByDesignationIds(): void
     {
+        $this->bulkFeedbackType = null;
+        $this->bulkFeedbackMessage = null;
+
         $raw = trim((string) $this->bulkDesignationIds);
         if ($raw === '') {
-            session()->flash('error', 'Veuillez renseigner au moins un idDesignation.');
+            $this->setBulkFeedback('error', 'Veuillez renseigner au moins un idDesignation.');
             return;
         }
 
@@ -202,7 +207,7 @@ class ListeDesignations extends Component
             ->all();
 
         if (empty($designationIds)) {
-            session()->flash('error', 'Aucun idDesignation valide detecte.');
+            $this->setBulkFeedback('error', 'Aucun idDesignation valide detecte.');
             return;
         }
 
@@ -230,7 +235,7 @@ class ListeDesignations extends Component
             if (!empty($missingDesignationIds)) {
                 $msg .= ' IDs introuvables: ' . implode(', ', $missingDesignationIds) . '.';
             }
-            session()->flash('error', $msg);
+            $this->setBulkFeedback('error', $msg);
             return;
         }
 
@@ -313,7 +318,7 @@ class ListeDesignations extends Component
                 }
             });
         } catch (\Throwable $e) {
-            session()->flash('error', "Operation impossible: {$e->getMessage()}");
+            $this->setBulkFeedback('error', "Operation impossible: {$e->getMessage()}");
             return;
         }
 
@@ -330,9 +335,16 @@ class ListeDesignations extends Component
 
         $message .= '.';
 
-        session()->flash('success', $message);
+        $this->setBulkFeedback('success', $message);
         $this->bulkDesignationIds = '';
         $this->resetPage();
+    }
+
+    private function setBulkFeedback(string $type, string $message): void
+    {
+        $this->bulkFeedbackType = $type;
+        $this->bulkFeedbackMessage = $message;
+        session()->flash($type, $message);
     }
 
     /**
