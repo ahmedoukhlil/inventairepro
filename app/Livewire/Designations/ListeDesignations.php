@@ -186,9 +186,14 @@ class ListeDesignations extends Component
     /**
      * Déplace en corbeille toutes les immobilisations liées
      * aux idDesignation saisis (sans supprimer les désignations).
+     *
+     * Approche batch : collecte des IDs en amont, INSERT/DELETE par
+     * lots de 200 dans des transactions ultra-courtes, retry automatique.
      */
     public function moveImmosToTrashByDesignationIds(): void
     {
+        set_time_limit(300);
+
         $this->bulkFeedbackType = null;
         $this->bulkFeedbackMessage = null;
 
@@ -200,8 +205,8 @@ class ListeDesignations extends Component
 
         $tokens = preg_split('/[\s,;]+/', $raw) ?: [];
         $designationIds = collect($tokens)
-            ->filter(fn ($value) => is_numeric($value) && (int) $value > 0)
-            ->map(fn ($value) => (int) $value)
+            ->filter(fn ($v) => is_numeric($v) && (int) $v > 0)
+            ->map(fn ($v) => (int) $v)
             ->unique()
             ->values()
             ->all();
@@ -211,26 +216,23 @@ class ListeDesignations extends Component
             return;
         }
 
-        $existingDesignationIds = Designation::query()
-            ->whereIn('id', $designationIds)
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
-
+        $existingDesignationIds = Designation::whereIn('id', $designationIds)
+            ->pluck('id')->map(fn ($id) => (int) $id)->all();
         $missingDesignationIds = array_values(array_diff($designationIds, $existingDesignationIds));
 
-        $totalInMain = Gesimmo::query()
+        // --- Étape 1 : collecter TOUS les NumOrdre cibles ---
+        $allNumOrdres = DB::table('gesimmo')
             ->whereIn('idDesignation', $designationIds)
-            ->count();
+            ->pluck('NumOrdre')
+            ->map(fn ($v) => (int) $v)
+            ->all();
 
-        $totalInTrash = CorbeilleImmobilisation::query()
-            ->whereIn('idDesignation', $designationIds)
-            ->count();
-
-        if ($totalInMain === 0) {
-            $msg = "Aucune immobilisation a deplacer dans gesimmo pour ces idDesignation.";
-            if ($totalInTrash > 0) {
-                $msg .= " {$totalInTrash} immobilisation(s) sont deja en corbeille pour cette selection.";
+        if (empty($allNumOrdres)) {
+            $trashCount = DB::table('corbeille_immobilisations')
+                ->whereIn('idDesignation', $designationIds)->count();
+            $msg = 'Aucune immobilisation trouvee dans gesimmo pour ces idDesignation.';
+            if ($trashCount > 0) {
+                $msg .= " {$trashCount} sont deja en corbeille.";
             }
             if (!empty($missingDesignationIds)) {
                 $msg .= ' IDs introuvables: ' . implode(', ', $missingDesignationIds) . '.';
@@ -239,196 +241,175 @@ class ListeDesignations extends Component
             return;
         }
 
-        $moved = 0;
-        $skippedAlreadyInTrash = 0;
-        $deletedFromMain = 0;
-        $lockFailures = 0;
-        $batchReason = 'Suppression en lot par idDesignation depuis /designations';
-        $now = now();
+        // --- Étape 2 : exclure ceux déjà en corbeille ---
+        $alreadyInCorbeille = DB::table('corbeille_immobilisations')
+            ->whereIn('original_num_ordre', $allNumOrdres)
+            ->pluck('original_num_ordre')
+            ->map(fn ($v) => (int) $v)
+            ->all();
 
-        try {
-            // Echec plus rapide sur verrous pour permettre les retries.
-            DB::statement('SET SESSION innodb_lock_wait_timeout = 5');
+        $toProcess = array_values(array_diff($allNumOrdres, $alreadyInCorbeille));
+        $skippedAlreadyInTrash = count($allNumOrdres) - count($toProcess);
 
-            Gesimmo::query()
-                ->select('NumOrdre')
-                ->whereIn('idDesignation', $designationIds)
-                ->orderBy('NumOrdre')
-                ->chunkById(100, function ($chunk) use (
-                    &$moved,
-                    &$skippedAlreadyInTrash,
-                    &$deletedFromMain,
-                    &$lockFailures,
-                    $batchReason,
-                    $now
-                ): void {
-                    $numOrdresChunk = $chunk->pluck('NumOrdre')->map(fn ($v) => (int) $v)->values()->all();
-                    if (empty($numOrdresChunk)) {
-                        return;
-                    }
-
-                    $rows = DB::table('gesimmo as g')
-                        ->leftJoinSub(
-                            DB::table('codes')
-                                ->select('idGesimmo', DB::raw('MAX(barcode) as barcode'))
-                                ->groupBy('idGesimmo'),
-                            'c',
-                            fn ($join) => $join->on('c.idGesimmo', '=', 'g.NumOrdre')
-                        )
-                        ->leftJoin('designation as d', 'd.id', '=', 'g.idDesignation')
-                        ->leftJoin('emplacement as e', 'e.idEmplacement', '=', 'g.idEmplacement')
-                        ->leftJoin('affectation as a', 'a.idAffectation', '=', 'e.idAffectation')
-                        ->leftJoin('localisation as l', 'l.idLocalisation', '=', 'e.idLocalisation')
-                        ->select([
-                            'g.NumOrdre as original_num_ordre',
-                            'g.idDesignation',
-                            'g.idCategorie',
-                            'g.idEtat',
-                            'g.idEmplacement',
-                            'g.idNatJur',
-                            'g.idSF',
-                            'g.DateAcquisition',
-                            'g.Observations',
-                            'c.barcode',
-                            'e.Emplacement as emplacement_label',
-                            'e.CodeEmplacement as emplacement_code',
-                            'e.idAffectation as emplacement_id_affectation',
-                            'e.idLocalisation as emplacement_id_localisation',
-                            'a.Affectation as affectation_label',
-                            'l.Localisation as localisation_label',
-                            'd.designation as designation_label',
-                        ])
-                        ->whereIn('g.NumOrdre', $numOrdresChunk)
-                        ->get();
-
-                    foreach ($rows as $row) {
-                        $dateAcquisitionCorbeille = null;
-                        if (!empty($row->DateAcquisition)) {
-                            $year = (int) $row->DateAcquisition;
-                            if ($year >= 1900 && $year <= 9999) {
-                                $dateAcquisitionCorbeille = sprintf('%04d-01-01', $year);
-                            }
-                        }
-
-                        $payload = [
-                            'original_num_ordre' => $row->original_num_ordre,
-                            'idDesignation' => $row->idDesignation,
-                            'idCategorie' => $row->idCategorie,
-                            'idEtat' => $row->idEtat,
-                            'idEmplacement' => $row->idEmplacement,
-                            'idNatJur' => $row->idNatJur,
-                            'idSF' => $row->idSF,
-                            'DateAcquisition' => $dateAcquisitionCorbeille,
-                            'Observations' => $row->Observations,
-                            'barcode' => $row->barcode,
-                            'emplacement_label' => $row->emplacement_label,
-                            'emplacement_code' => $row->emplacement_code,
-                            'emplacement_id_affectation' => $row->emplacement_id_affectation,
-                            'emplacement_id_localisation' => $row->emplacement_id_localisation,
-                            'affectation_label' => $row->affectation_label,
-                            'localisation_label' => $row->localisation_label,
-                            'designation_label' => $row->designation_label,
-                            'deleted_reason' => $batchReason,
-                            'deleted_by_user_id' => auth()->id(),
-                            'deleted_at' => $now,
-                            'created_at' => $now,
-                            'updated_at' => $now,
-                        ];
-
-                        try {
-                            $movedThisRow = false;
-
-                            $this->runBulkChunkWithRetry(function () use ($payload, &$movedThisRow, &$deletedFromMain): void {
-                                $numOrdre = (int) $payload['original_num_ordre'];
-
-                                if (DB::table('corbeille_immobilisations')->where('original_num_ordre', $numOrdre)->exists()) {
-                                    return;
-                                }
-
-                                if (!DB::table('gesimmo')->where('NumOrdre', $numOrdre)->exists()) {
-                                    return;
-                                }
-
-                                DB::table('corbeille_immobilisations')->insert($payload);
-                                DB::table('codes')->where('idGesimmo', $numOrdre)->delete();
-                                $deletedFromMain += DB::table('gesimmo')->where('NumOrdre', $numOrdre)->delete();
-                                $movedThisRow = true;
-                            });
-
-                            if ($movedThisRow) {
-                                $moved++;
-                            } else {
-                                $skippedAlreadyInTrash++;
-                            }
-                        } catch (\Illuminate\Database\QueryException $e) {
-                            $mysqlErrorCode = (int) ($e->errorInfo[1] ?? 0);
-                            if (in_array($mysqlErrorCode, [1205, 1213], true)) {
-                                $lockFailures++;
-                                continue;
-                            }
-                            throw $e;
-                        }
-                    }
-                }, 'NumOrdre', 'NumOrdre');
-        } catch (\Throwable $e) {
-            $this->setBulkFeedback('error', "Operation impossible: {$e->getMessage()}");
+        if (empty($toProcess)) {
+            $this->setBulkFeedback('error',
+                "Les {$skippedAlreadyInTrash} immobilisation(s) de cette selection sont deja en corbeille.");
             return;
         }
 
-        $missingCount = count($missingDesignationIds);
-        $message = "Traitement termine: {$moved} immobilisation(s) envoyee(s) en corbeille, {$deletedFromMain} supprimee(s) de gesimmo";
+        // --- Étape 3 : traitement par lots de 200 ---
+        $batches = array_chunk($toProcess, 200);
+        $moved = 0;
+        $batchErrors = 0;
+        $batchReason = 'Suppression en lot par idDesignation depuis /designations';
+        $now = now();
+        $userId = auth()->id();
+        $maxRetries = 3;
 
+        DB::statement('SET SESSION innodb_lock_wait_timeout = 3');
+
+        foreach ($batches as $batchIds) {
+            $success = false;
+
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                try {
+                    $rows = $this->fetchEnrichedRows($batchIds);
+
+                    if ($rows->isEmpty()) {
+                        $success = true;
+                        break;
+                    }
+
+                    $insertData = [];
+                    foreach ($rows as $row) {
+                        $dateAcq = null;
+                        if (!empty($row->DateAcquisition)) {
+                            $year = (int) $row->DateAcquisition;
+                            if ($year >= 1900 && $year <= 9999) {
+                                $dateAcq = sprintf('%04d-01-01', $year);
+                            }
+                        }
+                        $insertData[$row->NumOrdre] = [
+                            'original_num_ordre' => $row->NumOrdre,
+                            'idDesignation'      => $row->idDesignation,
+                            'idCategorie'        => $row->idCategorie,
+                            'idEtat'             => $row->idEtat,
+                            'idEmplacement'      => $row->idEmplacement,
+                            'idNatJur'           => $row->idNatJur,
+                            'idSF'               => $row->idSF,
+                            'DateAcquisition'    => $dateAcq,
+                            'Observations'       => $row->Observations,
+                            'barcode'            => $row->barcode,
+                            'emplacement_label'  => $row->emplacement_label,
+                            'emplacement_code'   => $row->emplacement_code,
+                            'emplacement_id_affectation'   => $row->emplacement_id_affectation,
+                            'emplacement_id_localisation'  => $row->emplacement_id_localisation,
+                            'affectation_label'  => $row->affectation_label,
+                            'localisation_label' => $row->localisation_label,
+                            'designation_label'  => $row->designation_label,
+                            'deleted_reason'     => $batchReason,
+                            'deleted_by_user_id' => $userId,
+                            'deleted_at'         => $now,
+                            'created_at'         => $now,
+                            'updated_at'         => $now,
+                        ];
+                    }
+
+                    $actualIds = array_keys($insertData);
+
+                    DB::transaction(function () use (&$insertData, $actualIds, &$moved) {
+                        $existing = DB::table('corbeille_immobilisations')
+                            ->whereIn('original_num_ordre', $actualIds)
+                            ->pluck('original_num_ordre')
+                            ->map(fn ($v) => (int) $v)
+                            ->all();
+
+                        $toInsert = array_values(
+                            array_filter($insertData, fn ($r) => !in_array((int) $r['original_num_ordre'], $existing, true))
+                        );
+                        $idsToDelete = array_values(array_diff($actualIds, $existing));
+
+                        if (!empty($toInsert)) {
+                            DB::table('corbeille_immobilisations')->insert($toInsert);
+                        }
+                        if (!empty($idsToDelete)) {
+                            DB::table('codes')->whereIn('idGesimmo', $idsToDelete)->delete();
+                            $moved += DB::table('gesimmo')->whereIn('NumOrdre', $idsToDelete)->delete();
+                        }
+                    });
+
+                    $success = true;
+                    break;
+                } catch (\Illuminate\Database\QueryException $e) {
+                    $code = (int) ($e->errorInfo[1] ?? 0);
+                    if (in_array($code, [1205, 1213], true) && $attempt < $maxRetries) {
+                        usleep(150_000 * $attempt);
+                        continue;
+                    }
+                    throw $e;
+                }
+            }
+
+            if (!$success) {
+                $batchErrors++;
+            }
+        }
+
+        $message = "Traitement termine: {$moved} immobilisation(s) envoyee(s) en corbeille";
         if ($skippedAlreadyInTrash > 0) {
             $message .= ", {$skippedAlreadyInTrash} ignoree(s) (deja en corbeille)";
         }
-
-        if ($missingCount > 0) {
-            $message .= ", {$missingCount} idDesignation introuvable(s)";
+        if (!empty($missingDesignationIds)) {
+            $message .= ', ' . count($missingDesignationIds) . ' idDesignation introuvable(s)';
         }
-
-        if ($lockFailures > 0) {
-            $message .= ", {$lockFailures} echec(s) temporaire(s) de verrou";
+        if ($batchErrors > 0) {
+            $message .= ", {$batchErrors} lot(s) en echec (verrou)";
         }
-
         $message .= '.';
 
-        if ($moved === 0) {
-            $this->setBulkFeedback('error', $message);
-        } else {
-            $this->setBulkFeedback('success', $message);
-        }
+        $this->setBulkFeedback($moved > 0 ? 'success' : 'error', $message);
         $this->bulkDesignationIds = '';
         $this->resetPage();
+    }
+
+    /**
+     * Lit les données enrichies (labels) pour un lot de NumOrdre.
+     * Exécuté HORS transaction pour minimiser les verrous.
+     */
+    private function fetchEnrichedRows(array $numOrdres)
+    {
+        return DB::table('gesimmo as g')
+            ->leftJoinSub(
+                DB::table('codes')
+                    ->select('idGesimmo', DB::raw('MAX(barcode) as barcode'))
+                    ->groupBy('idGesimmo'),
+                'c',
+                fn ($join) => $join->on('c.idGesimmo', '=', 'g.NumOrdre')
+            )
+            ->leftJoin('designation as d', 'd.id', '=', 'g.idDesignation')
+            ->leftJoin('emplacement as e', 'e.idEmplacement', '=', 'g.idEmplacement')
+            ->leftJoin('affectation as a', 'a.idAffectation', '=', 'e.idAffectation')
+            ->leftJoin('localisation as l', 'l.idLocalisation', '=', 'e.idLocalisation')
+            ->select([
+                'g.NumOrdre', 'g.idDesignation', 'g.idCategorie', 'g.idEtat',
+                'g.idEmplacement', 'g.idNatJur', 'g.idSF', 'g.DateAcquisition',
+                'g.Observations', 'c.barcode',
+                'e.Emplacement as emplacement_label',
+                'e.CodeEmplacement as emplacement_code',
+                'e.idAffectation as emplacement_id_affectation',
+                'e.idLocalisation as emplacement_id_localisation',
+                'a.Affectation as affectation_label',
+                'l.Localisation as localisation_label',
+                'd.designation as designation_label',
+            ])
+            ->whereIn('g.NumOrdre', $numOrdres)
+            ->get();
     }
 
     private function setBulkFeedback(string $type, string $message): void
     {
         $this->bulkFeedbackType = $type;
         $this->bulkFeedbackMessage = $message;
-        session()->flash($type, $message);
-    }
-
-    private function runBulkChunkWithRetry(callable $callback, int $maxAttempts = 4): void
-    {
-        $attempt = 0;
-
-        while (true) {
-            $attempt++;
-
-            try {
-                DB::transaction($callback, 1);
-                return;
-            } catch (\Illuminate\Database\QueryException $e) {
-                $mysqlErrorCode = (int) ($e->errorInfo[1] ?? 0);
-                $isLockError = in_array($mysqlErrorCode, [1205, 1213], true);
-
-                if (!$isLockError || $attempt >= $maxAttempts) {
-                    throw $e;
-                }
-
-                usleep(200000 * $attempt);
-            }
-        }
     }
 
     /**

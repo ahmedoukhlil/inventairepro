@@ -47,18 +47,36 @@
                         wire:model.defer="bulkDesignationIds"
                         rows="4"
                         placeholder="Exemple: 6121, 6170, 6183&#10;6200&#10;6201"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        wire:loading.attr="disabled"
+                        wire:target="moveImmosToTrashByDesignationIds"></textarea>
                 </div>
 
-                <div class="mt-3 flex justify-end">
+                <div class="mt-3 flex items-center justify-between">
+                    <div wire:loading wire:target="moveImmosToTrashByDesignationIds"
+                         class="flex items-center gap-2 text-sm text-indigo-700">
+                        <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        Traitement par lots en cours, veuillez patienter...
+                    </div>
+                    <div wire:loading.remove wire:target="moveImmosToTrashByDesignationIds">&nbsp;</div>
+
                     <button
                         wire:click="moveImmosToTrashByDesignationIds"
                         wire:confirm="Confirmer le deplacement en corbeille des immobilisations rattachees aux idDesignation saisis ?"
                         wire:loading.attr="disabled"
                         wire:target="moveImmosToTrashByDesignationIds"
-                        class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
+                        class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors">
                         <span wire:loading.remove wire:target="moveImmosToTrashByDesignationIds">Envoyer les immobilisations en corbeille</span>
-                        <span wire:loading wire:target="moveImmosToTrashByDesignationIds">Traitement en cours...</span>
+                        <span wire:loading wire:target="moveImmosToTrashByDesignationIds">
+                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            En cours...
+                        </span>
                     </button>
                 </div>
             </div>
