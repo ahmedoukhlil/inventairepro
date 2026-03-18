@@ -42,6 +42,7 @@
             });
         }
     }"
+    x-id="['searchable-combobox', 'searchable-listbox']"
     @click.outside="open = false"
     @keydown.escape="open = false"
     @keydown.arrow-down.prevent="open ? moveFocus('down') : (open = true)"
@@ -61,6 +62,11 @@
         type="button"
         @click="open = !open"
         :disabled="{{ $disabled ? 'true' : 'false' }}"
+        role="combobox"
+        aria-haspopup="listbox"
+        :aria-expanded="open.toString()"
+        :aria-controls="$id('searchable-listbox')"
+        :id="$id('searchable-combobox')"
         class="relative w-full bg-white border border-gray-300 rounded-lg shadow-sm pl-3 pr-10 py-2.5 text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-150 {{ $disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:border-indigo-400 hover:shadow-md' }} {{ $inputClass }}"
         :class="{ 
             'ring-2 ring-indigo-500 border-indigo-500 shadow-md': open,
@@ -81,16 +87,19 @@
         {{-- Icônes et actions --}}
         <span class="absolute inset-y-0 right-0 flex items-center pr-2 gap-1">
             @if($allowClear && $value)
-                <button
-                    type="button"
+                <span
+                    role="button"
+                    tabindex="0"
                     wire:click.stop="clear"
+                    @keydown.enter.prevent="$wire.clear()"
+                    @keydown.space.prevent="$wire.clear()"
                     class="p-1 rounded-md hover:bg-indigo-100 text-gray-400 hover:text-indigo-600 transition-colors"
                     title="Effacer la sélection"
                 >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                </button>
+                </span>
             @endif
             <svg 
                 class="h-5 w-5 text-gray-400 transition-all duration-200"
@@ -115,6 +124,9 @@
         x-transition:leave-start="transform opacity-100 scale-100"
         x-transition:leave-end="transform opacity-0 scale-95"
         x-ref="dropdown"
+        :id="$id('searchable-listbox')"
+        role="listbox"
+        :aria-labelledby="$id('searchable-combobox')"
         class="absolute mt-2 w-full bg-white shadow-xl rounded-xl border border-gray-200 overflow-hidden"
         style="max-height: 400px; z-index: 9999;"
     >
@@ -131,6 +143,8 @@
                     x-ref="searchInput"
                     wire:model.live.debounce.300ms="search"
                     placeholder="{{ $searchPlaceholder }}"
+                    :aria-controls="$id('searchable-listbox')"
+                    aria-label="{{ $searchPlaceholder }}"
                     class="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm transition-all"
                     @click.stop
                 >
@@ -147,7 +161,7 @@
                 @endif
             </div>
             {{-- Badge compteur --}}
-            <div class="mt-2 flex items-center justify-between text-xs text-gray-500">
+            <div class="mt-2 flex items-center justify-between text-xs text-gray-500" aria-live="polite">
                 <span class="flex items-center gap-1">
                     <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -168,6 +182,8 @@
                     wire:key="option-{{ $option['value'] }}-{{ $loop->index }}"
                     data-option-index="{{ $loop->index }}"
                     data-option-value="{{ $option['value'] }}"
+                    role="option"
+                    aria-selected="{{ $option['value'] == $value ? 'true' : 'false' }}"
                     wire:click="selectOption('{{ $option['value'] }}')"
                     @click="open = false; focusedIndex = -1"
                     @mouseenter="focusedIndex = {{ $loop->index }}"

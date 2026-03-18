@@ -39,18 +39,23 @@
 
         <!-- Filtres -->
         <div class="bg-white rounded-lg shadow p-4 mb-6">
+            <div wire:loading.delay wire:target="search,filterProduit,filterFournisseur,dateDebut,dateFin" class="mb-3 text-xs text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
+                Mise à jour en cours...
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Recherche</label>
                     <input type="text" 
                            wire:model.live.debounce.300ms="search" 
+                           wire:loading.attr="disabled"
+                           wire:target="search"
                            placeholder="Rechercher..."
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Produit</label>
-                    <select wire:model.live="filterProduit" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                    <select wire:model.live="filterProduit" wire:loading.attr="disabled" wire:target="filterProduit" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
                         <option value="">Tous les produits</option>
                         @foreach($produits as $produit)
                             <option value="{{ $produit->id }}">{{ $produit->libelle }}</option>
@@ -60,7 +65,7 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Fournisseur</label>
-                    <select wire:model.live="filterFournisseur" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                    <select wire:model.live="filterFournisseur" wire:loading.attr="disabled" wire:target="filterFournisseur" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
                         <option value="">Tous les fournisseurs</option>
                         @foreach($fournisseurs as $fournisseur)
                             <option value="{{ $fournisseur->id }}">{{ $fournisseur->libelle }}</option>
@@ -70,18 +75,19 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Date début</label>
-                    <input type="date" wire:model.live="dateDebut" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                    <input type="date" wire:model.live="dateDebut" wire:loading.attr="disabled" wire:target="dateDebut" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Date fin</label>
-                    <input type="date" wire:model.live="dateFin" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                    <input type="date" wire:model.live="dateFin" wire:loading.attr="disabled" wire:target="dateFin" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
                 </div>
             </div>
         </div>
 
         <!-- Liste -->
         <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
@@ -120,6 +126,7 @@
                     @endforelse
                 </tbody>
             </table>
+            </div>
         </div>
 
         <div class="mt-6">{{ $entrees->links() }}</div>

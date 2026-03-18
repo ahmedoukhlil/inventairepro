@@ -20,7 +20,7 @@
 }" :class="{ 'overflow-hidden': sidebarOpen && !isDesktop }">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
     {{-- PWA Meta Tags --}}
@@ -55,6 +55,19 @@
 
     <style>
         [x-cloak] { display: none !important; }
+        .sidebar-scroll-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .sidebar-scroll-hide::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+            display: none;
+        }
+        :where(a, button, input, select, textarea, [role="button"]):focus-visible {
+            outline: 2px solid #4f46e5;
+            outline-offset: 2px;
+        }
     </style>
 </head>
 <body class="font-sans antialiased bg-gray-50">
@@ -85,7 +98,7 @@
             </div>
 
             <!-- Navigation -->
-            <nav class="flex-1 overflow-y-auto py-4 px-3">
+            <nav class="sidebar-scroll-hide flex-1 overflow-y-auto py-4 px-3">
                 <ul class="space-y-1">
                     <!-- Dashboard -->
                     <li>

@@ -1,35 +1,20 @@
 <x-layouts.app>
-    <div class="space-y-4">
+    <div
+        class="space-y-4"
+        x-data="{
+            deleteModalOpen: false,
+            deleteAction: '',
+            deleteLabel: '',
+        }"
+    >
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">Corbeille des immobilisations</h1>
                 <p class="text-sm text-gray-500 mt-1">
-                    Restaurer, supprimer definitivement ou exporter les elements supprimes
+                    Restaurer, supprimer définitivement ou exporter les éléments supprimés
                 </p>
             </div>
         </div>
-
-        @if(session('success'))
-            <div class="rounded-lg bg-green-50 border border-green-200 p-4">
-                <div class="flex">
-                    <svg class="h-5 w-5 text-green-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                    </svg>
-                    <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
-                </div>
-            </div>
-        @endif
-
-        @if(session('error'))
-            <div class="rounded-lg bg-red-50 border border-red-200 p-4">
-                <div class="flex">
-                    <svg class="h-5 w-5 text-red-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                    </svg>
-                    <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
-                </div>
-            </div>
-        @endif
 
         @php
             $hasActiveFilters = !empty($filterDesignation) || !empty($filterEmplacement) || !empty($filterCategorie) || !empty($filterEtat) || !empty($filterNatJur) || !empty($filterSF) || !empty($filterDateAcquisition) || !empty($search);
@@ -46,8 +31,11 @@
                 </svg>
             </button>
 
-            <div x-show="open" x-collapse class="border-t border-gray-200 p-4">
-                <form method="GET" action="{{ route('corbeille.immobilisations.index') }}" class="space-y-4">
+            <div x-show="open" x-collapse class="border-t border-gray-200 p-4"
+                @option-selected.window="$nextTick(() => $refs.filterForm.submit())"
+                @option-cleared.window="$nextTick(() => $refs.filterForm.submit())"
+            >
+                <form x-ref="filterForm" method="GET" action="{{ route('corbeille.immobilisations.index') }}" class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div class="lg:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1" for="search">Recherche globale</label>
@@ -58,6 +46,7 @@
                                 value="{{ $search }}"
                                 placeholder="NumOrdre, designation, emplacement, categorie..."
                                 class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                                x-on:input.debounce.600ms="$refs.filterForm.submit()"
                             >
                         </div>
                         <div>
@@ -188,6 +177,7 @@
                                 value="{{ $filterDateAcquisition }}"
                                 placeholder="Ex: {{ now()->year }}"
                                 class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                                x-on:change="$refs.filterForm.submit()"
                             >
                         </div>
                     </div>
@@ -324,17 +314,17 @@
                                                 Restaurer
                                             </button>
                                         </form>
-                                        <form method="POST" action="{{ route('corbeille.immobilisations.force-delete', $row->id) }}">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button
-                                                type="submit"
-                                                class="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded hover:bg-red-700"
-                                                onclick="return confirm('Suppression definitive. Confirmer ?')"
-                                            >
-                                                Supprimer definitivement
-                                            </button>
-                                        </form>
+                                        <button
+                                            type="button"
+                                            class="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded hover:bg-red-700"
+                                            x-on:click="
+                                                deleteAction = @js(route('corbeille.immobilisations.force-delete', $row->id));
+                                                deleteLabel = @js(($row->designation_display ?? 'Immobilisation') . ' (#' . $row->original_num_ordre . ')');
+                                                deleteModalOpen = true;
+                                            "
+                                        >
+                                            Supprimer définitivement
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -352,6 +342,51 @@
 
         <div>
             {{ $rows->links() }}
+        </div>
+
+        <div
+            x-show="deleteModalOpen"
+            x-cloak
+            x-transition.opacity
+            class="fixed inset-0 z-50 flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-modal-title"
+        >
+            <div class="absolute inset-0 bg-black/50" x-on:click="deleteModalOpen = false"></div>
+
+            <div class="relative w-full max-w-lg rounded-xl bg-white shadow-xl border border-gray-200">
+                <div class="p-6">
+                    <h2 id="delete-modal-title" class="text-lg font-semibold text-gray-900">
+                        Confirmer la suppression définitive
+                    </h2>
+                    <p class="mt-2 text-sm text-gray-600">
+                        Cette action est irréversible. L'élément
+                        <span class="font-medium text-gray-900" x-text="deleteLabel"></span>
+                        sera supprimé définitivement.
+                    </p>
+                </div>
+
+                <div class="px-6 pb-6 flex items-center justify-end gap-3">
+                    <button
+                        type="button"
+                        class="px-4 py-2 text-sm font-medium rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        x-on:click="deleteModalOpen = false"
+                    >
+                        Annuler
+                    </button>
+                    <form method="POST" :action="deleteAction">
+                        @csrf
+                        @method('DELETE')
+                        <button
+                            type="submit"
+                            class="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700"
+                        >
+                            Confirmer la suppression
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 

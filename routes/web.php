@@ -346,52 +346,6 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
         */
         // Route::get('/settings', \App\Livewire\Settings\ParametresGeneraux::class)->name('settings.index');
 
-        /*
-        |------------------------------------------------------------------
-        | Gestion de Stock (Admin + Admin_stock) - Paramètres
-        |------------------------------------------------------------------
-        |
-        | Gestion des magasins, catégories, fournisseurs, demandeurs
-        |
-        */
-        Route::middleware(['stock'])->group(function () {
-            Route::prefix('stock')->name('stock.')->group(function () {
-            
-            // Magasins
-            Route::prefix('magasins')->name('magasins.')->group(function () {
-                Route::get('/', \App\Livewire\Stock\Magasins\ListeMagasins::class)->name('index');
-                Route::get('/create', \App\Livewire\Stock\Magasins\FormMagasin::class)->name('create');
-                Route::get('/{id}/edit', \App\Livewire\Stock\Magasins\FormMagasin::class)->name('edit');
-            });
-
-            // Catégories
-            Route::prefix('categories')->name('categories.')->group(function () {
-                Route::get('/', \App\Livewire\Stock\Categories\ListeCategories::class)->name('index');
-                Route::get('/create', \App\Livewire\Stock\Categories\FormCategorie::class)->name('create');
-                Route::get('/{id}/edit', \App\Livewire\Stock\Categories\FormCategorie::class)->name('edit');
-            });
-
-            // Fournisseurs
-            Route::prefix('fournisseurs')->name('fournisseurs.')->group(function () {
-                Route::get('/', \App\Livewire\Stock\Fournisseurs\ListeFournisseurs::class)->name('index');
-                Route::get('/create', \App\Livewire\Stock\Fournisseurs\FormFournisseur::class)->name('create');
-                Route::get('/{id}/edit', \App\Livewire\Stock\Fournisseurs\FormFournisseur::class)->name('edit');
-            });
-
-            // Demandeurs
-            Route::prefix('demandeurs')->name('demandeurs.')->group(function () {
-                Route::get('/', \App\Livewire\Stock\Demandeurs\ListeDemandeurs::class)->name('index');
-                Route::get('/create', \App\Livewire\Stock\Demandeurs\FormDemandeur::class)->name('create');
-                Route::get('/{id}/edit', \App\Livewire\Stock\Demandeurs\FormDemandeur::class)->name('edit');
-            });
-
-            // Entrées (Admin + Admin_stock uniquement)
-            Route::prefix('entrees')->name('entrees.')->group(function () {
-                Route::get('/', \App\Livewire\Stock\Entrees\ListeEntrees::class)->name('index');
-                Route::get('/create', \App\Livewire\Stock\Entrees\FormEntree::class)->name('create');
-            });
-            });
-        });
     });
 
     /*
@@ -421,6 +375,47 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
             Route::prefix('sorties')->name('sorties.')->group(function () {
                 Route::get('/', \App\Livewire\Stock\Sorties\ListeSorties::class)->name('index');
                 Route::get('/create', \App\Livewire\Stock\Sorties\FormSortie::class)->name('create');
+            });
+
+            /*
+            |------------------------------------------------------------------
+            | Gestion de Stock (Admin + Admin_stock) - Paramètres et Entrées
+            |------------------------------------------------------------------
+            */
+            Route::middleware(['stock'])->group(function () {
+                // Magasins
+                Route::prefix('magasins')->name('magasins.')->group(function () {
+                    Route::get('/', \App\Livewire\Stock\Magasins\ListeMagasins::class)->name('index');
+                    Route::get('/create', \App\Livewire\Stock\Magasins\FormMagasin::class)->name('create');
+                    Route::get('/{id}/edit', \App\Livewire\Stock\Magasins\FormMagasin::class)->name('edit');
+                });
+
+                // Catégories
+                Route::prefix('categories')->name('categories.')->group(function () {
+                    Route::get('/', \App\Livewire\Stock\Categories\ListeCategories::class)->name('index');
+                    Route::get('/create', \App\Livewire\Stock\Categories\FormCategorie::class)->name('create');
+                    Route::get('/{id}/edit', \App\Livewire\Stock\Categories\FormCategorie::class)->name('edit');
+                });
+
+                // Fournisseurs
+                Route::prefix('fournisseurs')->name('fournisseurs.')->group(function () {
+                    Route::get('/', \App\Livewire\Stock\Fournisseurs\ListeFournisseurs::class)->name('index');
+                    Route::get('/create', \App\Livewire\Stock\Fournisseurs\FormFournisseur::class)->name('create');
+                    Route::get('/{id}/edit', \App\Livewire\Stock\Fournisseurs\FormFournisseur::class)->name('edit');
+                });
+
+                // Demandeurs
+                Route::prefix('demandeurs')->name('demandeurs.')->group(function () {
+                    Route::get('/', \App\Livewire\Stock\Demandeurs\ListeDemandeurs::class)->name('index');
+                    Route::get('/create', \App\Livewire\Stock\Demandeurs\FormDemandeur::class)->name('create');
+                    Route::get('/{id}/edit', \App\Livewire\Stock\Demandeurs\FormDemandeur::class)->name('edit');
+                });
+
+                // Entrées (Admin + Admin_stock uniquement)
+                Route::prefix('entrees')->name('entrees.')->group(function () {
+                    Route::get('/', \App\Livewire\Stock\Entrees\ListeEntrees::class)->name('index');
+                    Route::get('/create', \App\Livewire\Stock\Entrees\FormEntree::class)->name('create');
+                });
             });
         });
     });

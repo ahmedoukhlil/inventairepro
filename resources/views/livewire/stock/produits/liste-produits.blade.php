@@ -40,6 +40,9 @@
 
         <!-- Filtres et recherche -->
         <div class="bg-white rounded-lg shadow p-4 mb-6">
+            <div wire:loading.delay wire:target="search,filterCategorie,filterMagasin,filterStatut,confirmDelete,delete" class="mb-3 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-3 py-2">
+                Mise à jour en cours...
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- Recherche -->
                 <div>
@@ -47,6 +50,8 @@
                     <div class="relative">
                         <input type="text" 
                                wire:model.live.debounce.300ms="search" 
+                               wire:loading.attr="disabled"
+                               wire:target="search"
                                placeholder="Rechercher..."
                                class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,6 +64,8 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
                     <select wire:model.live="filterCategorie" 
+                            wire:loading.attr="disabled"
+                            wire:target="filterCategorie"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="">Toutes les catégories</option>
                         @foreach($categories as $categorie)
@@ -71,6 +78,8 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Magasin</label>
                     <select wire:model.live="filterMagasin" 
+                            wire:loading.attr="disabled"
+                            wire:target="filterMagasin"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="">Tous les magasins</option>
                         @foreach($magasins as $magasin)
@@ -83,6 +92,8 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Statut stock</label>
                     <select wire:model.live="filterStatut" 
+                            wire:loading.attr="disabled"
+                            wire:target="filterStatut"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="">Tous les statuts</option>
                         <option value="alerte">🔴 En alerte</option>
@@ -95,6 +106,7 @@
 
         <!-- Liste des produits -->
         <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
@@ -152,7 +164,7 @@
                                 <a href="{{ route('stock.produits.show', $produit->id) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Détails</a>
                                 @if(auth()->check() && auth()->user()->canManageStock())
                                     <a href="{{ route('stock.produits.edit', $produit->id) }}" class="text-blue-600 hover:text-blue-900 mr-3">Modifier</a>
-                                    <button wire:click="confirmDelete({{ $produit->id }})" class="text-red-600 hover:text-red-900">Supprimer</button>
+                                    <button wire:click="confirmDelete({{ $produit->id }})" wire:loading.attr="disabled" wire:target="confirmDelete,delete" class="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed">Supprimer</button>
                                 @endif
                             </td>
                         </tr>
@@ -171,6 +183,7 @@
                     @endforelse
                 </tbody>
             </table>
+            </div>
         </div>
 
         <!-- Pagination -->
@@ -200,8 +213,8 @@
                             </div>
                         </div>
                         <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                            <button wire:click="delete" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 sm:ml-3 sm:w-auto sm:text-sm">Supprimer</button>
-                            <button wire:click="cancelDelete" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Annuler</button>
+                            <button wire:click="delete" wire:loading.attr="disabled" wire:target="delete" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto sm:text-sm">Supprimer</button>
+                            <button wire:click="cancelDelete" wire:loading.attr="disabled" wire:target="delete" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Annuler</button>
                         </div>
                     </div>
                 </div>

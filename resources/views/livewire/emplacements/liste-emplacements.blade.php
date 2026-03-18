@@ -177,6 +177,7 @@
                                         <a 
                                             href="{{ route('emplacements.show', $emplacement) }}"
                                             class="text-indigo-600 hover:text-indigo-900 transition-colors"
+                                            aria-label="Voir le QR code de l'emplacement {{ $emplacement->Emplacement }}"
                                             title="Voir QR Code">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
@@ -187,6 +188,7 @@
                                             <a 
                                                 href="{{ route('emplacements.edit', $emplacement) }}"
                                                 class="text-yellow-600 hover:text-yellow-900 transition-colors"
+                                                aria-label="Modifier l'emplacement {{ $emplacement->Emplacement }}"
                                                 title="Modifier">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -197,6 +199,7 @@
                                                 wire:click="deleteEmplacement({{ $emplacement->idEmplacement }})"
                                                 wire:confirm="Êtes-vous sûr ? Seules les immobilisations de cet emplacement seront déplacées vers la corbeille. L'emplacement sera conservé."
                                                 class="text-red-600 hover:text-red-900 transition-colors"
+                                                aria-label="Supprimer les immobilisations de l'emplacement {{ $emplacement->Emplacement }}"
                                                 title="Supprimer">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -252,26 +255,4 @@
         </div>
     </div>
 
-    {{-- Messages flash --}}
-    @if(session()->has('success'))
-        <div 
-            x-data="{ show: true }"
-            x-show="show"
-            x-init="setTimeout(() => show = false, 3000)"
-            x-transition
-            class="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @if(session()->has('error'))
-        <div 
-            x-data="{ show: true }"
-            x-show="show"
-            x-init="setTimeout(() => show = false, 5000)"
-            x-transition
-            class="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-            {{ session('error') }}
-        </div>
-    @endif
 </div>

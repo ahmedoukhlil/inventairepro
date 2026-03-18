@@ -20,7 +20,7 @@
 }" :class="{ 'overflow-hidden': sidebarOpen && !isDesktop }">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     
     
@@ -53,19 +53,35 @@
 
     <style>
         [x-cloak] { display: none !important; }
+        .sidebar-scroll-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .sidebar-scroll-hide::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+            display: none;
+        }
+        :where(a, button, input, select, textarea, [role="button"]):focus-visible {
+            outline: 2px solid #4f46e5;
+            outline-offset: 2px;
+        }
     </style>
 
     <?php echo $__env->yieldPushContent('styles'); ?>
 </head>
-<body class="font-sans antialiased bg-gray-50">
+<body class="font-sans antialiased bg-gray-50" @keydown.escape.window="if (!isDesktop) sidebarOpen = false">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-[9999] bg-indigo-600 text-white px-4 py-2 rounded-lg">
+        Aller au contenu principal
+    </a>
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
         <aside 
             x-show="sidebarOpen || isDesktop"
-            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter="transition ease-out duration-200"
             x-transition:enter-start="-translate-x-full"
             x-transition:enter-end="translate-x-0"
-            x-transition:leave="transition ease-in duration-300"
+            x-transition:leave="transition ease-in duration-200"
             x-transition:leave-start="translate-x-0"
             x-transition:leave-end="-translate-x-full"
             class="fixed md:static inset-y-0 left-0 z-50 w-64 bg-gray-800 text-white flex flex-col"
@@ -75,9 +91,9 @@
             <div class="flex items-center justify-between h-16 px-6 bg-gray-900 border-b border-gray-700">
                 <div class="flex items-center space-x-2">
                     <span class="text-2xl">📦</span>
-                    <span class="font-bold text-lg">Inventaire Pro</span>
+                    <span class="font-bold text-lg"><?php echo e(config('app.name', 'Inventaire Pro')); ?></span>
                 </div>
-                <button @click="sidebarOpen = false" class="md:hidden text-gray-400 hover:text-white">
+                <button @click="sidebarOpen = false" aria-label="Fermer le menu" class="md:hidden text-gray-400 hover:text-white">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
@@ -85,7 +101,7 @@
             </div>
 
             <!-- Navigation -->
-            <nav class="flex-1 overflow-y-auto py-4 px-3" x-data="{ openMenu: '<?php echo e(request()->routeIs('biens.*') || request()->routeIs('localisations.*') || request()->routeIs('affectations.*') || request()->routeIs('emplacements.*') || request()->routeIs('designations.*') || request()->routeIs('corbeille.immobilisations.*') ? 'immobilisations' : (request()->routeIs('stock.*') ? 'stock' : '')); ?>' }">
+            <nav class="sidebar-scroll-hide flex-1 overflow-y-auto py-4 px-3" x-data="{ openMenu: '<?php echo e(request()->routeIs('biens.*') || request()->routeIs('localisations.*') || request()->routeIs('affectations.*') || request()->routeIs('emplacements.*') || request()->routeIs('designations.*') || request()->routeIs('corbeille.immobilisations.*') ? 'immobilisations' : (request()->routeIs('stock.*') ? 'stock' : '')); ?>', openImmobilisationsSettings: <?php echo e(request()->routeIs('localisations.*') || request()->routeIs('affectations.*') || request()->routeIs('emplacements.*') || request()->routeIs('designations.*') ? 'true' : 'false'); ?>, openStockSettings: <?php echo e(request()->routeIs('stock.magasins.*') || request()->routeIs('stock.categories.*') || request()->routeIs('stock.fournisseurs.*') || request()->routeIs('stock.demandeurs.*') ? 'true' : 'false'); ?> }">
                 <ul class="space-y-1">
                     <!-- Dashboard -->
                     <li>
@@ -103,6 +119,8 @@
                             <!-- IMMOBILISATIONS - Menu avec sous-menus -->
                             <li>
                                 <button @click="openMenu = (openMenu === 'immobilisations') ? '' : 'immobilisations'" 
+                                        :aria-expanded="(openMenu === 'immobilisations').toString()"
+                                        aria-controls="menu-immobilisations"
                                         class="w-full flex items-center justify-between px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
                                         :class="{ 'bg-gray-700 text-white': openMenu === 'immobilisations' }">
                                     <div class="flex items-center">
@@ -116,7 +134,7 @@
                                     </svg>
                                 </button>
                                 
-                                <ul x-show="openMenu === 'immobilisations'" x-transition class="mt-2 space-y-1 pl-4">
+                                <ul id="menu-immobilisations" x-show="openMenu === 'immobilisations'" x-transition class="mt-2 space-y-1 pl-4">
                                     <!-- Liste des Immobilisations -->
                                     <li>
                                         <a href="<?php echo e(route('biens.index')); ?>" 
@@ -163,19 +181,21 @@
                                     </li>
 
                                     <!-- Paramètres - Accordéon -->
-                                    <li class="pt-2 mt-2 border-t border-gray-700" x-data="{ open: false }">
-                                        <button @click="open = !open" 
+                                    <li class="pt-2 mt-2 border-t border-gray-700">
+                                        <button @click="openImmobilisationsSettings = !openImmobilisationsSettings"
+                                                :aria-expanded="openImmobilisationsSettings.toString()"
+                                                aria-controls="menu-immobilisations-settings"
                                                 class="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors">
                                             <div class="flex items-center">
                                                 <span class="mr-2">⚙️</span>
                                                 <span class="text-xs font-semibold uppercase">Paramètres</span>
                                             </div>
-                                            <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': openImmobilisationsSettings }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                             </svg>
                                         </button>
                                         
-                                        <ul x-show="open" x-transition class="mt-1 space-y-1 pl-4">
+                                        <ul id="menu-immobilisations-settings" x-show="openImmobilisationsSettings" x-transition class="mt-1 space-y-1 pl-4">
                                             <!-- Localisations -->
                                             <li>
                                                 <a href="<?php echo e(route('localisations.index')); ?>" 
@@ -232,6 +252,8 @@
                         <?php if(auth()->check() && auth()->user()->canAccessStock()): ?>
                             <li>
                                 <button @click="openMenu = (openMenu === 'stock') ? '' : 'stock'" 
+                                        :aria-expanded="(openMenu === 'stock').toString()"
+                                        aria-controls="menu-stock"
                                         class="w-full flex items-center justify-between px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
                                         :class="{ 'bg-gray-700 text-white': openMenu === 'stock' }">
                                     <div class="flex items-center">
@@ -245,7 +267,7 @@
                                     </svg>
                                 </button>
                                 
-                                <ul x-show="openMenu === 'stock'" x-transition class="mt-2 space-y-1 pl-4">
+                                <ul id="menu-stock" x-show="openMenu === 'stock'" x-transition class="mt-2 space-y-1 pl-4">
                                     <!-- Dashboard Stock -->
                                     <li>
                                         <a href="<?php echo e(route('stock.dashboard')); ?>" 
@@ -286,19 +308,21 @@
 
                                     <!-- Paramètres (Admin + Admin_stock) - Accordéon -->
                                     <?php if(auth()->check() && auth()->user()->canManageStock()): ?>
-                                        <li class="pt-2 mt-2 border-t border-gray-700" x-data="{ open: false }">
-                                            <button @click="open = !open" 
+                                        <li class="pt-2 mt-2 border-t border-gray-700">
+                                            <button @click="openStockSettings = !openStockSettings"
+                                                    :aria-expanded="openStockSettings.toString()"
+                                                    aria-controls="menu-stock-settings"
                                                     class="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors">
                                                 <div class="flex items-center">
                                                     <span class="mr-2">⚙️</span>
                                                     <span class="text-xs font-semibold uppercase">Paramètres</span>
                                                 </div>
-                                                <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': openStockSettings }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                                 </svg>
                                             </button>
                                             
-                                            <ul x-show="open" x-transition class="mt-1 space-y-1 pl-4">
+                                            <ul id="menu-stock-settings" x-show="openStockSettings" x-transition class="mt-1 space-y-1 pl-4">
                                                 <li>
                                                     <a href="<?php echo e(route('stock.magasins.index')); ?>" 
                                                        class="flex items-center px-4 py-2 text-sm text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition-colors <?php echo e(request()->routeIs('stock.magasins.*') ? 'bg-gray-700 text-white' : ''); ?>">
@@ -371,17 +395,17 @@
             x-transition:leave="transition-opacity ease-linear duration-300"
             x-transition:leave-start="opacity-100"
             x-transition:leave-end="opacity-0"
-            class="fixed inset-0 bg-gray-600 bg-opacity-75 z-40 md:hidden"
+            class="fixed inset-0 bg-gray-900/40 z-40 md:hidden"
             x-cloak
         ></div>
 
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Header -->
-            <header class="bg-white border-b border-gray-200 shadow-sm h-16 flex items-center justify-between px-4 md:px-6 z-30">
+            <header class="sticky top-0 bg-white border-b border-gray-200 shadow-sm h-16 flex items-center justify-between px-4 md:px-6 z-30">
                 <!-- Left: Hamburger -->
                 <div class="flex items-center space-x-4">
-                    <button @click="sidebarOpen = !sidebarOpen" class="md:hidden text-gray-500 hover:text-gray-700">
+                    <button @click="sidebarOpen = !sidebarOpen" aria-label="Ouvrir le menu" class="md:hidden text-gray-500 hover:text-gray-700">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
@@ -445,16 +469,40 @@
             </header>
 
             <!-- Page Content -->
-            <main class="flex-1 overflow-y-auto bg-gray-50">
+            <main id="main-content" class="flex-1 overflow-y-auto bg-gray-50">
                 <!-- Main Content -->
                 <div class="p-4 md:p-6">
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session('success')): ?>
+                        <div class="mb-4 rounded-lg border border-green-200 border-l-4 border-l-green-500 bg-green-50 p-3 text-sm text-green-800" role="status" aria-live="polite">
+                            <?php echo e(session('success')); ?>
+
+                        </div>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session('error')): ?>
+                        <div class="mb-4 rounded-lg border border-red-200 border-l-4 border-l-red-500 bg-red-50 p-3 text-sm text-red-800" role="alert">
+                            <?php echo e(session('error')); ?>
+
+                        </div>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session('warning')): ?>
+                        <div class="mb-4 rounded-lg border border-yellow-200 border-l-4 border-l-yellow-500 bg-yellow-50 p-3 text-sm text-yellow-800" role="alert">
+                            <?php echo e(session('warning')); ?>
+
+                        </div>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session('info')): ?>
+                        <div class="mb-4 rounded-lg border border-blue-200 border-l-4 border-l-blue-500 bg-blue-50 p-3 text-sm text-blue-800" role="status" aria-live="polite">
+                            <?php echo e(session('info')); ?>
+
+                        </div>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     <?php echo e($slot); ?>
 
                 </div>
 
                 <!-- Footer -->
                 <footer class="bg-white border-t border-gray-200 px-4 md:px-6 py-4 mt-auto">
-                    <p class="text-sm text-gray-500 text-center">© 2025 Inventaire Pro</p>
+                    <p class="text-sm text-gray-500 text-center">© <?php echo e(now()->year); ?> <?php echo e(config('app.name', 'Inventaire Pro')); ?></p>
                 </footer>
             </main>
         </div>
