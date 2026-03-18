@@ -25,6 +25,33 @@
             </div>
         </div>
 
+        @if($isAdmin)
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <h2 class="text-base font-semibold text-gray-900">Suppression en lot par idDesignation</h2>
+                <p class="mt-1 text-sm text-gray-500">
+                    Collez les idDesignation (separes par virgules, espaces ou retours a la ligne).
+                    Les immobilisations rattachees seront deplacees vers la corbeille.
+                </p>
+
+                <div class="mt-3">
+                    <textarea
+                        wire:model.defer="bulkDesignationIds"
+                        rows="4"
+                        placeholder="Exemple: 6121, 6170, 6183&#10;6200&#10;6201"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                </div>
+
+                <div class="mt-3 flex justify-end">
+                    <button
+                        wire:click="moveImmosToTrashByDesignationIds"
+                        wire:confirm="Confirmer le deplacement en corbeille des immobilisations rattachees aux idDesignation saisis ?"
+                        class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
+                        Envoyer les immobilisations en corbeille
+                    </button>
+                </div>
+            </div>
+        @endif
+
         {{-- Barre de filtres (collapsible) --}}
         <div 
             x-data="{ open: false }"
