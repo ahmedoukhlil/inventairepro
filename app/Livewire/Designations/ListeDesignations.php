@@ -214,6 +214,26 @@ class ListeDesignations extends Component
 
         $missingDesignationIds = array_values(array_diff($designationIds, $existingDesignationIds));
 
+        $totalInMain = Gesimmo::query()
+            ->whereIn('idDesignation', $designationIds)
+            ->count();
+
+        $totalInTrash = CorbeilleImmobilisation::query()
+            ->whereIn('idDesignation', $designationIds)
+            ->count();
+
+        if ($totalInMain === 0) {
+            $msg = "Aucune immobilisation a deplacer dans gesimmo pour ces idDesignation.";
+            if ($totalInTrash > 0) {
+                $msg .= " {$totalInTrash} immobilisation(s) sont deja en corbeille pour cette selection.";
+            }
+            if (!empty($missingDesignationIds)) {
+                $msg .= ' IDs introuvables: ' . implode(', ', $missingDesignationIds) . '.';
+            }
+            session()->flash('error', $msg);
+            return;
+        }
+
         $moved = 0;
         $skippedAlreadyInTrash = 0;
         $deletedFromMain = 0;
