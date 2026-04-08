@@ -23,6 +23,7 @@ class TransfertBien extends Component
     public $biensSelectionnes = []; // Tableau d'objets Gesimmo chargés
     public $searchBien = ''; // Recherche dynamique pour les immobilisations
     public $raison = ''; // Raison du transfert (optionnel)
+    public $dernierGroupeId = null; // Groupe du dernier transfert effectué
 
     // Nouveau emplacement (hiérarchique)
     public $idLocalisation = '';
@@ -401,8 +402,9 @@ class TransfertBien extends Component
                 $message .= " {$transfertsEchoues} transfert(s) échoué(s) (déjà dans cet emplacement ou introuvable).";
             }
             session()->flash('success', $message);
+            $this->dernierGroupeId = $groupeId;
 
-            // Réinitialiser le formulaire
+            // Réinitialiser le formulaire (sauf dernierGroupeId)
             $this->reset(['bienIds', 'biensSelectionnes', 'idLocalisation', 'idAffectation', 'idEmplacement', 'searchBien', 'raison']);
 
         } catch (\Exception $e) {

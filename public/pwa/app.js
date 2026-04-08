@@ -633,9 +633,9 @@ class AuthManager {
      * @returns {boolean} True si une session valide existe
      */
     static init() {
-        // Charger token et user depuis localStorage
-        const token = localStorage.getItem(CONFIG.STORAGE_KEY_TOKEN);
-        const userJson = localStorage.getItem(CONFIG.STORAGE_KEY_USER);
+        // Charger token et user depuis sessionStorage (sécurité : non accessible entre onglets/sessions)
+        const token = sessionStorage.getItem(CONFIG.STORAGE_KEY_TOKEN);
+        const userJson = sessionStorage.getItem(CONFIG.STORAGE_KEY_USER);
 
         if (token && userJson) {
             try {
@@ -668,9 +668,9 @@ class AuthManager {
                 AppState.token = response.token;
                 AppState.user = response.user;
 
-                // Sauvegarder dans localStorage
-                localStorage.setItem(CONFIG.STORAGE_KEY_TOKEN, response.token);
-                localStorage.setItem(CONFIG.STORAGE_KEY_USER, JSON.stringify(response.user));
+                // Sauvegarder le token en sessionStorage (sécurité vs XSS)
+                sessionStorage.setItem(CONFIG.STORAGE_KEY_TOKEN, response.token);
+                sessionStorage.setItem(CONFIG.STORAGE_KEY_USER, JSON.stringify(response.user));
 
                 console.log('[Auth] Connexion réussie:', response.user.users);
                 return { success: true };
@@ -701,9 +701,9 @@ class AuthManager {
         AppState.biensAttendus = [];
         AppState.scansSession = [];
 
-        // Nettoyer localStorage
-        localStorage.removeItem(CONFIG.STORAGE_KEY_TOKEN);
-        localStorage.removeItem(CONFIG.STORAGE_KEY_USER);
+        // Nettoyer les données d'authentification (sessionStorage) et les données offline (localStorage)
+        sessionStorage.removeItem(CONFIG.STORAGE_KEY_TOKEN);
+        sessionStorage.removeItem(CONFIG.STORAGE_KEY_USER);
         localStorage.removeItem(CONFIG.STORAGE_KEY_INVENTAIRE);
         localStorage.removeItem(CONFIG.STORAGE_KEY_LOCATION);
 

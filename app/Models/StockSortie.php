@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StockSortie extends Model
 {
-    use HasFactory;
+    use HasFactory, Auditable;
 
     protected $table = 'stock_sorties';
 
@@ -22,8 +24,9 @@ class StockSortie extends Model
     ];
 
     protected $casts = [
-        'date_sortie' => 'date',
-        'quantite' => 'integer',
+        'date_sortie'  => 'date',
+        'quantite'     => 'integer',
+        'observations' => 'encrypted', // Chiffré au repos (APP_KEY requis)
     ];
 
     /**
@@ -65,34 +68,32 @@ class StockSortie extends Model
     protected static function booted(): void
     {
         static::creating(function (StockSortie $sortie) {
-            // Vérifier si le stock est suffisant AVANT de créer la sortie
-            $produit = StockProduit::find($sortie->produit_id);
-            
-            if (!$produit) {
-                throw new \Exception('Produit introuvable');
-            }
-            
-            if (!$produit->peutRetirer($sortie->quantite)) {
+            // Décrément ATOMIQUE : on empêche toute divergence entre `stock_sorties`
+            // et `stock_produits.stock_actuel` (cas concurrence).
+            $affected = DB::table('stock_produits')
+                ->where('id', $sortie->produit_id)
+                ->where('stock_actuel', '>=', $sortie->quantite)
+                ->decrement('stock_actuel', $sortie->quantite);
+
+            if ($affected === 0) {
+                $stock = DB::table('stock_produits')
+                    ->where('id', $sortie->produit_id)
+                    ->value('stock_actuel');
+
                 throw new \Exception(
-                    "Stock insuffisant. Stock disponible : {$produit->stock_actuel}, demandé : {$sortie->quantite}"
+                    'Stock insuffisant. Stock disponible : ' . ($stock ?? 0) . ', demandé : ' . $sortie->quantite
                 );
             }
         });
 
-        static::created(function (StockSortie $sortie) {
-            // Mettre à jour le stock_actuel du produit
-            $produit = $sortie->produit;
-            if ($produit) {
-                $produit->retirerStock($sortie->quantite);
-            }
-        });
+        // Ne PAS utiliser `created` pour modifier le stock : le décrément atomique
+        // est déjà fait dans `creating`.
 
         static::deleting(function (StockSortie $sortie) {
             // Réajouter la quantité au stock si la sortie est supprimée
-            $produit = $sortie->produit;
-            if ($produit) {
-                $produit->ajouterStock($sortie->quantite);
-            }
+            DB::table('stock_produits')
+                ->where('id', $sortie->produit_id)
+                ->increment('stock_actuel', $sortie->quantite);
         });
     }
 

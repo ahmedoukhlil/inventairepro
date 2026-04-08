@@ -1,6 +1,9 @@
 // Service Worker pour Inventaire Pro
-const CACHE_NAME = 'inventaire-pro-v1';
-const RUNTIME_CACHE = 'inventaire-pro-runtime-v1';
+// VERSION est injectée via le paramètre d'URL lors de l'enregistrement (?v=...)
+// Chaque déploiement doit incrémenter cette valeur pour invalider le cache.
+const SW_VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
+const CACHE_NAME = `inventaire-pro-v${SW_VERSION}`;
+const RUNTIME_CACHE = `inventaire-pro-runtime-v${SW_VERSION}`;
 
 // Fichiers à mettre en cache lors de l'installation
 // Note: Les fichiers CSS/JS compilés par Vite sont gérés dynamiquement

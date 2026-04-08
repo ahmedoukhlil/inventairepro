@@ -27,8 +27,8 @@ class IsAdmin
 
         $user = Auth::user();
 
-        // Vérifier que l'utilisateur a le rôle administrateur
-        if ($user->role !== 'admin') {
+        // Vérifier via RBAC que l'utilisateur peut gérer les utilisateurs
+        if (!$user->canManageUsers()) {
             return redirect()->route('dashboard')
                 ->with('error', 'Accès réservé aux administrateurs');
         }

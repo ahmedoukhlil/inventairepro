@@ -86,10 +86,7 @@
         >
             <!-- Logo -->
             <div class="flex items-center justify-between h-16 px-6 bg-gray-900 border-b border-gray-700">
-                <div class="flex items-center space-x-2">
-                    <span class="text-2xl">📦</span>
-                    <span class="font-bold text-lg">Inventaire Pro</span>
-                </div>
+                <img src="{{ asset('images/Image1.jpg') }}" alt="Logo" class="h-9 w-auto object-contain rounded">
                 <button @click="sidebarOpen = false" class="md:hidden text-gray-400 hover:text-white">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -514,7 +511,7 @@
         // Enregistrement du Service Worker pour PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('{{ asset('sw.js') }}')
+                navigator.serviceWorker.register('{{ asset('sw.js') }}?v={{ filemtime(public_path('sw.js')) }}')
                     .then(function(registration) {
                         console.log('✅ Service Worker enregistré avec succès:', registration.scope);
                         

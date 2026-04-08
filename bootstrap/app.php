@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\IsAdmin::class,
             'inventory' => \App\Http\Middleware\CanManageInventaire::class,
             'stock' => \App\Http\Middleware\CanManageStock::class,
+            'stock.access' => \App\Http\Middleware\CanAccessStock::class,
             'session.timeout' => \App\Http\Middleware\CheckSessionTimeout::class,
         ]);
     })

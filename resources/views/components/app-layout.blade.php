@@ -1,5 +1,22 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data="{ sidebarOpen: false, profileOpen: false }" :class="{ 'overflow-hidden': sidebarOpen }">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
+    x-data="{
+        sidebarOpen: (window.innerWidth >= 768) || (window.localStorage && window.localStorage.getItem('sidebarOpen') === 'true'),
+        profileOpen: false,
+        isDesktop: window.innerWidth >= 768,
+        persistSidebarOpen(value) {
+            try {
+                // On persiste uniquement le choix utilisateur (pas le passage desktop automatique)
+                window.localStorage.setItem('sidebarOpen', value ? 'true' : 'false');
+            } catch (e) {
+                // ignore storage errors
+            }
+        },
+        init() {
+            this.isDesktop = window.innerWidth >= 768;
+            // On ne force pas `sidebarOpen` sur desktop (visibilité gérée par `x-show`).
+        }
+    }" :class="{ 'overflow-hidden': sidebarOpen }">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

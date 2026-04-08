@@ -33,7 +33,9 @@ Route::prefix('v1')->group(function () {
     | Routes pour l'authentification via l'API (utilise Sanctum)
     |
     */
-    Route::post('/login', [AuthController::class, 'login'])->name('api.login');
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle:5,1')
+        ->name('api.login');
     Route::post('/logout', [AuthController::class, 'logout'])
         ->middleware('auth:sanctum')
         ->name('api.logout');

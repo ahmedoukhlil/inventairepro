@@ -204,6 +204,9 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
             
             // Historique des transferts
             Route::get('/transfert/historique', \App\Livewire\Biens\HistoriqueTransferts::class)->name('transfert.historique');
+
+            // Décision de transfert (impression)
+            Route::get('/transfert/{groupeId}/decision', [\App\Http\Controllers\DecisionTransfertController::class, 'imprimer'])->name('transfert.decision');
             
             // Édition d'un bien
             Route::get('/{bien}/edit', \App\Livewire\Biens\FormBien::class)->name('edit');
@@ -333,7 +336,7 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
             Route::get('/{user}/edit', \App\Livewire\Users\FormUser::class)->name('edit');
             
             // Gestion des rôles RBAC
-            Route::get('/roles', \App\Livewire\Users\GestionRoles::class)->name('roles');
+            Route::get('/roles', \App\Livewire\Users\RolesPermissions::class)->name('roles');
         });
 
         /*
@@ -356,7 +359,7 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
     | Ces routes sont accessibles aux administrateurs, admin_stock et agents.
     |
     */
-    Route::middleware(['inventory'])->group(function () {
+    Route::middleware(['stock.access'])->group(function () {
         
         Route::prefix('stock')->name('stock.')->group(function () {
             
@@ -375,6 +378,7 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
             Route::prefix('sorties')->name('sorties.')->group(function () {
                 Route::get('/', \App\Livewire\Stock\Sorties\ListeSorties::class)->name('index');
                 Route::get('/create', \App\Livewire\Stock\Sorties\FormSortie::class)->name('create');
+                Route::get('/{sortie}/bon', [\App\Http\Controllers\BonSortieController::class, 'imprimer'])->name('bon');
             });
 
             /*
@@ -411,11 +415,12 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
                     Route::get('/{id}/edit', \App\Livewire\Stock\Demandeurs\FormDemandeur::class)->name('edit');
                 });
 
-                // Entrées (Admin + Admin_stock uniquement)
-                Route::prefix('entrees')->name('entrees.')->group(function () {
-                    Route::get('/', \App\Livewire\Stock\Entrees\ListeEntrees::class)->name('index');
-                    Route::get('/create', \App\Livewire\Stock\Entrees\FormEntree::class)->name('create');
-                });
+            });
+
+            // Entrées (admin_stock + agent_stock : contrôlé par le composant via canCreateEntree)
+            Route::prefix('entrees')->name('entrees.')->group(function () {
+                Route::get('/', \App\Livewire\Stock\Entrees\ListeEntrees::class)->name('index');
+                Route::get('/create', \App\Livewire\Stock\Entrees\FormEntree::class)->name('create');
             });
         });
     });

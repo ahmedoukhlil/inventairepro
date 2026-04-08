@@ -5,69 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Inventaire Pro') }} - Connexion</title>
+    <title>{{ config('app.name', 'Gesimmos') }} — Connexion</title>
 
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet">
 
-    <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
-    
-    <!-- Alpine.js -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="font-sans antialiased bg-gray-100">
-    <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gradient-to-br from-indigo-100 via-blue-50 to-indigo-200 relative overflow-hidden">
-        <!-- Background decoration -->
-        <div class="absolute inset-0 overflow-hidden pointer-events-none">
-            <div class="absolute -top-40 -right-40 w-80 h-80 bg-indigo-300 rounded-full mix-blend-multiply filter blur-xl opacity-40 animate-blob"></div>
-            <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-40 animate-blob animation-delay-2000"></div>
-            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-400 rounded-full mix-blend-multiply filter blur-xl opacity-35 animate-blob animation-delay-4000"></div>
-        </div>
+<body class="font-sans antialiased">
 
-        <div class="relative z-10 w-full">
-            <div class="mb-8">
-                {{ $logo }}
-            </div>
+<div class="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex flex-col items-center justify-center px-4 py-12">
 
-            <div class="w-full sm:max-w-md mx-auto mt-6 px-6 py-8 bg-white shadow-2xl overflow-hidden sm:rounded-2xl border-2 border-indigo-200">
-                {{ $slot }}
-            </div>
-        </div>
+    {{-- Décoration arrière-plan --}}
+    <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div class="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl"></div>
+        <div class="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-indigo-800/20 blur-3xl"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl"></div>
     </div>
 
-    <style>
-        @keyframes blob {
-            0% {
-                transform: translate(0px, 0px) scale(1);
-            }
-            33% {
-                transform: translate(30px, -50px) scale(1.1);
-            }
-            66% {
-                transform: translate(-20px, 20px) scale(0.9);
-            }
-            100% {
-                transform: translate(0px, 0px) scale(1);
-            }
-        }
+    <div class="relative z-10 w-full max-w-md">
+        {{-- Logo / branding --}}
+        <div class="mb-8 text-center">
+            {{ $logo }}
+        </div>
 
-        .animate-blob {
-            animation: blob 7s infinite;
-        }
+        {{-- Card --}}
+        <div class="rounded-2xl border border-white/10 bg-white/[0.06] backdrop-blur-xl shadow-2xl px-8 py-8">
+            {{ $slot }}
+        </div>
 
-        .animation-delay-2000 {
-            animation-delay: 2s;
-        }
+        <p class="mt-6 text-center text-xs text-slate-500">
+            © {{ now()->year }} {{ config('app.name') }}
+        </p>
+    </div>
+</div>
 
-        .animation-delay-4000 {
-            animation-delay: 4s;
-        }
-    </style>
-
-    @livewireScripts
+@livewireScripts
 </body>
 </html>
-

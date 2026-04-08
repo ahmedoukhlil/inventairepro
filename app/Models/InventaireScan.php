@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
+
 class InventaireScan extends Model
 {
-    use HasFactory;
+    use HasFactory, Auditable;
 
     protected $fillable = [
         'inventaire_id',
@@ -24,7 +26,8 @@ class InventaireScan extends Model
     ];
 
     protected $casts = [
-        'date_scan' => 'datetime',
+        'date_scan'   => 'datetime',
+        'commentaire' => 'encrypted', // Chiffré au repos (APP_KEY requis)
     ];
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Livewire\Users;
 
 use App\Models\User;
+use App\Models\Role;
 use Livewire\Component;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -51,10 +52,21 @@ class FormUser extends Component
      */
     public function getRoleOptionsProperty()
     {
-        return [
-            ['value' => 'agent', 'text' => 'Agent'],
-            ['value' => 'admin', 'text' => 'Administrateur'],
-        ];
+        try {
+            return Role::query()
+                ->orderBy('id')
+                ->get()
+                ->map(fn ($role) => [
+                    'value' => $role->key,
+                    'text' => $role->label,
+                ])->toArray();
+        } catch (\Throwable $e) {
+            // Legacy fallback (avant migration RBAC)
+            return [
+                ['value' => 'agent', 'text' => 'Agent inventaire'],
+                ['value' => 'admin', 'text' => 'Superadmin'],
+            ];
+        }
     }
 
     /**
@@ -62,6 +74,16 @@ class FormUser extends Component
      */
     protected function rules(): array
     {
+        $roleKeys = [];
+        try {
+            $roleKeys = Role::query()->pluck('key')->toArray();
+        } catch (\Throwable $e) {
+            $roleKeys = ['admin', 'agent'];
+        }
+        if (empty($roleKeys)) {
+            $roleKeys = ['admin', 'agent'];
+        }
+
         $rules = [
             'users' => [
                 'required',
@@ -71,7 +93,7 @@ class FormUser extends Component
                     ? 'unique:users,users,' . $this->userId . ',idUser'
                     : 'unique:users,users',
             ],
-            'role' => 'required|in:admin,agent',
+            'role' => 'required|in:' . implode(',', array_values($roleKeys)),
         ];
 
         // Règles pour le mot de passe

@@ -27,8 +27,8 @@ class CanManageInventaire
 
         $user = Auth::user();
 
-        // Vérifier que l'utilisateur a le rôle admin, admin_stock ou agent
-        if (!in_array($user->role, ['admin', 'admin_stock', 'agent'])) {
+        // Vérifier via RBAC
+        if (!$user->canManageInventaire()) {
             return redirect()->route('dashboard')
                 ->with('error', 'Accès non autorisé');
         }

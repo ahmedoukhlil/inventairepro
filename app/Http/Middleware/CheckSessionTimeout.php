@@ -22,7 +22,7 @@ class CheckSessionTimeout
         // Vérifier si l'utilisateur est authentifié
         if (Auth::check()) {
             $lastActivity = session('last_activity');
-            $timeout = 30 * 60; // 30 minutes en secondes
+            $timeout = 10 * 60; // 10 minutes en secondes
 
             // Si last_activity n'existe pas, l'initialiser
             if (!$lastActivity) {
@@ -39,7 +39,7 @@ class CheckSessionTimeout
 
                     // Rediriger vers la page de connexion avec un message
                     return redirect()->route('login')
-                        ->with('error', 'Votre session a expiré après 30 minutes d\'inactivité. Veuillez vous reconnecter.');
+                        ->with('error', 'Votre session a expiré après 10 minutes d\'inactivité. Veuillez vous reconnecter.');
                 }
             }
 

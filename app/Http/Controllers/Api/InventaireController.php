@@ -34,6 +34,12 @@ class InventaireController extends Controller
      */
     public function current()
     {
+        // Sécurité RBAC : seuls les rôles autorisés à l’inventaire peuvent consulter via PWA
+        $user = auth()->user();
+        if (!$user || !$user->canManageInventaire()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
         $inventaire = Inventaire::whereIn('statut', ['en_preparation', 'en_cours'])
             ->with(['creator'])
             ->withCount(['inventaireLocalisations', 'inventaireScans'])
@@ -73,6 +79,11 @@ class InventaireController extends Controller
      */
     public function mesLocalisations(Request $request, Inventaire $inventaire)
     {
+        $user = $request->user();
+        if (!$user || !$user->canManageInventaire()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
         $userId = $request->user()->idUser;
 
         $localisations = InventaireLocalisation::where('inventaire_id', $inventaire->id)
@@ -118,6 +129,11 @@ class InventaireController extends Controller
      */
     public function demarrerLocalisation(Request $request, Inventaire $inventaire)
     {
+        $user = $request->user();
+        if (!$user || !$user->canManageInventaire()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
         // Valider les données
         $validated = $request->validate([
             'localisation_id' => 'required|exists:localisation,idLocalisation',
@@ -214,6 +230,11 @@ class InventaireController extends Controller
      */
     public function terminerLocalisation(Request $request, Inventaire $inventaire)
     {
+        $user = $request->user();
+        if (!$user || !$user->canManageInventaire()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
         $validated = $request->validate([
             'inventaire_localisation_id' => 'required|exists:inventaire_localisations,id',
         ]);
@@ -266,6 +287,11 @@ class InventaireController extends Controller
      */
     public function stats(Inventaire $inventaire)
     {
+        $user = auth()->user();
+        if (!$user || !$user->canManageInventaire()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
         $stats = $this->inventaireService->calculerStatistiques($inventaire);
 
         return response()->json([

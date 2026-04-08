@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,7 @@ use Carbon\Carbon;
 
 class Inventaire extends Model
 {
-    use HasFactory;
+    use HasFactory, Auditable;
 
     protected $fillable = [
         'annee',
@@ -24,9 +25,10 @@ class Inventaire extends Model
     ];
 
     protected $casts = [
-        'annee' => 'integer',
-        'date_debut' => 'date',
-        'date_fin' => 'date',
+        'annee'       => 'integer',
+        'date_debut'  => 'date',
+        'date_fin'    => 'date',
+        'observation' => 'encrypted', // Chiffré au repos (APP_KEY requis)
     ];
 
     /**
@@ -152,25 +154,58 @@ class Inventaire extends Model
      */
 
     /**
-     * Démarre l'inventaire (passe le statut à 'en_cours')
+     * Transitions autorisées par statut source.
+     * 'cloture' est un état terminal : aucune transition possible.
+     */
+    private const TRANSITIONS = [
+        'en_preparation' => ['en_cours'],
+        'en_cours'       => ['cloture'],
+        'cloture'        => [],
+    ];
+
+    /**
+     * Vérifie si la transition vers $newStatut est légale depuis le statut actuel.
+     */
+    public function canTransitionTo(string $newStatut): bool
+    {
+        $allowed = self::TRANSITIONS[$this->statut] ?? [];
+        return in_array($newStatut, $allowed, true);
+    }
+
+    /**
+     * Démarre l'inventaire (passe le statut à 'en_cours').
+     * Lève une exception si la transition n'est pas autorisée.
      */
     public function demarrer(): bool
     {
+        if (!$this->canTransitionTo('en_cours')) {
+            throw new \LogicException(
+                "Transition invalide : impossible de passer de \"{$this->statut}\" à \"en_cours\"."
+            );
+        }
+
         return $this->update([
-            'statut' => 'en_cours',
+            'statut'     => 'en_cours',
             'date_debut' => now(),
         ]);
     }
 
     /**
-     * Clôture l'inventaire (passe le statut à 'cloture' et définit la date de fin)
+     * Clôture l'inventaire (passe le statut à 'cloture' et définit la date de fin).
+     * Lève une exception si la transition n'est pas autorisée.
      */
     public function cloturer(?int $closedBy = null): bool
     {
+        if (!$this->canTransitionTo('cloture')) {
+            throw new \LogicException(
+                "Transition invalide : impossible de clôturer un inventaire au statut \"{$this->statut}\"."
+            );
+        }
+
         return $this->update([
-            'statut' => 'cloture',
-            'date_fin' => now(),
-            'closed_by' => $closedBy ?? auth()->id(),
+            'statut'     => 'cloture',
+            'date_fin'   => now(),
+            'closed_by'  => $closedBy ?? auth()->id(),
         ]);
     }
 

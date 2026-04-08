@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
@@ -13,7 +14,12 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens;
+    use HasFactory, Notifiable, HasApiTokens, Auditable;
+
+    protected function auditExcludeFields(): array
+    {
+        return ['mdp', 'remember_token'];
+    }
 
     /**
      * Nom de la table
@@ -88,6 +94,13 @@ class User extends Authenticatable
             // Pas de cast 'hashed' car les mots de passe peuvent être en clair dans la base existante
         ];
     }
+
+    /**
+     * Cache des clés de permissions du rôle courant.
+     *
+     * @var array<int, string>|null
+     */
+    private ?array $permissionKeysCache = null;
 
     /**
      * RELATIONS
@@ -195,10 +208,22 @@ class User extends Authenticatable
      */
     public function getRoleNameAttribute(): string
     {
-        return match($this->role) {
+        // Préférer la définition RBAC en base (si disponible)
+        try {
+            $role = Role::query()->where('key', $this->role)->first();
+            if ($role) {
+                return $role->label;
+            }
+        } catch (\Throwable $e) {
+            // si table absente (avant migration), on retombe sur le legacy
+        }
+
+        // Legacy (ancien fonctionnement)
+        return match ($this->role) {
             'admin' => 'Administrateur',
             'admin_stock' => 'Admin Stock',
-            'agent' => 'Agent',
+            'agent' => 'Agent inventaire',
+            'agent_stock' => 'Agent stock',
             default => 'Non défini',
         };
     }
@@ -237,7 +262,7 @@ class User extends Authenticatable
      */
     public function canManageInventaire(): bool
     {
-        return in_array($this->role, ['admin', 'admin_stock', 'agent']);
+        return $this->hasPermission('inventaire.access');
     }
 
     /**
@@ -246,7 +271,7 @@ class User extends Authenticatable
      */
     public function canAccessStock(): bool
     {
-        return in_array($this->role, ['admin', 'admin_stock', 'agent']);
+        return $this->hasPermission('stock.access');
     }
 
     /**
@@ -259,7 +284,7 @@ class User extends Authenticatable
      */
     public function canManageStock(): bool
     {
-        return $this->isAdmin() || $this->isAdminStock();
+        return $this->hasPermission('stock.manage_references');
     }
 
     /**
@@ -268,7 +293,7 @@ class User extends Authenticatable
      */
     public function canCreateEntree(): bool
     {
-        return $this->isAdmin() || $this->isAdminStock();
+        return $this->hasPermission('stock.create_entree');
     }
 
     /**
@@ -277,7 +302,7 @@ class User extends Authenticatable
      */
     public function canCreateSortie(): bool
     {
-        return $this->isAdmin() || $this->isAdminStock() || $this->isAgent();
+        return $this->hasPermission('stock.create_sortie');
     }
 
     /**
@@ -286,7 +311,50 @@ class User extends Authenticatable
      */
     public function canViewAllMovements(): bool
     {
-        return $this->isAdmin() || $this->isAdminStock();
+        return $this->hasPermission('stock.view_all_movements');
+    }
+
+    /**
+     * Vérifie si l'utilisateur peut gérer les utilisateurs (CRUD comptes).
+     * Réservé au rôle admin uniquement.
+     */
+    public function canManageUsers(): bool
+    {
+        return $this->hasPermission('users.manage');
+    }
+
+    /**
+     * Vérifie une permission RBAC.
+     */
+    private function hasPermission(string $permissionKey): bool
+    {
+        // Cache pour éviter de recalculer à chaque appel dans la sidebar
+        if ($this->permissionKeysCache !== null) {
+            return in_array($permissionKey, $this->permissionKeysCache, true);
+        }
+
+        try {
+            $role = Role::query()->where('key', $this->role)->first();
+            if (!$role) {
+                $this->permissionKeysCache = [];
+                return false;
+            }
+
+            $this->permissionKeysCache = $role->permissions()->pluck('key')->all();
+            return in_array($permissionKey, $this->permissionKeysCache, true);
+        } catch (\Throwable $e) {
+            // Si les tables RBAC n'existent pas encore, retomber sur le legacy pour ne pas casser dev.
+            return match ($permissionKey) {
+                'inventaire.access' => in_array($this->role, ['admin', 'admin_stock', 'agent'], true),
+                'stock.access' => in_array($this->role, ['admin', 'admin_stock', 'agent'], true),
+                'users.manage' => $this->isAdmin(),
+                'stock.manage_references' => $this->isAdmin() || $this->isAdminStock(),
+                'stock.create_entree' => $this->isAdmin() || $this->isAdminStock(),
+                'stock.create_sortie' => $this->isAdmin() || $this->isAdminStock() || $this->isAgent(),
+                'stock.view_all_movements' => $this->isAdmin() || $this->isAdminStock(),
+                default => false,
+            };
+        }
     }
 
     /**

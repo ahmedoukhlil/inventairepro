@@ -13,11 +13,8 @@
     >
         <!-- Logo -->
         <div class="flex items-center justify-between h-14 sm:h-16 px-4 sm:px-6 bg-gray-900 border-b border-gray-700">
-            <div class="flex items-center space-x-2 min-w-0">
-                <span class="text-xl sm:text-2xl flex-shrink-0">📦</span>
-                <span class="font-bold text-base sm:text-lg truncate">Inventaire Pro</span>
-            </div>
-            <button @click="sidebarOpen = false" class="md:hidden text-gray-400 hover:text-white p-1 flex-shrink-0">
+            <img src="{{ asset('images/Image1.jpg') }}" alt="Logo" class="h-9 w-auto object-contain rounded">
+            <button @click="sidebarOpen = false; persistSidebarOpen(false)" class="md:hidden text-gray-400 hover:text-white p-1 flex-shrink-0">
                 <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -139,7 +136,7 @@
     <!-- Overlay mobile -->
     <div 
         x-show="sidebarOpen"
-        @click="sidebarOpen = false"
+        @click="sidebarOpen = false; persistSidebarOpen(false)"
         x-transition:enter="transition-opacity ease-linear duration-300"
         x-transition:enter-start="opacity-0"
         x-transition:enter-end="opacity-100"
@@ -156,7 +153,7 @@
         <header class="bg-white border-b border-gray-200 shadow-sm min-h-16 flex items-center justify-between px-3 sm:px-4 md:px-6 py-2 sm:py-0 z-30">
             <!-- Left: Hamburger + Breadcrumb -->
             <div class="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
-                <button @click="sidebarOpen = !sidebarOpen" class="md:hidden text-gray-500 hover:text-gray-700 p-1.5 sm:p-2 flex-shrink-0">
+                <button @click="sidebarOpen = !sidebarOpen; persistSidebarOpen(sidebarOpen)" class="md:hidden text-gray-500 hover:text-gray-700 p-1.5 sm:p-2 flex-shrink-0">
                     <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                     </svg>

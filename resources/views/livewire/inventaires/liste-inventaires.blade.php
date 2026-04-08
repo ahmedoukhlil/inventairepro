@@ -363,27 +363,4 @@
     {{-- ========================================== --}}
     {{-- MESSAGES FLASH                             --}}
     {{-- ========================================== --}}
-    @if(session()->has('success'))
-        <div
-            x-data="{ show: true }"
-            x-show="show"
-            x-init="setTimeout(() => show = false, 4000)"
-            x-transition
-            class="fixed bottom-4 right-4 flex items-center gap-3 bg-green-600 text-white px-5 py-3 rounded-xl shadow-lg z-50">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @if(session()->has('error'))
-        <div
-            x-data="{ show: true }"
-            x-show="show"
-            x-init="setTimeout(() => show = false, 6000)"
-            x-transition
-            class="fixed bottom-4 right-4 flex items-center gap-3 bg-red-600 text-white px-5 py-3 rounded-xl shadow-lg z-50">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            {{ session('error') }}
-        </div>
-    @endif
 </div>

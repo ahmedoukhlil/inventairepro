@@ -1,18 +1,16 @@
-<x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                    Collecte initiale
-                </h2>
-                <p class="text-sm text-gray-500 mt-1">
-                    Consultation des lignes de collecte et export Excel
-                </p>
-            </div>
+<x-layouts.app>
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                Collecte initiale
+            </h2>
+            <p class="text-sm text-gray-500 mt-1">
+                Consultation des lignes de collecte et export Excel
+            </p>
         </div>
-    </x-slot>
+    </div>
 
-    <div class="space-y-4">
+    <div class="space-y-4 mt-4">
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <form method="GET" action="{{ route('collecte-initiale.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
@@ -98,4 +96,4 @@
             {{ $rows->links() }}
         </div>
     </div>
-</x-app-layout>
+</x-layouts.app>

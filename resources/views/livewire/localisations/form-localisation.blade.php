@@ -146,26 +146,5 @@
     </form>
 
     {{-- Messages flash --}}
-    @if(session()->has('success'))
-        <div 
-            x-data="{ show: true }"
-            x-show="show"
-            x-init="setTimeout(() => show = false, 3000)"
-            x-transition
-            class="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @if(session()->has('error'))
-        <div 
-            x-data="{ show: true }"
-            x-show="show"
-            x-init="setTimeout(() => show = false, 5000)"
-            x-transition
-            class="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-            {{ session('error') }}
-        </div>
-    @endif
 </div>
 

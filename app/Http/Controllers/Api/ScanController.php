@@ -42,6 +42,12 @@ class ScanController extends Controller
      */
     public function store(Request $request, Inventaire $inventaire)
     {
+        // Sécurité RBAC : seuls les rôles autorisés à l'inventaire peuvent scanner via PWA
+        $user = $request->user();
+        if (!$user || !$user->canManageInventaire()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
         // Valider les données
         // Note: bien_id peut être un NumOrdre (Gesimmo) ou un id (Bien) selon le workflow
         $validated = $request->validate([
@@ -142,6 +148,12 @@ class ScanController extends Controller
      */
     public function storeBatch(Request $request, Inventaire $inventaire)
     {
+        // Sécurité RBAC : seuls les rôles autorisés à l'inventaire peuvent scanner via PWA
+        $user = $request->user();
+        if (!$user || !$user->canManageInventaire()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
         $validated = $request->validate([
             'scans' => 'required|array|min:1|max:50',
             'scans.*.inventaire_localisation_id' => 'required|exists:inventaire_localisations,id',
@@ -308,6 +320,11 @@ class ScanController extends Controller
      */
     public function getEtats()
     {
+        $user = auth()->user();
+        if (!$user || !$user->canManageInventaire()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
         // 3 états : Neuf, Bon état, Défectueuse
         $etats = Etat::orderBy('Etat')
             ->get(['idEtat', 'Etat', 'CodeEtat'])
@@ -372,6 +389,11 @@ class ScanController extends Controller
      */
     public function getBiensByEmplacement($idEmplacement)
     {
+        $user = auth()->user();
+        if (!$user || !$user->canManageInventaire()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
         // Vérifier que l'emplacement existe
         $emplacement = Emplacement::with(['localisation', 'affectation'])
             ->find($idEmplacement);
@@ -437,6 +459,12 @@ class ScanController extends Controller
      */
     public function storeScanEmplacement(Request $request, $idEmplacement)
     {
+        // Sécurité RBAC : seuls les rôles autorisés à l'inventaire peuvent scanner via PWA
+        $user = $request->user();
+        if (!$user || !$user->canManageInventaire()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
         $validated = $request->validate([
             'num_ordre' => 'required|integer', // Code-barres 128 = NumOrdre
         ]);
@@ -511,6 +539,9 @@ class ScanController extends Controller
         ]);
 
         $user = $request->user();
+        if (!$user || !$user->canManageInventaire()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
 
         // Vérifier que l'emplacement existe
         $emplacement = Emplacement::with(['localisation', 'affectation'])

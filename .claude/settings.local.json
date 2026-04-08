@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -l \"c:/xampp/htdocs/gesimmos/storage/framework/views/594007ef2202053c234ada309761381e.php\")"
+    ]
+  }
+}

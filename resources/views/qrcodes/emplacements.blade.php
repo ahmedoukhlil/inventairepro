@@ -1,8 +1,4 @@
-@extends('layouts.app')
-
-@section('title', 'QR Codes des Emplacements')
-
-@section('content')
+<x-layouts.app>
 <div class="container mx-auto px-4 py-6">
     {{-- Header --}}
     <div class="mb-6">
@@ -205,4 +201,4 @@ function printSelected() {
 }
 </script>
 @endpush
-@endsection
+</x-layouts.app>
