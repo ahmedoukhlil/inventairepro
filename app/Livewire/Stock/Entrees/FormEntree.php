@@ -39,7 +39,7 @@ class FormEntree extends Component
             'date_entree' => 'required|date',
             'reference_commande' => 'nullable|string|max:255',
             'produit_id' => 'required|exists:stock_produits,id',
-            'fournisseur_id' => 'required|exists:stock_fournisseurs,id',
+            'fournisseur_id' => 'nullable|exists:stock_fournisseurs,id',
             'quantite' => 'required|integer|min:1',
             'observations' => 'nullable|string',
         ];
@@ -51,7 +51,6 @@ class FormEntree extends Component
             'date_entree.required' => 'La date d\'entrée est obligatoire.',
             'produit_id.required' => 'Le produit est obligatoire.',
             'produit_id.exists' => 'Le produit sélectionné n\'existe pas.',
-            'fournisseur_id.required' => 'Le fournisseur est obligatoire.',
             'fournisseur_id.exists' => 'Le fournisseur sélectionné n\'existe pas.',
             'quantite.required' => 'La quantité est obligatoire.',
             'quantite.integer' => 'La quantité doit être un nombre entier.',
@@ -113,12 +112,6 @@ class FormEntree extends Component
         // Vérifier que le produit est sélectionné
         if (empty($this->produit_id)) {
             session()->flash('error', 'Veuillez sélectionner un produit.');
-            return;
-        }
-
-        // Vérifier que le fournisseur est sélectionné
-        if (empty($this->fournisseur_id)) {
-            session()->flash('error', 'Veuillez sélectionner un fournisseur.');
             return;
         }
 

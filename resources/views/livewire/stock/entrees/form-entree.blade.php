@@ -165,7 +165,8 @@
                     {{-- Fournisseur --}}
                     <div class="md:col-span-2">
                         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                            Fournisseur <span class="text-red-500">*</span>
+                            Fournisseur
+                            <span class="font-normal text-gray-400 normal-case">(optionnel)</span>
                         </label>
                         <livewire:components.searchable-select
                             wire:model.live="fournisseur_id"
