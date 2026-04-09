@@ -12,238 +12,235 @@ class StockProduitSeeder extends Seeder
         // Résolution des catégories par libellé
         $cats = DB::table('stock_categories')->pluck('id', 'libelle');
 
-        $c_hotel   = $cats['Matériel hôtelier']                       ?? null;
-        $c_elec    = $cats['Matériel électrique']                      ?? null;
-        $c_info    = $cats['Matériel informatique']                    ?? null;
-        $c_sono    = $cats['Matériel de sonorisation et audiovisuel']  ?? null;
-        $c_bureau  = $cats['Fournitures de bureau']                    ?? null;
-        $c_menage  = $cats['Matériels et produits de ménage']          ?? null;
-        $c_jardin  = $cats['Matériels de jardinage']                   ?? null;
-        $c_plomb   = $cats['Matériel de plomberie']                    ?? null;
+        $c_hotel  = $cats['Matériel hôtelier']                      ?? null;
+        $c_elec   = $cats['Matériel électrique']                     ?? null;
+        $c_info   = $cats['Matériel informatique']                   ?? null;
+        $c_sono   = $cats['Matériel de sonorisation et audiovisuel'] ?? null;
+        $c_bureau = $cats['Fournitures de bureau']                   ?? null;
+        $c_menage = $cats['Matériels et produits de ménage']         ?? null;
+        $c_jardin = $cats['Matériels de jardinage']                  ?? null;
+        $c_plomb  = $cats['Matériel de plomberie']                   ?? null;
 
-        // Récupérer le premier magasin disponible comme défaut
-        $magasinDefault = DB::table('stock_magasins')->value('id');
+        // Résolution des magasins par nom
+        $mags = DB::table('stock_magasins')->pluck('id', 'magasin');
 
-        if (!$magasinDefault) {
-            $this->command->error('Aucun magasin trouvé. Créez au moins un magasin avant de lancer ce seeder.');
+        $mCentral = $mags['Magasin central'] ?? null;
+        $m217     = $mags['M217']            ?? null;
+        $m231     = $mags['M231']            ?? null;
+        $mExt     = $mags['M EXT']           ?? null;
+
+        if (!$mCentral || !$m217 || !$m231 || !$mExt) {
+            $this->command->error('Magasins introuvables. Lancez d\'abord StockMagasinSeeder.');
             return;
         }
 
+        // [libelle, categorie_id, magasin_id, seuil_alerte]
         $produits = [
             // Matériel hôtelier
-            ['libelle' => 'THE ACHORA',                          'categorie_id' => $c_hotel,  'seuil_alerte' => 2],
-            ['libelle' => 'THE 20/20',                           'categorie_id' => $c_hotel,  'seuil_alerte' => 2],
-            ['libelle' => 'THE ASMA',                            'categorie_id' => $c_hotel,  'seuil_alerte' => 10],
-            ['libelle' => 'Sucre tropicana',                     'categorie_id' => $c_hotel,  'seuil_alerte' => 5],
-            ['libelle' => 'SUCRE TROPICANNA',                    'categorie_id' => $c_hotel,  'seuil_alerte' => 2],
-            ['libelle' => 'GOLD PETIT',                          'categorie_id' => $c_hotel,  'seuil_alerte' => 2],
-            ['libelle' => 'GOLD GRAND',                          'categorie_id' => $c_hotel,  'seuil_alerte' => 2],
-            ['libelle' => 'THE AZWAD',                           'categorie_id' => $c_hotel,  'seuil_alerte' => 20],
-            ['libelle' => 'THE MALIKA',                          'categorie_id' => $c_hotel,  'seuil_alerte' => 20],
-            ['libelle' => 'CARTONS DE GABELETS À CAFÉ',          'categorie_id' => $c_hotel,  'seuil_alerte' => 1000],
-            ['libelle' => 'CARTONS DE GOBELETS CAFÉ petit',      'categorie_id' => $c_hotel,  'seuil_alerte' => 1000],
-            ['libelle' => 'MACHINE À CAFÉ DULCE GUSTO',          'categorie_id' => $c_hotel,  'seuil_alerte' => 1],
-            ['libelle' => 'SAC SUCRE',                           'categorie_id' => $c_hotel,  'seuil_alerte' => 1],
-            ['libelle' => 'Carton d\'eau',                       'categorie_id' => $c_hotel,  'seuil_alerte' => 10],
+            ['THE ACHORA',                          $c_hotel,  $m217,  2],
+            ['THE 20/20',                           $c_hotel,  $m217,  2],
+            ['Sucre tropicana',                     $c_hotel,  $m217,  5],
+            ['SUCRE TROPICANNA',                    $c_hotel,  $m217,  2],
+            ['CAFE GOLD PETIT',                     $c_hotel,  $m217,  2],
+            ['CAFE GOLD GRAND',                     $c_hotel,  $m217,  2],
+            ['THE AZWAD',                           $c_hotel,  $m217,  20],
+            ['THE MALIKA',                          $c_hotel,  $m217,  20],
+            ['BIQUETS CAPSUL ESPRESSO',             $c_hotel,  $m217,  50],
+            ['CARTONS DE GABELETS A CAFE',          $c_hotel,  $m217,  1000],
+            ['CARTONS DE GOBELETS CAFE petit',      $c_hotel,  $m217,  1000],
+            ['MACHINE CAFE DULCE GUSTO',            $c_hotel,  $m217,  1],
+            ['SAC SUCRE',                           $c_hotel,  $m217,  2],
 
             // Matériel électrique
-            ['libelle' => 'Remote control barrière',             'categorie_id' => $c_elec,   'seuil_alerte' => 5],
-            ['libelle' => 'INGLEEC E14 40W',                     'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'LED G45',                             'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'RADIATEUR',                           'categorie_id' => $c_elec,   'seuil_alerte' => 0],
-            ['libelle' => 'CASQUE TRADUCTION',                   'categorie_id' => $c_elec,   'seuil_alerte' => 0],
-            ['libelle' => 'CASQUE UTILISER SIMPLE',              'categorie_id' => $c_elec,   'seuil_alerte' => 0],
-            ['libelle' => 'MEGA STAR',                           'categorie_id' => $c_elec,   'seuil_alerte' => 5],
-            ['libelle' => 'PETIT JACK',                          'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'CABLE XLR RS',                        'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'CONTACT EMPOLE',                      'categorie_id' => $c_elec,   'seuil_alerte' => 5],
-            ['libelle' => 'SAC POUBELLE 240L',                   'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'GOULET',                              'categorie_id' => $c_elec,   'seuil_alerte' => 5],
-            ['libelle' => 'VERRE AMPOLE E27',                    'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'ROLE DE GNE',                         'categorie_id' => $c_elec,   'seuil_alerte' => 5],
-            ['libelle' => 'POLET 4516',                          'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'AMPOLE 18W',                          'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'AMPOLE 35W',                          'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'AMPOLE RECLET 220',                   'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'CONTACTEUR 25 POUR UP',               'categorie_id' => $c_elec,   'seuil_alerte' => 5],
-            ['libelle' => 'DOMINOH',                             'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'AMPOLE 10W',                          'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'AMPOLE 4W',                           'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'AMPOLE E12 35W',                      'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'AMPOLE 50W ANJELEC',                  'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'POLET 36',                            'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'AMPOLE SOLEF',                        'categorie_id' => $c_elec,   'seuil_alerte' => 20],
-            ['libelle' => 'AMPOLE FONTEN',                       'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'TRANFOL',                             'categorie_id' => $c_elec,   'seuil_alerte' => 20],
-            ['libelle' => 'PRIS ITRANCH',                        'categorie_id' => $c_elec,   'seuil_alerte' => 20],
-            ['libelle' => 'PROJECTEUR 200W',                     'categorie_id' => $c_elec,   'seuil_alerte' => 5],
-            ['libelle' => 'ATACH',                               'categorie_id' => $c_elec,   'seuil_alerte' => 100],
-            ['libelle' => 'CHEVIE',                              'categorie_id' => $c_elec,   'seuil_alerte' => 100],
-            ['libelle' => 'AMPOLE SPOTE 12W',                    'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'D OUI',                               'categorie_id' => $c_elec,   'seuil_alerte' => 5],
-            ['libelle' => 'CABLE 4*4',                           'categorie_id' => $c_elec,   'seuil_alerte' => 5],
-            ['libelle' => 'BATTRIE AA',                          'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'BATTRIE AAA',                         'categorie_id' => $c_elec,   'seuil_alerte' => 80],
-            ['libelle' => 'BATTRIE 9V',                          'categorie_id' => $c_elec,   'seuil_alerte' => 5],
-            ['libelle' => 'Ampole led 480',                      'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'Ampole 8W',                           'categorie_id' => $c_elec,   'seuil_alerte' => 2],
-            ['libelle' => 'Ampole 35w',                          'categorie_id' => $c_elec,   'seuil_alerte' => 10],
-            ['libelle' => 'Ampole 9W',                           'categorie_id' => $c_elec,   'seuil_alerte' => 1],
-            ['libelle' => '117A COLEUR',                         'categorie_id' => $c_elec,   'seuil_alerte' => 5],
-            ['libelle' => '217 A',                               'categorie_id' => $c_elec,   'seuil_alerte' => 5],
-            ['libelle' => 'Adaptateur',                          'categorie_id' => $c_elec,   'seuil_alerte' => 5],
-
-            // Matériel informatique
-            ['libelle' => 'TYPE C P10 HOTV 11N1',                'categorie_id' => $c_info,   'seuil_alerte' => 5],
-            ['libelle' => 'Mac Co',                              'categorie_id' => $c_info,   'seuil_alerte' => 5],
-            ['libelle' => 'type c to Mac',                       'categorie_id' => $c_info,   'seuil_alerte' => 5],
-            ['libelle' => 'Clavier avec souris sans fille',      'categorie_id' => $c_info,   'seuil_alerte' => 4],
-            ['libelle' => 'ordinateur portable acer',            'categorie_id' => $c_info,   'seuil_alerte' => 1],
-            ['libelle' => 'CANON COLEUR G 3020',                 'categorie_id' => $c_info,   'seuil_alerte' => 5],
-            ['libelle' => 'CARTOUCHE 1106A',                     'categorie_id' => $c_info,   'seuil_alerte' => 5],
-            ['libelle' => 'Crouche CE 2',                        'categorie_id' => $c_info,   'seuil_alerte' => 10],
-            ['libelle' => 'Crouche CE 278A',                     'categorie_id' => $c_info,   'seuil_alerte' => 10],
-            ['libelle' => 'D OUI',                               'categorie_id' => $c_info,   'seuil_alerte' => 10],
-            ['libelle' => 'HP 17A',                              'categorie_id' => $c_info,   'seuil_alerte' => 5],
-            ['libelle' => 'TK 1110',                             'categorie_id' => $c_info,   'seuil_alerte' => 5],
-            ['libelle' => 'TK 4105',                             'categorie_id' => $c_info,   'seuil_alerte' => 5],
-            ['libelle' => 'TK 5230C',                            'categorie_id' => $c_info,   'seuil_alerte' => 5],
-            ['libelle' => 'TK 5230K',                            'categorie_id' => $c_info,   'seuil_alerte' => 5],
-            ['libelle' => 'TK 5230M',                            'categorie_id' => $c_info,   'seuil_alerte' => 5],
-            ['libelle' => 'TK 1150',                             'categorie_id' => $c_info,   'seuil_alerte' => 5],
-            ['libelle' => 'TK160',                               'categorie_id' => $c_info,   'seuil_alerte' => 5],
-            ['libelle' => 'TK 6305Y',                            'categorie_id' => $c_info,   'seuil_alerte' => 5],
-
-            // Matériel de sonorisation et audiovisuel
-            ['libelle' => 'RADIATEUR TRADUCTION',                'categorie_id' => $c_sono,   'seuil_alerte' => 0],
-            ['libelle' => 'GRAND JACK PETIT JACK',               'categorie_id' => $c_sono,   'seuil_alerte' => 10],
-            ['libelle' => 'récepteur',                           'categorie_id' => $c_sono,   'seuil_alerte' => 20],
-            ['libelle' => 'contact américain',                   'categorie_id' => $c_sono,   'seuil_alerte' => 5],
-            ['libelle' => 'BOITE ARCHIVE',                       'categorie_id' => $c_sono,   'seuil_alerte' => 10],
-            ['libelle' => 'sacs poubelle 12w',                   'categorie_id' => $c_sono,   'seuil_alerte' => 5],
-            ['libelle' => 'TP LINK',                             'categorie_id' => $c_sono,   'seuil_alerte' => 5],
-            ['libelle' => 'PATCH RJ 45 100M',                    'categorie_id' => $c_sono,   'seuil_alerte' => 5],
-            ['libelle' => 'N0BWI',                               'categorie_id' => $c_sono,   'seuil_alerte' => 5],
-            ['libelle' => 'SPOTLIGHT PRÉSENTATION',              'categorie_id' => $c_sono,   'seuil_alerte' => 5],
-            ['libelle' => 'RAP 72 PRO WIFI ACCESS POINT',        'categorie_id' => $c_sono,   'seuil_alerte' => 5],
-            ['libelle' => 'HDMI 2.0 CABLE OPTICAL 80M',         'categorie_id' => $c_sono,   'seuil_alerte' => 10],
-            ['libelle' => 'HDMI 10M',                            'categorie_id' => $c_sono,   'seuil_alerte' => 10],
-            ['libelle' => 'HDMI CABLE',                          'categorie_id' => $c_sono,   'seuil_alerte' => 10],
-            ['libelle' => 'RJ 45 CABLE 15M',                     'categorie_id' => $c_sono,   'seuil_alerte' => 10],
-            ['libelle' => 'RJ 45 CABLE 3M',                      'categorie_id' => $c_sono,   'seuil_alerte' => 10],
-            ['libelle' => 'HDMI EXTENDER',                       'categorie_id' => $c_sono,   'seuil_alerte' => 5],
-            ['libelle' => 'CASQUE SIMPLE',                       'categorie_id' => $c_sono,   'seuil_alerte' => 50],
-            ['libelle' => 'CASQUE VIP',                          'categorie_id' => $c_sono,   'seuil_alerte' => 10],
-            ['libelle' => 'CASQUE VVIP',                         'categorie_id' => $c_sono,   'seuil_alerte' => 10],
-
-            // Matériels et produits de ménage
-            ['libelle' => 'Nettoyage mossant',                   'categorie_id' => $c_menage, 'seuil_alerte' => 10],
-            ['libelle' => 'PROMSE',                              'categorie_id' => $c_menage, 'seuil_alerte' => 10],
-            ['libelle' => 'sacs poubelle 240L',                  'categorie_id' => $c_menage, 'seuil_alerte' => 10],
-            ['libelle' => 'Corbeille de poubelle 240L',          'categorie_id' => $c_menage, 'seuil_alerte' => 5],
-            ['libelle' => 'Papier fresh',                        'categorie_id' => $c_menage, 'seuil_alerte' => 35],
-            ['libelle' => 'vif liquide ménage',                  'categorie_id' => $c_menage, 'seuil_alerte' => 5],
-            ['libelle' => 'Ajachs poudre',                       'categorie_id' => $c_menage, 'seuil_alerte' => 12],
-            ['libelle' => 'Balais africains',                    'categorie_id' => $c_menage, 'seuil_alerte' => 10],
-            ['libelle' => 'Balais pour ménage',                  'categorie_id' => $c_menage, 'seuil_alerte' => 10],
-            ['libelle' => 'Désinfectant',                        'categorie_id' => $c_menage, 'seuil_alerte' => 10],
-            ['libelle' => 'Insecticide baygon',                  'categorie_id' => $c_menage, 'seuil_alerte' => 24],
-            ['libelle' => 'Lessive',                             'categorie_id' => $c_menage, 'seuil_alerte' => 24],
-            ['libelle' => 'Désodorisant WC',                     'categorie_id' => $c_menage, 'seuil_alerte' => 12],
-            ['libelle' => 'Original cotail',                     'categorie_id' => $c_menage, 'seuil_alerte' => 30],
-            ['libelle' => 'Original coton mouchoir',             'categorie_id' => $c_menage, 'seuil_alerte' => 20],
-            ['libelle' => 'Papiers hygiéniques',                 'categorie_id' => $c_menage, 'seuil_alerte' => 20],
-            ['libelle' => 'Piles + brosse',                      'categorie_id' => $c_menage, 'seuil_alerte' => 10],
-            ['libelle' => 'Savon en morceaux',                   'categorie_id' => $c_menage, 'seuil_alerte' => 20],
-            ['libelle' => 'Savon en poudre omo',                 'categorie_id' => $c_menage, 'seuil_alerte' => 150],
-            ['libelle' => 'Savon liquide lave vitres',           'categorie_id' => $c_menage, 'seuil_alerte' => 15],
-            ['libelle' => 'Savon liquide multi-usage',           'categorie_id' => $c_menage, 'seuil_alerte' => 12],
-            ['libelle' => 'Serpillère',                          'categorie_id' => $c_menage, 'seuil_alerte' => 10],
-            ['libelle' => 'Brouette',                            'categorie_id' => $c_menage, 'seuil_alerte' => 1],
-            ['libelle' => 'Ciseaux de jar',                      'categorie_id' => $c_menage, 'seuil_alerte' => 5],
-
-            // Matériels de jardinage
-            ['libelle' => 'Corbeille de poubelle 240L jardinage','categorie_id' => $c_jardin, 'seuil_alerte' => 5],
-            ['libelle' => 'Engrais',                             'categorie_id' => $c_jardin, 'seuil_alerte' => 5],
-            ['libelle' => 'Torches',                             'categorie_id' => $c_jardin, 'seuil_alerte' => 3],
-            ['libelle' => 'Gant nettoyage',                      'categorie_id' => $c_jardin, 'seuil_alerte' => 5],
-            ['libelle' => 'Gant pour engrais',                   'categorie_id' => $c_jardin, 'seuil_alerte' => 2],
-            ['libelle' => 'Piquet',                              'categorie_id' => $c_jardin, 'seuil_alerte' => 3],
-            ['libelle' => 'Piquets',                             'categorie_id' => $c_jardin, 'seuil_alerte' => 3],
-            ['libelle' => 'Raccord d\'arrosage',                 'categorie_id' => $c_jardin, 'seuil_alerte' => 5],
-            ['libelle' => 'Râteaux',                             'categorie_id' => $c_jardin, 'seuil_alerte' => 3],
-            ['libelle' => 'Poubelle 20L',                        'categorie_id' => $c_jardin, 'seuil_alerte' => 5],
-            ['libelle' => 'Sécateur de jardin',                  'categorie_id' => $c_jardin, 'seuil_alerte' => 5],
-            ['libelle' => 'Balais extérieur',                    'categorie_id' => $c_jardin, 'seuil_alerte' => 5],
-            ['libelle' => 'Gant pour jardinage',                 'categorie_id' => $c_jardin, 'seuil_alerte' => 5],
-            ['libelle' => 'Sécateur de jardin 240L',             'categorie_id' => $c_jardin, 'seuil_alerte' => 5],
-
-            // Fournitures de bureau
-            ['libelle' => 'Agrafeuse',                           'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
-            ['libelle' => 'Block notes',                         'categorie_id' => $c_bureau, 'seuil_alerte' => 30],
-            ['libelle' => 'Boite d\'archive',                    'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
-            ['libelle' => 'Classeur chrono',                     'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
-            ['libelle' => 'Classeur de registre de courrier',    'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
-            ['libelle' => 'Scotch',                              'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
-            ['libelle' => 'Enveloppe A4',                        'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
-            ['libelle' => 'Enveloppe Rectangulaire',             'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
-            ['libelle' => 'Marqueurs',                           'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
-            ['libelle' => 'Sachet clips 25mm',                   'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
-            ['libelle' => 'Sachet clips 50 MM',                  'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
-            ['libelle' => 'Papier de tableau',                   'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
-            ['libelle' => 'Papier note repositionnables (PF) Petit', 'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
-            ['libelle' => 'Papier note repositionnables (PF) Grand', 'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
-            ['libelle' => 'Paquettes de stylo',                  'categorie_id' => $c_bureau, 'seuil_alerte' => 150],
-            ['libelle' => 'Ramettes de papier',                  'categorie_id' => $c_bureau, 'seuil_alerte' => 100],
-            ['libelle' => 'Rallonge 5M',                         'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
-            ['libelle' => 'Rames de papier',                     'categorie_id' => $c_bureau, 'seuil_alerte' => 100],
-            ['libelle' => 'Surligneur',                          'categorie_id' => $c_bureau, 'seuil_alerte' => 10],
+            ['remote controlle barriere',           $c_elec,   $m217,  2],
+            ['TYPE C TO HDTV 11IN 1',               $c_elec,   $m231,  1],
+            ['type c to hdmi',                      $c_elec,   $m231,  1],
+            ['INGELEC E14 40W',                     $c_elec,   $m217,  10],
+            ['THE ASMA',                            $c_hotel,  $m217,  1],
+            ['maye mossant',                        $c_menage, $m217,  5],
+            ['LED G45',                             $c_elec,   $m217,  5],
+            ['sucre tropicana',                     $c_hotel,  $m217,  5],
+            ['CHEMISE',                             $c_bureau, $m231,  5],
+            ['RADIATEUR TRADUCTION',                $c_sono,   $m217,  1],
+            ['CASQUE TRADUCTION',                   $c_sono,   $m217,  5],
+            ['CASQUE UTILISER SIMPLE',              $c_sono,   $m217,  5],
+            ['KRIPA STA',                           $c_elec,   $m217,  2],
+            ['RADIATEUR',                           $c_elec,   $m217,  1],
+            ['GRAND JACK PETIT JACK',               $c_sono,   $m217,  2],
+            ['PETIT JACK',                          $c_elec,   $m217,  5],
+            ['CABLE XLR RSA',                       $c_elec,   $m217,  5],
+            ['récepteur',                           $c_sono,   $m217,  5],
+            ['CONTACT EMPOLE',                      $c_elec,   $m217,  5],
+            ['BOITE ARCHIVE',                       $c_bureau, $m231,  10],
+            ['Mon conférence',                      $c_sono,   $m217,  2],
+            ['ampole 12w',                          $c_elec,   $m217,  5],
+            ['SAC POUBELLE 240L',                   $c_menage, $m217,  5],
+            ['GOULET',                              $c_elec,   $m217,  5],
+            ['CADRE AMPOLE E27',                    $c_elec,   $m217,  5],
+            ['ROLE DE GNE',                         $c_elec,   $m217,  2],
+            ['PALET 4516',                          $c_elec,   $m217,  2],
+            ['AMPOLE 18W',                          $c_elec,   $m217,  10],
+            ['AMPOLE 35W',                          $c_elec,   $m217,  20],
+            ['AMPOLE RECLET 220',                   $c_elec,   $m217,  5],
+            ['RELE TERMIQUE',                       $c_elec,   $m217,  2],
+            ['CONTACTEUR 25 POUR UP',               $c_elec,   $m217,  2],
+            ['DOMINOH',                             $c_elec,   $m217,  5],
+            ['AMPOLE 10W',                          $c_elec,   $m217,  5],
+            ['AMPOLE 4W',                           $c_elec,   $m217,  5],
+            ['AMPOLE E12 35 W',                     $c_elec,   $m217,  5],
+            ['AMPOLE 50W ANIELEC',                  $c_elec,   $m217,  5],
+            ['PALET 16',                            $c_elec,   $m217,  2],
+            ['AMPOLE SOLEF',                        $c_elec,   $m217,  10],
+            ['AMPOLE FONTEN',                       $c_elec,   $m217,  5],
+            ['TRANFOU',                             $c_elec,   $m217,  5],
+            ['PRIS-ITRANCH',                        $c_elec,   $m217,  5],
+            ['PROJECTEUR 200 W',                    $c_elec,   $m217,  2],
+            ['ATACH',                               $c_elec,   $m217,  20],
+            ['CHEVIE',                              $c_elec,   $m217,  50],
+            ['AMPOLE SPOTE 12W',                    $c_elec,   $m217,  5],
+            ['D QUI',                               $c_elec,   $m217,  2],
+            ['CABLE 4*4',                           $c_elec,   $m217,  2],
+            ['Clavier avec souris sans fille',      $c_info,   $m231,  2],
+            ['ordinateur portable accer',           $c_info,   $m231,  1],
+            ['sacs poubellle 240L',                 $c_menage, $m217,  10],
+            ['BATTRIE AA',                          $c_elec,   $m217,  10],
+            ['BATTRIE AAA',                         $c_elec,   $m217,  50],
+            ['BATTRIE 9V',                          $c_elec,   $m231,  5],
+            ['TP LINK',                             $c_sono,   $m231,  1],
+            ['PATCH RJ 45 100M',                    $c_sono,   $m231,  2],
+            ['NBWI',                                $c_sono,   $m231,  1],
+            ['SPOTLIGHT PRÉSANTATION',              $c_sono,   $m231,  1],
+            ['RAP 72 PRO WIFI ACCESS POINT',        $c_sono,   $m231,  1],
+            ['HDMI 2 0 CABLE OPTICAL 80M',          $c_sono,   $m231,  1],
+            ['HDMI 10M',                            $c_sono,   $m231,  2],
+            ['HDMI CABLE 20M',                      $c_sono,   $m231,  1],
+            ['RJ 45 CABLE 15M',                     $c_sono,   $m231,  2],
+            ['HDMI EXTENDER',                       $c_sono,   $m231,  1],
+            ['CASQUE SIMPLE',                       $c_sono,   $m217,  20],
+            ['CASQUE VIP',                          $c_sono,   $m217,  5],
+            ['polele',                              $c_elec,   $m217,  5],
+            ['Ampole led 480',                      $c_elec,   $m217,  5],
+            ['AMPOLE 8W',                           $c_elec,   $m217,  5],
+            ['Ampole 35w',                          $c_elec,   $m217,  10],
+            ['Coffree mod',                         $c_elec,   $m217,  1],
+            ['SUCRE TROPICANNA',                    $c_hotel,  $m217,  2],
+            ['CAFE GOLD PETIT',                     $c_hotel,  $m217,  5],
+            ['CAFE GOLD GRAND',                     $c_hotel,  $m217,  2],
+            ['THE AZWAD',                           $c_hotel,  $m217,  20],
+            ['THE MALIKA',                          $c_hotel,  $m217,  20],
+            ['BIQUETS CAPSUL ESPRESSO',             $c_hotel,  $m217,  50],
+            ['CARTONS DE GABELETS A CAFE',          $c_hotel,  $m217,  1000],
+            ['CARTONS DE GOBELETS CAFE petit',      $c_hotel,  $m217,  500],
+            ['MACHINE CAFE DULCE GUSTO',            $c_hotel,  $m217,  1],
+            ['SAC SUCRE',                           $c_hotel,  $m217,  2],
+            ['CAFE SUCRE',                          $c_hotel,  $m217,  5],
+            ['G03',                                 $c_info,   $m231,  2],
+            ['Ampole electrique',                   $c_elec,   $m217,  5],
+            ['117A COLEUR',                         $c_info,   $m231,  2],
+            ['TRANFOU',                             $c_elec,   $m217,  5],
+            ['CANON COLEUR G 3020',                 $c_info,   $m231,  1],
+            ['CARTOUCHE 1106A',                     $c_info,   $m231,  3],
+            ['Crouche CE 278A',                     $c_info,   $m231,  5],
+            ['G3020 510',                           $c_info,   $m231,  2],
+            ['TK 1110',                             $c_info,   $m231,  2],
+            ['TK 4105',                             $c_info,   $m231,  2],
+            ['TK S230C',                            $c_info,   $m231,  2],
+            ['TK S230M',                            $c_info,   $m231,  2],
+            ['TK S230Y',                            $c_info,   $m231,  2],
+            ['TK S230BK',                           $c_info,   $m231,  2],
+            ['TK160',                               $c_info,   $m231,  2],
+            ['TK 6320Y',                            $c_info,   $m231,  2],
+            ['Papier fresh',                        $c_menage, $m217,  20],
+            ['vif liquide menage',                  $c_menage, $m217,  5],
+            ['Ajacks poudhe',                       $c_menage, $m217,  20],
+            ['Balais africain',                     $c_menage, $m217,  10],
+            ['Balais pour ménage',                  $c_menage, $m217,  10],
+            ['Désinfectant',                        $c_menage, $m217,  10],
+            ['Désodorisant WC',                     $c_menage, $m217,  10],
+            ['Insecticide baygon',                  $c_menage, $m217,  24],
+            ['Original cotaill',                    $c_menage, $m217,  30],
+            ['Papier mouchoir',                     $c_menage, $m217,  20],
+            ['Piles + brosses',                     $c_menage, $m217,  10],
+            ['Savon en morceaux',                   $c_menage, $m217,  50],
+            ['Savon en poudre omé',                 $c_menage, $m217,  100],
+            ['Savon liquide lave vitres',           $c_menage, $m217,  10],
+            ['Savon liquide multi-usage',           $c_menage, $m217,  10],
+            ['Serpihere',                           $c_menage, $m217,  5],
+            ['Torchons',                            $c_menage, $m217,  5],
+            ['Ciseaux de jardin',                   $c_jardin, $mExt,  3],
+            ['Corbeille de poubelle 240L',          $c_jardin, $mExt,  2],
+            ['Corbeille de poubelle 20L',           $c_jardin, $mExt,  2],
+            ['Engrais',                             $c_jardin, $mExt,  2],
+            ['Fourches',                            $c_jardin, $mExt,  2],
+            ['Gant nettoyage',                      $c_jardin, $mExt,  5],
+            ['Gant pour engrais',                   $c_jardin, $mExt,  2],
+            ['Houe',                                $c_jardin, $mExt,  2],
+            ['Piquets',                             $c_jardin, $mExt,  5],
+            ['Raccord d\'arrosage',                 $c_jardin, $mExt,  5],
+            ['Râteaux',                             $c_jardin, $mExt,  3],
+            ['Sac poubelle 20L',                    $c_jardin, $mExt,  5],
+            ['Sécateur de jardin',                  $c_jardin, $mExt,  3],
+            ['Balais extérieur',                    $c_jardin, $mExt,  3],
+            ['Adaptateur',                          $c_elec,   $m217,  2],
+            ['Agrafeuse',                           $c_bureau, $m231,  2],
+            ['Block notes',                         $c_bureau, $m231,  30],
+            ['Boite d\'archive',                    $c_bureau, $m231,  10],
+            ['Classeur chrono',                     $c_bureau, $m231,  5],
+            ['Classeur de registre de courier',     $c_bureau, $m231,  5],
+            ['Enveloppe A5',                        $c_bureau, $m231,  10],
+            ['Enveloppe A4',                        $c_bureau, $m231,  10],
+            ['Enveloppe Rectangulaire',             $c_bureau, $m231,  5],
+            ['Marqueurs',                           $c_bureau, $m231,  10],
+            ['Papier clips 25mm',                   $c_bureau, $m231,  10],
+            ['Papier clips 50 MM',                  $c_bureau, $m231,  10],
+            ['Papier de tableau',                   $c_bureau, $m231,  5],
+            ['Papier notes repositionnables (PF) Petit', $c_bureau, $m231, 10],
+            ['Papier notes repositionnables',       $c_bureau, $m231,  10],
+            ['Paquettes de stylo',                  $c_bureau, $m231,  100],
+            ['Rames de papier',                     $c_bureau, $m231,  50],
+            ['Réf agrafeuse',                       $c_bureau, $m231,  5],
+            ['Ruligneau 5 M',                       $c_bureau, $m231,  3],
+            ['Surligneur',                          $c_bureau, $m231,  5],
         ];
 
         $inserted = 0;
         $skipped  = 0;
         $errors   = 0;
 
-        foreach ($produits as $produit) {
-            if (is_null($produit['categorie_id'])) {
-                $this->command->warn("  [SKIP] Catégorie introuvable pour : {$produit['libelle']}");
+        foreach ($produits as [$libelle, $categorieId, $magasinId, $seuilAlerte]) {
+            if (is_null($categorieId)) {
+                $this->command->warn("  [SKIP] Catégorie introuvable pour : {$libelle}");
                 $errors++;
                 continue;
             }
 
             $exists = DB::table('stock_produits')
-                ->where('libelle', $produit['libelle'])
-                ->where('categorie_id', $produit['categorie_id'])
+                ->where('libelle', $libelle)
+                ->where('categorie_id', $categorieId)
                 ->exists();
 
             if ($exists) {
-                $this->command->warn("  [SKIP] Déjà existant : {$produit['libelle']}");
+                $this->command->warn("  [SKIP] Déjà existant : {$libelle}");
                 $skipped++;
                 continue;
             }
 
             DB::table('stock_produits')->insert([
-                'libelle'       => $produit['libelle'],
-                'categorie_id'  => $produit['categorie_id'],
-                'magasin_id'    => $magasinDefault,
+                'libelle'       => $libelle,
+                'categorie_id'  => $categorieId,
+                'magasin_id'    => $magasinId,
                 'stock_initial' => 0,
                 'stock_actuel'  => 0,
-                'seuil_alerte'  => $produit['seuil_alerte'],
-                'descriptif'    => null,
-                'stockage'      => null,
-                'observations'  => null,
+                'seuil_alerte'  => $seuilAlerte,
                 'created_at'    => now(),
                 'updated_at'    => now(),
             ]);
 
-            $this->command->info("  [OK]   {$produit['libelle']}");
+            $this->command->info("  [OK]   {$libelle}");
             $inserted++;
         }
 
         $this->command->newLine();
         $this->command->info("Résultat : {$inserted} inséré(s), {$skipped} ignoré(s), {$errors} erreur(s).");
-        $this->command->newLine();
-        $this->command->warn("N.B : Tous les produits ont été affectés au magasin ID={$magasinDefault}.");
-        $this->command->warn("      Modifiez le magasin_id de chaque produit selon vos besoins.");
     }
 }
