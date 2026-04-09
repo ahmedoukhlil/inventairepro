@@ -29,13 +29,7 @@ class ListeEntrees extends Component
             abort(403, 'Accès non autorisé.');
         }
 
-        // Dates par défaut : dernier mois
-        if (empty($this->dateDebut)) {
-            $this->dateDebut = now()->subMonth()->format('Y-m-d');
-        }
-        if (empty($this->dateFin)) {
-            $this->dateFin = now()->format('Y-m-d');
-        }
+        // Pas de filtre de date par défaut
     }
 
     public function updatingSearch()

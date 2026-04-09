@@ -134,7 +134,7 @@ class StockEntreeInitialisationSeeder extends Seeder
         $notFound = [];
 
         foreach ($stocks as $libelle => $quantite) {
-            if ($quantite <= 0) {
+            if ($quantite < 0) {
                 $skipped++;
                 continue;
             }
@@ -146,7 +146,7 @@ class StockEntreeInitialisationSeeder extends Seeder
                 continue;
             }
 
-            // Vérifier si une entrée d'initialisation existe déjà
+            // Vérifier si déjà initialisé
             $exists = DB::table('stock_entrees')
                 ->where('produit_id', $produit->id)
                 ->where('observations', 'Stock initial - initialisation système')
@@ -158,23 +158,26 @@ class StockEntreeInitialisationSeeder extends Seeder
                 continue;
             }
 
-            DB::table('stock_entrees')->insert([
-                'date_entree'       => $dateInit,
-                'reference_commande'=> 'INIT-2026',
-                'produit_id'        => $produit->id,
-                'fournisseur_id'    => null,
-                'quantite'          => $quantite,
-                'observations'      => 'Stock initial - initialisation système',
-                'created_by'        => $userId,
-                'created_at'        => now(),
-                'updated_at'        => now(),
+            // Mettre à jour le stock_actuel du produit (stock_initial reste à 0)
+            DB::table('stock_produits')->where('id', $produit->id)->update([
+                'stock_actuel' => $quantite,
+                'updated_at'   => now(),
             ]);
 
-            DB::table('stock_produits')->where('id', $produit->id)->update([
-                'stock_actuel'  => $quantite,
-                'stock_initial' => $quantite,
-                'updated_at'    => now(),
-            ]);
+            // Créer une entrée uniquement si quantité > 0
+            if ($quantite > 0) {
+                DB::table('stock_entrees')->insert([
+                    'date_entree'        => $dateInit,
+                    'reference_commande' => 'INIT-2026',
+                    'produit_id'         => $produit->id,
+                    'fournisseur_id'     => null,
+                    'quantite'           => $quantite,
+                    'observations'       => 'Stock initial - initialisation système',
+                    'created_by'         => $userId,
+                    'created_at'         => now(),
+                    'updated_at'         => now(),
+                ]);
+            }
 
             $this->command->info("  [OK]   {$produit->libelle} → {$quantite}");
             $inserted++;
