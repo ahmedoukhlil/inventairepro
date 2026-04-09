@@ -31,6 +31,11 @@ class Dashboard extends Component
 
     public function mount()
     {
+        $user = auth()->user();
+        if (!$user || !$user->canViewDashboard()) {
+            abort(403, 'Accès non autorisé.');
+        }
+
         $this->loadStatistics();
     }
 

@@ -16,10 +16,20 @@ return new class extends Migration
                 'updated_at'  => now(),
             ]
         );
+
+        DB::table('permissions')->updateOrInsert(
+            ['key' => 'stock.dashboard'],
+            [
+                'label'       => 'Voir le dashboard stock',
+                'description' => 'Permet d\'accéder au tableau de bord du module stock.',
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]
+        );
     }
 
     public function down(): void
     {
-        DB::table('permissions')->where('key', 'dashboard.view')->delete();
+        DB::table('permissions')->whereIn('key', ['dashboard.view', 'stock.dashboard'])->delete();
     }
 };

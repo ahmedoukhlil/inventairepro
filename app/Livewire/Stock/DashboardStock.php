@@ -37,6 +37,11 @@ class DashboardStock extends Component
 
     public function mount()
     {
+        $user = auth()->user();
+        if (!$user || !$user->canViewDashboardStock()) {
+            abort(403, 'Accès non autorisé.');
+        }
+
         $this->loadStatistics();
     }
 

@@ -257,6 +257,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Vérifie si l'utilisateur peut voir le dashboard
+     */
+    public function canViewDashboard(): bool
+    {
+        return $this->hasPermission('dashboard.view');
+    }
+
+    /**
+     * Vérifie si l'utilisateur peut voir le dashboard stock
+     */
+    public function canViewDashboardStock(): bool
+    {
+        return $this->hasPermission('stock.dashboard');
+    }
+
+    /**
      * Vérifie si l'utilisateur peut gérer les inventaires
      * Admin, Admin_stock et Agent peuvent gérer les inventaires
      */
@@ -345,13 +361,15 @@ class User extends Authenticatable
         } catch (\Throwable $e) {
             // Si les tables RBAC n'existent pas encore, retomber sur le legacy pour ne pas casser dev.
             return match ($permissionKey) {
-                'inventaire.access' => in_array($this->role, ['admin', 'admin_stock', 'agent'], true),
-                'stock.access' => in_array($this->role, ['admin', 'admin_stock', 'agent'], true),
-                'users.manage' => $this->isAdmin(),
+                'dashboard.view'          => in_array($this->role, ['admin', 'admin_stock', 'agent', 'agent_stock'], true),
+                'stock.dashboard'         => in_array($this->role, ['admin', 'admin_stock', 'agent_stock'], true),
+                'inventaire.access'       => in_array($this->role, ['admin', 'admin_stock', 'agent'], true),
+                'stock.access'            => in_array($this->role, ['admin', 'admin_stock', 'agent'], true),
+                'users.manage'            => $this->isAdmin(),
                 'stock.manage_references' => $this->isAdmin() || $this->isAdminStock(),
-                'stock.create_entree' => $this->isAdmin() || $this->isAdminStock(),
-                'stock.create_sortie' => $this->isAdmin() || $this->isAdminStock() || $this->isAgent(),
-                'stock.view_all_movements' => $this->isAdmin() || $this->isAdminStock(),
+                'stock.create_entree'     => $this->isAdmin() || $this->isAdminStock(),
+                'stock.create_sortie'     => $this->isAdmin() || $this->isAdminStock() || $this->isAgent(),
+                'stock.view_all_movements'=> $this->isAdmin() || $this->isAdminStock(),
                 default => false,
             };
         }
