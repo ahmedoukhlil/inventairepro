@@ -139,7 +139,7 @@
             </div>
             <div class="bg-gray-50 rounded-lg p-4">
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">% du seuil</p>
-                <p class="text-2xl font-bold {{ $stockColor }} mt-1">{{ round($produit->pourcentage_stock, 1) }}%</p>
+                <p class="text-2xl font-bold {{ $stockColor }} mt-1">{{ $pct !== null ? $pct : '—' }}%</p>
             </div>
         </div>
 
