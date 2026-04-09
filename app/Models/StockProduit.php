@@ -118,10 +118,10 @@ class StockProduit extends Model
      */
     public function getPourcentageStockAttribute(): float
     {
-        if ($this->stock_initial == 0) {
+        if ($this->seuil_alerte == 0) {
             return 0;
         }
-        return round(($this->stock_actuel / $this->stock_initial) * 100, 1);
+        return round(($this->stock_actuel / $this->seuil_alerte) * 100, 1);
     }
 
     /**
@@ -191,12 +191,6 @@ class StockProduit extends Model
     public function ajouterStock(int $quantite): bool
     {
         $this->stock_actuel += $quantite;
-        
-        // Si c'est la première entrée (stock_initial = 0), définir le stock initial
-        if ($this->stock_initial == 0) {
-            $this->stock_initial = $this->stock_actuel;
-        }
-        
         return $this->save();
     }
 
