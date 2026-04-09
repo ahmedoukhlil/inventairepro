@@ -73,14 +73,26 @@ class ListeProduits extends Component
         $produit = StockProduit::find($this->produitToDelete);
 
         if ($produit) {
-            if ($produit->entrees()->count() > 0 || $produit->sorties()->count() > 0) {
-                session()->flash('error', 'Impossible de supprimer ce produit car il a des mouvements de stock associés.');
-                $this->cancelDelete();
-                return;
-            }
+            $nomProduit = $produit->libelle;
+            $quantiteActuelle = $produit->stock_actuel;
+            $nombreEntrees = $produit->entrees()->count();
+            $nombreSorties = $produit->sorties()->count();
 
+            // Supprimer définitivement le produit et tous ses mouvements associés
+            $produit->entrees()->delete();
+            $produit->sorties()->delete();
             $produit->delete();
-            session()->flash('success', 'Produit supprimé avec succès.');
+
+            $message = "Produit « $nomProduit » supprimé définitivement";
+            if ($quantiteActuelle > 0) {
+                $message .= " (quantité restante : $quantiteActuelle)";
+            }
+            if ($nombreEntrees > 0 || $nombreSorties > 0) {
+                $message .= " — $nombreEntrees entrée(s) et $nombreSorties sortie(s) supprimée(s)";
+            }
+            $message .= ".";
+
+            session()->flash('success', $message);
         }
 
         $this->cancelDelete();

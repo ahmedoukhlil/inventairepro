@@ -1,9 +1,9 @@
 <div class="py-6">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {{-- En-tête --}}
+        
         <div class="flex items-start gap-3 mb-8">
-            <a href="{{ route('stock.magasins.index') }}"
+            <a href="<?php echo e(route('stock.magasins.index')); ?>"
                class="mt-1 flex-shrink-0 w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
                 <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
@@ -11,10 +11,12 @@
             </a>
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">
-                    {{ $magasin ? 'Modifier le magasin' : 'Nouveau magasin' }}
+                    <?php echo e($magasin ? 'Modifier le magasin' : 'Nouveau magasin'); ?>
+
                 </h1>
                 <p class="text-gray-500 mt-0.5">
-                    {{ $magasin ? 'Modifiez les informations du magasin' : 'Créez un nouveau magasin de stockage' }}
+                    <?php echo e($magasin ? 'Modifiez les informations du magasin' : 'Créez un nouveau magasin de stockage'); ?>
+
                 </p>
             </div>
         </div>
@@ -32,7 +34,7 @@
                 </div>
                 <div class="p-6 space-y-5">
 
-                    {{-- Nom --}}
+                    
                     <div>
                         <label for="magasinNom" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                             Nom du magasin <span class="text-red-500">*</span>
@@ -42,18 +44,33 @@
                                wire:model="magasinNom"
                                placeholder="Ex : Magasin Central, Dépôt Nord…"
                                class="w-full px-4 py-2.5 text-sm border rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition
-                                      @error('magasinNom') border-red-400 bg-red-50 @else border-gray-200 @enderror">
-                        @error('magasinNom')
+                                      <?php $__errorArgs = ['magasinNom'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> border-red-400 bg-red-50 <?php else: ?> border-gray-200 <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['magasinNom'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
                             <p class="mt-1.5 text-xs text-red-600 flex items-center gap-1">
                                 <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/>
                                 </svg>
-                                {{ $message }}
+                                <?php echo e($message); ?>
+
                             </p>
-                        @enderror
+                        <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
 
-                    {{-- Localisation --}}
+                    
                     <div>
                         <label for="localisation" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                             Localisation <span class="text-red-500">*</span>
@@ -64,25 +81,40 @@
                                    wire:model="localisation"
                                    placeholder="Ex : Bâtiment A, Rez-de-chaussée…"
                                    class="w-full pl-9 pr-4 py-2.5 text-sm border rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition
-                                          @error('localisation') border-red-400 bg-red-50 @else border-gray-200 @enderror">
+                                          <?php $__errorArgs = ['localisation'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> border-red-400 bg-red-50 <?php else: ?> border-gray-200 <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>">
                             <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                             </svg>
                         </div>
-                        @error('localisation')
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['localisation'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
                             <p class="mt-1.5 text-xs text-red-600 flex items-center gap-1">
                                 <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/>
                                 </svg>
-                                {{ $message }}
+                                <?php echo e($message); ?>
+
                             </p>
-                        @else
+                        <?php else: ?>
                             <p class="mt-1 text-xs text-gray-400">Indiquez l'emplacement physique du magasin</p>
-                        @enderror
+                        <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
 
-                    {{-- Observations --}}
+                    
                     <div>
                         <label for="observations" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                             Observations
@@ -95,9 +127,9 @@
                                   class="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"></textarea>
                     </div>
 
-                    {{-- Info produits en édition --}}
-                    @if($magasin)
-                        @php $nbProduits = $magasin->produits()->count(); @endphp
+                    
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($magasin): ?>
+                        <?php $nbProduits = $magasin->produits()->count(); ?>
                         <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
                             <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
                                 <svg class="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -106,26 +138,26 @@
                             </div>
                             <div class="flex-1">
                                 <p class="text-sm font-semibold text-gray-800">
-                                    {{ $nbProduits }} produit{{ $nbProduits > 1 ? 's' : '' }} dans ce magasin
+                                    <?php echo e($nbProduits); ?> produit<?php echo e($nbProduits > 1 ? 's' : ''); ?> dans ce magasin
                                 </p>
-                                @if($nbProduits > 0)
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($nbProduits > 0): ?>
                                     <p class="text-xs text-gray-400 mt-0.5">
                                         La suppression est impossible tant que des produits y sont rattachés.
                                     </p>
-                                @endif
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </div>
-                            @if($nbProduits > 0)
-                                <a href="{{ route('stock.produits.index', ['filterMagasin' => $magasin->id]) }}"
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($nbProduits > 0): ?>
+                                <a href="<?php echo e(route('stock.produits.index', ['filterMagasin' => $magasin->id])); ?>"
                                    class="ml-auto text-xs text-blue-600 hover:text-blue-800 font-medium flex-shrink-0">
                                     Voir les produits →
                                 </a>
-                            @endif
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
-                    @endif
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 </div>
             </div>
 
-            {{-- Actions --}}
+            
             <div class="flex items-center justify-end gap-3">
                 <button type="button" wire:click="cancel"
                         class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
@@ -141,10 +173,12 @@
                     <svg wire:loading.remove wire:target="save" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                     </svg>
-                    {{ $magasin ? 'Mettre à jour' : 'Créer le magasin' }}
+                    <?php echo e($magasin ? 'Mettre à jour' : 'Créer le magasin'); ?>
+
                 </button>
             </div>
 
         </form>
     </div>
 </div>
+<?php /**PATH C:\xampp\htdocs\gesimmos\resources\views/livewire/stock/magasins/form-magasin.blade.php ENDPATH**/ ?>

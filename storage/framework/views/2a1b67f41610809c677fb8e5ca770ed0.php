@@ -1,9 +1,9 @@
 <div class="py-6">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {{-- En-tête --}}
+        
         <div class="flex items-start gap-3 mb-8">
-            <a href="{{ route('stock.produits.index') }}"
+            <a href="<?php echo e(route('stock.produits.index')); ?>"
                class="mt-1 flex-shrink-0 w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
                 <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
@@ -11,17 +11,19 @@
             </a>
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">
-                    {{ $produit ? 'Modifier le produit' : 'Nouveau produit' }}
+                    <?php echo e($produit ? 'Modifier le produit' : 'Nouveau produit'); ?>
+
                 </h1>
                 <p class="text-gray-500 mt-0.5">
-                    {{ $produit ? 'Modifiez les informations du produit' : 'Ajoutez un nouveau produit au stock' }}
+                    <?php echo e($produit ? 'Modifiez les informations du produit' : 'Ajoutez un nouveau produit au stock'); ?>
+
                 </p>
             </div>
         </div>
 
         <form wire:submit.prevent="save" class="space-y-6">
 
-            {{-- Informations de base --}}
+            
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-50">
                     <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
@@ -33,7 +35,7 @@
                 </div>
                 <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                    {{-- Libellé --}}
+                    
                     <div class="md:col-span-2">
                         <label for="libelle" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                             Libellé <span class="text-red-500">*</span>
@@ -43,64 +45,119 @@
                                wire:model="libelle"
                                placeholder="Ex : Ramettes A4, Stylos bille…"
                                class="w-full px-4 py-2.5 text-sm border rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition
-                                      @error('libelle') border-red-400 bg-red-50 @else border-gray-200 @enderror">
-                        @error('libelle')
+                                      <?php $__errorArgs = ['libelle'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> border-red-400 bg-red-50 <?php else: ?> border-gray-200 <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['libelle'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
                             <p class="mt-1.5 text-xs text-red-600 flex items-center gap-1">
                                 <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/>
                                 </svg>
-                                {{ $message }}
+                                <?php echo e($message); ?>
+
                             </p>
-                        @enderror
+                        <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
 
-                    {{-- Catégorie --}}
+                    
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                             Catégorie <span class="text-red-500">*</span>
                         </label>
-                        <livewire:components.searchable-select
-                            wire:model.live="categorie_id"
-                            :options="$this->categorieOptions"
-                            placeholder="Sélectionner une catégorie"
-                            search-placeholder="Rechercher..."
-                            no-results-text="Aucune catégorie trouvée"
-                            :key="'categorie-select'"
-                        />
-                        @error('categorie_id')
+                        <?php
+$__split = function ($name, $params = []) {
+    return [$name, $params];
+};
+[$__name, $__params] = $__split('components.searchable-select', ['wire:model.live' => 'categorie_id','options' => $this->categorieOptions,'placeholder' => 'Sélectionner une catégorie','searchPlaceholder' => 'Rechercher...','noResultsText' => 'Aucune catégorie trouvée']);
+
+$key = 'categorie-select';
+
+$key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-1381133687-0', 'categorie-select');
+
+$__html = app('livewire')->mount($__name, $__params, $key);
+
+echo $__html;
+
+unset($__html);
+unset($__name);
+unset($__params);
+unset($__split);
+if (isset($__slots)) unset($__slots);
+?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['categorie_id'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
                             <p class="mt-1.5 text-xs text-red-600 flex items-center gap-1">
                                 <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/>
                                 </svg>
-                                {{ $message }}
+                                <?php echo e($message); ?>
+
                             </p>
-                        @enderror
+                        <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
 
-                    {{-- Magasin --}}
+                    
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                             Magasin <span class="text-red-500">*</span>
                         </label>
-                        <livewire:components.searchable-select
-                            wire:model.live="magasin_id"
-                            :options="$this->magasinOptions"
-                            placeholder="Sélectionner un magasin"
-                            search-placeholder="Rechercher..."
-                            no-results-text="Aucun magasin trouvé"
-                            :key="'magasin-select'"
-                        />
-                        @error('magasin_id')
+                        <?php
+$__split = function ($name, $params = []) {
+    return [$name, $params];
+};
+[$__name, $__params] = $__split('components.searchable-select', ['wire:model.live' => 'magasin_id','options' => $this->magasinOptions,'placeholder' => 'Sélectionner un magasin','searchPlaceholder' => 'Rechercher...','noResultsText' => 'Aucun magasin trouvé']);
+
+$key = 'magasin-select';
+
+$key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-1381133687-1', 'magasin-select');
+
+$__html = app('livewire')->mount($__name, $__params, $key);
+
+echo $__html;
+
+unset($__html);
+unset($__name);
+unset($__params);
+unset($__split);
+if (isset($__slots)) unset($__slots);
+?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['magasin_id'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
                             <p class="mt-1.5 text-xs text-red-600 flex items-center gap-1">
                                 <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/>
                                 </svg>
-                                {{ $message }}
+                                <?php echo e($message); ?>
+
                             </p>
-                        @enderror
+                        <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
 
-                    {{-- Emplacement --}}
+                    
                     <div class="md:col-span-2">
                         <label for="stockage" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                             Emplacement dans le magasin
@@ -115,7 +172,7 @@
                 </div>
             </div>
 
-            {{-- Gestion du stock --}}
+            
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-50">
                     <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
@@ -135,20 +192,35 @@
                                wire:model="seuil_alerte"
                                min="0"
                                class="w-full px-4 py-2.5 text-sm border rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition
-                                      @error('seuil_alerte') border-red-400 bg-red-50 @else border-gray-200 @enderror">
-                        @error('seuil_alerte')
+                                      <?php $__errorArgs = ['seuil_alerte'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> border-red-400 bg-red-50 <?php else: ?> border-gray-200 <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['seuil_alerte'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
                             <p class="mt-1.5 text-xs text-red-600 flex items-center gap-1">
                                 <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/>
                                 </svg>
-                                {{ $message }}
+                                <?php echo e($message); ?>
+
                             </p>
-                        @else
+                        <?php else: ?>
                             <p class="mt-1 text-xs text-gray-400">Une alerte sera déclenchée si le stock ≤ à ce seuil</p>
-                        @enderror
+                        <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
 
-                    @if(!$produit)
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!$produit): ?>
                         <div class="flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
                             <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -161,31 +233,32 @@
                                 </p>
                             </div>
                         </div>
-                    @endif
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-                    @if($produit)
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($produit): ?>
                         <div class="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-xl">
                             <div class="text-center">
                                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Total entrées</p>
-                                <p class="text-2xl font-bold text-emerald-600 mt-1">{{ number_format($produit->entrees()->sum('quantite'), 0, ',', ' ') }}</p>
+                                <p class="text-2xl font-bold text-emerald-600 mt-1"><?php echo e(number_format($produit->entrees()->sum('quantite'), 0, ',', ' ')); ?></p>
                             </div>
                             <div class="text-center border-x border-gray-200">
                                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Total sorties</p>
-                                <p class="text-2xl font-bold text-violet-600 mt-1">{{ number_format($produit->sorties()->sum('quantite'), 0, ',', ' ') }}</p>
+                                <p class="text-2xl font-bold text-violet-600 mt-1"><?php echo e(number_format($produit->sorties()->sum('quantite'), 0, ',', ' ')); ?></p>
                             </div>
                             <div class="text-center">
                                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Stock actuel</p>
                                 <p class="text-2xl font-bold
-                                    {{ $produit->en_alerte ? 'text-red-600' : ($produit->stock_faible ? 'text-amber-500' : 'text-emerald-600') }} mt-1">
-                                    {{ number_format($produit->stock_actuel, 0, ',', ' ') }}
+                                    <?php echo e($produit->en_alerte ? 'text-red-600' : ($produit->stock_faible ? 'text-amber-500' : 'text-emerald-600')); ?> mt-1">
+                                    <?php echo e(number_format($produit->stock_actuel, 0, ',', ' ')); ?>
+
                                 </p>
                             </div>
                         </div>
-                    @endif
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 </div>
             </div>
 
-            {{-- Descriptions --}}
+            
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-50">
                     <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
@@ -216,7 +289,7 @@
                 </div>
             </div>
 
-            {{-- Actions --}}
+            
             <div class="flex items-center justify-end gap-3">
                 <button type="button"
                         wire:click="cancel"
@@ -233,10 +306,12 @@
                     <svg wire:loading.remove wire:target="save" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                     </svg>
-                    {{ $produit ? 'Mettre à jour' : 'Créer le produit' }}
+                    <?php echo e($produit ? 'Mettre à jour' : 'Créer le produit'); ?>
+
                 </button>
             </div>
 
         </form>
     </div>
 </div>
+<?php /**PATH C:\xampp\htdocs\gesimmos\resources\views/livewire/stock/produits/form-produit.blade.php ENDPATH**/ ?>
