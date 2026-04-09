@@ -461,7 +461,21 @@
     </script>
 
     @livewireScripts
-    
+
+    {{-- Gestion expiration de session Livewire --}}
+    <script>
+        document.addEventListener('livewire:init', () => {
+            Livewire.hook('request', ({ fail }) => {
+                fail(({ status, preventDefault }) => {
+                    if (status === 401) {
+                        preventDefault();
+                        window.location.href = '{{ route('login') }}';
+                    }
+                });
+            });
+        });
+    </script>
+
     {{-- PWA Service Worker Registration --}}
     <script>
         // Gestion de l'installation PWA (définir avant le bloc if pour être accessible globalement)
