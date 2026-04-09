@@ -112,19 +112,34 @@ class AuthenticatedSessionController extends Controller
             'user_agent' => $request->userAgent(),
         ]);
 
-        // Vérifier que la route dashboard existe
-        try {
-            $dashboardUrl = route('dashboard');
-            \Log::info('Redirection vers dashboard', ['url' => $dashboardUrl]);
-            return redirect()->intended($dashboardUrl);
-        } catch (\Exception $e) {
-            \Log::error('Erreur lors de la redirection', [
-                'error' => $e->getMessage(),
-                'route' => 'dashboard'
-            ]);
-            // Redirection de secours vers la page d'accueil
-            return redirect('/');
+        // Rediriger vers la première page accessible selon le rôle
+        $defaultUrl = $this->getDefaultRedirect($user);
+        return redirect()->intended($defaultUrl);
+    }
+
+    /**
+     * Retourne l'URL de redirection par défaut selon les permissions du user
+     */
+    private function getDefaultRedirect($user): string
+    {
+        if ($user->canViewDashboard()) {
+            return route('dashboard');
         }
+
+        if ($user->canViewDashboardStock()) {
+            return route('stock.dashboard');
+        }
+
+        if ($user->canAccessStock()) {
+            return route('stock.produits.index');
+        }
+
+        if ($user->canManageInventaire()) {
+            return route('biens.index');
+        }
+
+        // Aucune permission connue : page neutre
+        return route('login');
     }
 
     /**
