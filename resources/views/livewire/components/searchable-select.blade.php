@@ -127,7 +127,7 @@
         :id="$id('searchable-listbox')"
         role="listbox"
         :aria-labelledby="$id('searchable-combobox')"
-        class="absolute mt-2 w-full bg-white shadow-xl rounded-xl border border-gray-200 overflow-hidden"
+        class="absolute mt-2 w-full bg-white shadow-xl rounded-xl border border-gray-200"
         style="max-height: 400px; z-index: 9999;"
     >
         {{-- Barre de recherche améliorée --}}
