@@ -18,7 +18,7 @@ class StockEntreeInitialisationSeeder extends Seeder
         // Résolution des magasins par nom
         $magasins = DB::table('stock_magasins')->pluck('id', 'magasin');
 
-        $mCentral = $magasins['Magasin Central'] ?? null;
+        $mCentral = $magasins['Magasin central'] ?? null;
         $m217     = $magasins['M217']            ?? null;
         $m231     = $magasins['M231']            ?? null;
         $mExt     = $magasins['M EXT']           ?? null;
