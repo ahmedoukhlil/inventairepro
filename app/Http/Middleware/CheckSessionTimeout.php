@@ -32,9 +32,16 @@ class CheckSessionTimeout
                 $timeSinceLastActivity = now()->timestamp - $lastActivity;
 
                 if ($timeSinceLastActivity > $timeout) {
+                    // Requête Livewire (AJAX) : déconnecter sans invalider la session
+                    // pour éviter un 419 CSRF sur la prochaine requête, et retourner 401
+                    // pour que le hook JS redirige vers login.
+                    if ($request->hasHeader('X-Livewire')) {
+                        Auth::guard('web')->logout();
+                        return response()->json(['redirectTo' => route('login')], 401);
+                    }
+
                     // Sauvegarder l'URL actuelle pour y revenir après reconnexion
-                    // (seulement pour les requêtes GET non-Livewire)
-                    if ($request->isMethod('GET') && !$request->hasHeader('X-Livewire')) {
+                    if ($request->isMethod('GET')) {
                         session(['url.intended' => $request->fullUrl()]);
                     }
 
@@ -42,11 +49,6 @@ class CheckSessionTimeout
                     Auth::guard('web')->logout();
                     $request->session()->invalidate();
                     $request->session()->regenerateToken();
-
-                    // Requête Livewire (AJAX) : retourner une réponse JSON pour forcer le reload
-                    if ($request->hasHeader('X-Livewire')) {
-                        return response()->json(['redirectTo' => route('login')], 401);
-                    }
 
                     // Rediriger vers la page de connexion avec un message
                     return redirect()->route('login')

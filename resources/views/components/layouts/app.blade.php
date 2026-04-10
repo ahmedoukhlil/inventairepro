@@ -177,17 +177,24 @@
 @livewireScripts
 
 <script>
-    // Intercepter les réponses 401 (session expirée) des requêtes Livewire
-    // et rediriger vers la page de login au lieu de crasher.
+    // Intercepter les erreurs de session expirée (401, 419) et rediriger vers login.
     document.addEventListener('livewire:init', () => {
         Livewire.hook('request', ({ fail }) => {
             fail(({ status, preventDefault }) => {
-                if (status === 401) {
+                if (status === 401 || status === 419) {
                     preventDefault();
                     window.location.href = '{{ route('login') }}';
                 }
             });
         });
+    });
+
+    // Intercepter aussi les erreurs fetch (réseau) qui peuvent survenir
+    // quand le serveur coupe la connexion après expiration de session.
+    window.addEventListener('unhandledrejection', function (event) {
+        if (event.reason && event.reason.message && event.reason.message.includes('fetch')) {
+            window.location.href = '{{ route('login') }}';
+        }
     });
 </script>
 
