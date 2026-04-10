@@ -177,6 +177,21 @@
 @livewireScripts
 
 <script>
+    // Intercepter les réponses 401 (session expirée) des requêtes Livewire
+    // et rediriger vers la page de login au lieu de crasher.
+    document.addEventListener('livewire:init', () => {
+        Livewire.hook('request', ({ fail }) => {
+            fail(({ status, preventDefault }) => {
+                if (status === 401) {
+                    preventDefault();
+                    window.location.href = '{{ route('login') }}';
+                }
+            });
+        });
+    });
+</script>
+
+<script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('{{ asset('sw.js') }}?v={{ filemtime(public_path('sw.js')) }}')
