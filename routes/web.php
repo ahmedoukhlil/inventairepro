@@ -19,6 +19,14 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// Endpoint de vérification de session (utilisé par le polling côté client)
+Route::get('/session-check', function () {
+    if (auth()->check()) {
+        return response()->json(['active' => true]);
+    }
+    return response()->json(['active' => false], 401);
+})->middleware(['auth', 'session.timeout'])->name('session.check');
+
 /*
 |--------------------------------------------------------------------------
 | Routes d'Authentification

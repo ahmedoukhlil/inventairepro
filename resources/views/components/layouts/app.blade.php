@@ -177,23 +177,45 @@
 @livewireScripts
 
 <script>
-    // Intercepter les erreurs de session expirée (401, 419) et rediriger vers login.
+    const LOGIN_URL = '{{ route('login') }}';
+    const SESSION_CHECK_URL = '{{ route('session.check') }}';
+
+    function redirectToLogin() {
+        window.location.href = LOGIN_URL;
+    }
+
+    // 1. Hook Livewire : intercepter 401/419 sur les requêtes AJAX
     document.addEventListener('livewire:init', () => {
         Livewire.hook('request', ({ fail }) => {
             fail(({ status, preventDefault }) => {
                 if (status === 401 || status === 419) {
                     preventDefault();
-                    window.location.href = '{{ route('login') }}';
+                    redirectToLogin();
                 }
             });
         });
     });
 
-    // Intercepter aussi les erreurs fetch (réseau) qui peuvent survenir
-    // quand le serveur coupe la connexion après expiration de session.
+    // 2. Polling toutes les 60s : vérifier la session avant qu'elle n'expire
+    //    et rediriger proprement avant que Livewire tente une requête échouée.
+    setInterval(function () {
+        fetch(SESSION_CHECK_URL, {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (response) {
+            if (response.status === 401 || response.status === 419) {
+                redirectToLogin();
+            }
+        }).catch(function () {
+            // Erreur réseau — ne pas rediriger (peut être temporaire)
+        });
+    }, 60000);
+
+    // 3. Intercepter les rejets non gérés (erreurs fetch Livewire non catchées)
     window.addEventListener('unhandledrejection', function (event) {
-        if (event.reason && event.reason.message && event.reason.message.includes('fetch')) {
-            window.location.href = '{{ route('login') }}';
+        if (event.reason instanceof TypeError && event.reason.message === 'Failed to fetch') {
+            redirectToLogin();
         }
     });
 </script>
