@@ -48,6 +48,7 @@
 >
 
     {{-- ── Dashboard ── --}}
+    @if(auth()->user()->canViewDashboard())
     @php $active = request()->routeIs('dashboard'); @endphp
     <a wire:navigate href="{{ route('dashboard') }}"
        class="nav-item {{ $active ? 'nav-active' : 'nav-inactive' }}"
@@ -57,6 +58,7 @@
         </svg>
         <span>Dashboard</span>
     </a>
+    @endif
 
     @auth
 
