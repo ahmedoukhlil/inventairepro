@@ -8,22 +8,19 @@ use App\Models\StockDemandeur;
 use App\Livewire\Traits\WithCachedOptions;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
+use Illuminate\Support\Facades\DB;
 
 #[Layout('components.layouts.app')]
 class FormSortie extends Component
 {
     use WithCachedOptions;
 
-    // Champs du formulaire
     public $date_sortie;
-    public $produit_id = '';
     public $demandeur_id = '';
-    public $quantite = 1;
     public $observations = '';
 
-    // Informations du produit sélectionné
-    public $produitSelectionne = null;
-    public $stockDisponible = 0;
+    // Lignes d'articles : [['produit_id' => '', 'quantite' => 1, 'stock_disponible' => 0, 'produit_libelle' => '']]
+    public array $lignes = [];
 
     public function mount()
     {
@@ -32,150 +29,124 @@ class FormSortie extends Component
             abort(403, 'Accès non autorisé.');
         }
 
-        // Date du jour par défaut
         $this->date_sortie = now()->format('Y-m-d');
+        $this->lignes = [['produit_id' => '', 'quantite' => 1, 'stock_disponible' => 0, 'produit_libelle' => '']];
     }
 
-    /**
-     * Mise à jour du produit sélectionné
-     */
-    public function updatedProduitId($value)
+    public function ajouterLigne()
     {
-        if ($value) {
-            $this->produitSelectionne = StockProduit::find($value);
-            if ($this->produitSelectionne) {
-                $this->stockDisponible = $this->produitSelectionne->stock_actuel ?? 0;
-                // Réinitialiser la quantité si elle dépasse le stock disponible
-                if ($this->quantite > $this->stockDisponible && $this->stockDisponible > 0) {
-                    $this->quantite = $this->stockDisponible;
-                } elseif ($this->stockDisponible <= 0) {
-                    $this->quantite = 1;
-                }
-            } else {
-                $this->stockDisponible = 0;
-            }
-        } else {
-            $this->produitSelectionne = null;
-            $this->stockDisponible = 0;
-            $this->quantite = 1;
+        $this->lignes[] = ['produit_id' => '', 'quantite' => 1, 'stock_disponible' => 0, 'produit_libelle' => ''];
+    }
+
+    public function supprimerLigne(int $index)
+    {
+        if (count($this->lignes) > 1) {
+            array_splice($this->lignes, $index, 1);
+            $this->lignes = array_values($this->lignes);
         }
     }
 
-    protected function rules()
+    public function updatedLignes($value, $key)
     {
-        $maxQuantite = $this->stockDisponible > 0 ? $this->stockDisponible : 999999;
-        
-        return [
-            'date_sortie' => 'required|date',
-            'produit_id' => 'required|exists:stock_produits,id',
-            'demandeur_id' => 'required|exists:stock_demandeurs,id',
-            'quantite' => ['required', 'integer', 'min:1', 'max:' . $maxQuantite],
-            'observations' => 'nullable|string',
-        ];
+        // key format : "0.produit_id"
+        [$index, $field] = explode('.', $key, 2);
+        $index = (int) $index;
+
+        if ($field === 'produit_id') {
+            $produit = $value ? StockProduit::find($value) : null;
+            $this->lignes[$index]['stock_disponible'] = $produit ? ($produit->stock_actuel ?? 0) : 0;
+            $this->lignes[$index]['produit_libelle']  = $produit ? $produit->libelle : '';
+            // Ajuster la quantité si nécessaire
+            $stock = $this->lignes[$index]['stock_disponible'];
+            if ($stock > 0 && $this->lignes[$index]['quantite'] > $stock) {
+                $this->lignes[$index]['quantite'] = $stock;
+            }
+        }
     }
 
-    protected function messages()
-    {
-        return [
-            'date_sortie.required' => 'La date de sortie est obligatoire.',
-            'produit_id.required' => 'Le produit est obligatoire.',
-            'produit_id.exists' => 'Le produit sélectionné n\'existe pas.',
-            'demandeur_id.required' => 'Le demandeur est obligatoire.',
-            'demandeur_id.exists' => 'Le demandeur sélectionné n\'existe pas.',
-            'quantite.required' => 'La quantité est obligatoire.',
-            'quantite.integer' => 'La quantité doit être un nombre entier.',
-            'quantite.min' => 'La quantité doit être au moins 1.',
-            'quantite.max' => 'Stock insuffisant. Stock disponible : ' . $this->stockDisponible,
-        ];
-    }
-
-    /**
-     * Options pour le select Produits
-     */
     public function getProduitOptionsProperty()
     {
         return cache()->remember('stock_produits_options_with_stock', 300, function () {
             return StockProduit::with('categorie')
                 ->orderBy('libelle')
                 ->get()
-                ->map(function ($produit) {
-                    $stockInfo = '(Stock: ' . $produit->stock_actuel . ')';
-                    $couleur = $produit->en_alerte ? ' 🔴' : ($produit->stock_faible ? ' 🟡' : '');
-                    
-                    return [
-                        'value' => (string)$produit->id,
-                        'text' => $produit->libelle . ' ' . $stockInfo . $couleur,
-                    ];
-                })
+                ->map(fn($p) => [
+                    'value' => (string) $p->id,
+                    'text'  => $p->libelle . ' (Stock: ' . $p->stock_actuel . ')' . ($p->en_alerte ? ' 🔴' : ($p->stock_faible ? ' 🟡' : '')),
+                ])
                 ->toArray();
         });
     }
 
-    /**
-     * Options pour le select Demandeurs
-     */
     public function getDemandeurOptionsProperty()
     {
         return cache()->remember('stock_demandeurs_options', 300, function () {
             return StockDemandeur::orderBy('nom')
                 ->get()
-                ->map(function ($demandeur) {
-                    return [
-                        'value' => (string)$demandeur->id,
-                        'text' => $demandeur->nom . ' - ' . $demandeur->poste_service,
-                    ];
-                })
+                ->map(fn($d) => [
+                    'value' => (string) $d->id,
+                    'text'  => $d->nom . ' - ' . $d->poste_service,
+                ])
                 ->toArray();
         });
     }
 
     public function save()
     {
-        // Vérifier que le produit est sélectionné
-        if (empty($this->produit_id)) {
-            session()->flash('error', 'Veuillez sélectionner un produit.');
+        $this->validate([
+            'date_sortie'  => 'required|date',
+            'demandeur_id' => 'required|exists:stock_demandeurs,id',
+            'lignes'       => 'required|array|min:1',
+            'lignes.*.produit_id' => 'required|exists:stock_produits,id',
+            'lignes.*.quantite'   => 'required|integer|min:1',
+        ], [
+            'date_sortie.required'         => 'La date de sortie est obligatoire.',
+            'demandeur_id.required'        => 'Le demandeur est obligatoire.',
+            'lignes.*.produit_id.required' => 'Sélectionnez un produit pour chaque ligne.',
+            'lignes.*.quantite.required'   => 'La quantité est obligatoire.',
+            'lignes.*.quantite.min'        => 'La quantité doit être au moins 1.',
+        ]);
+
+        // Vérification des stocks et doublons
+        $produitIds = array_column($this->lignes, 'produit_id');
+        if (count($produitIds) !== count(array_unique($produitIds))) {
+            $this->addError('lignes', 'Vous avez sélectionné le même produit plusieurs fois. Fusionnez les lignes.');
             return;
         }
 
-        // Recharger le produit pour avoir les données à jour
-        $produit = StockProduit::find($this->produit_id);
-        if (!$produit) {
-            session()->flash('error', 'Produit introuvable.');
-            return;
+        $produits = StockProduit::whereIn('id', $produitIds)->get()->keyBy('id');
+        foreach ($this->lignes as $i => $ligne) {
+            $produit = $produits[$ligne['produit_id']] ?? null;
+            if (!$produit) {
+                $this->addError("lignes.$i.produit_id", 'Produit introuvable.');
+                return;
+            }
+            if ($produit->stock_actuel <= 0) {
+                $this->addError("lignes.$i.quantite", "Stock épuisé pour « {$produit->libelle} ».");
+                return;
+            }
+            if ($ligne['quantite'] > $produit->stock_actuel) {
+                $this->addError("lignes.$i.quantite", "Stock insuffisant pour « {$produit->libelle} » (disponible : {$produit->stock_actuel}).");
+                return;
+            }
         }
-
-        // Mettre à jour le stock disponible
-        $this->stockDisponible = $produit->stock_actuel ?? 0;
-
-        // Vérifier le stock avant validation
-        if ($this->quantite > $this->stockDisponible) {
-            session()->flash('error', 'Stock insuffisant. Stock disponible : ' . $this->stockDisponible);
-            return;
-        }
-
-        if ($this->stockDisponible <= 0) {
-            session()->flash('error', 'Le stock est épuisé pour ce produit.');
-            return;
-        }
-
-        $validated = $this->validate();
-        
-        // Ajouter l'utilisateur qui crée la sortie
-        $validated['created_by'] = auth()->user()->idUser;
 
         try {
-            // Créer la sortie (le stock sera mis à jour automatiquement via l'event)
-            StockSortie::create($validated);
+            DB::transaction(function () use ($produits) {
+                foreach ($this->lignes as $ligne) {
+                    StockSortie::create([
+                        'date_sortie'  => $this->date_sortie,
+                        'produit_id'   => $ligne['produit_id'],
+                        'demandeur_id' => $this->demandeur_id,
+                        'quantite'     => $ligne['quantite'],
+                        'observations' => $this->observations,
+                        'created_by'   => auth()->user()->idUser,
+                    ]);
+                }
+            });
 
-            // Recharger le produit pour vérifier l'alerte
-            $produit->refresh();
-            $message = 'Sortie de stock enregistrée avec succès. Le stock a été mis à jour.';
-            
-            if ($produit->en_alerte) {
-                $message .= ' ⚠️ ALERTE : Le stock est maintenant en dessous du seuil d\'alerte (' . $produit->stock_actuel . '/' . $produit->seuil_alerte . ').';
-            }
-
-            session()->flash('success', $message);
+            $nb = count($this->lignes);
+            session()->flash('success', $nb . ' sortie(s) enregistrée(s) avec succès.');
             return redirect()->route('stock.sorties.index');
         } catch (\Exception $e) {
             session()->flash('error', 'Erreur lors de l\'enregistrement : ' . $e->getMessage());
