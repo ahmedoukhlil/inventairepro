@@ -14,8 +14,9 @@ class FormUser extends Component
      * Propriétés publiques
      */
     public $userId = null;
-    public $users = ''; // Nom d'utilisateur (colonne 'users' dans la table)
-    public $mdp = ''; // Mot de passe
+    public $users = '';        // Nom d'utilisateur (connexion uniquement)
+    public $nom_complet = '';  // Nom complet affiché dans l'application
+    public $mdp = '';
     public $mdp_confirmation = '';
     public $role = 'agent';
 
@@ -42,6 +43,7 @@ class FormUser extends Component
                 $this->isEdit = true;
                 $this->userId = $user->idUser;
                 $this->users = $user->users;
+                $this->nom_complet = $user->nom_complet ?? '';
                 $this->role = $user->role;
             }
         }
@@ -89,10 +91,11 @@ class FormUser extends Component
                 'required',
                 'string',
                 'max:255',
-                $this->isEdit 
+                $this->isEdit
                     ? 'unique:users,users,' . $this->userId . ',idUser'
                     : 'unique:users,users',
             ],
+            'nom_complet' => 'nullable|string|max:255',
             'role' => 'required|in:' . implode(',', array_values($roleKeys)),
         ];
 
@@ -154,8 +157,9 @@ class FormUser extends Component
 
         // Préparer les données
         $data = [
-            'users' => $this->users,
-            'role' => $this->role,
+            'users'       => $this->users,
+            'nom_complet' => $this->nom_complet ?: null,
+            'role'        => $this->role,
         ];
 
         // Ajouter le mot de passe seulement s'il est fourni

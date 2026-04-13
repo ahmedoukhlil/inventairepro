@@ -58,12 +58,31 @@
                     </h2>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {{-- Nom complet --}}
+                        <div class="md:col-span-2">
+                            <label for="nom_complet" class="block text-sm font-medium text-gray-700 mb-1">
+                                Nom complet
+                                <span class="text-gray-400 text-xs font-normal">(affiché dans l'application)</span>
+                            </label>
+                            <input
+                                type="text"
+                                id="nom_complet"
+                                wire:model="nom_complet"
+                                placeholder="Ex: Jean Dupont"
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('nom_complet') border-red-300 @enderror"
+                                wire:loading.attr="disabled">
+                            @error('nom_complet')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
                         {{-- Nom d'utilisateur --}}
                         <div class="md:col-span-2">
                             <label for="users" class="block text-sm font-medium text-gray-700 mb-1">
                                 Nom d'utilisateur <span class="text-red-500">*</span>
+                                <span class="text-gray-400 text-xs font-normal">(connexion uniquement)</span>
                             </label>
-                            <input 
+                            <input
                                 type="text"
                                 id="users"
                                 wire:model="users"
@@ -73,7 +92,6 @@
                             @error('users')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
-                            <p class="mt-1 text-xs text-gray-500">Nom d'utilisateur unique pour la connexion</p>
                         </div>
                     </div>
                 </div>

@@ -42,8 +42,9 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'users',  // Nom d'utilisateur (selon immos.md)
-        'mdp',    // Mot de passe (selon immos.md)
+        'users',       // Nom d'utilisateur (connexion uniquement)
+        'nom_complet', // Nom complet affiché dans l'application
+        'mdp',
         'role',
     ];
 
@@ -226,6 +227,15 @@ class User extends Authenticatable
             'agent_stock' => 'Agent stock',
             default => 'Non défini',
         };
+    }
+
+    /**
+     * Retourne le nom à afficher dans l'application.
+     * Priorité : nom_complet → nom d'utilisateur (fallback).
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->nom_complet ?: $this->users;
     }
 
     /**

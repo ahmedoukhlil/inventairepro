@@ -91,10 +91,10 @@
         <div class="shrink-0 border-t border-slate-700/60 p-4">
             <div class="flex items-center gap-3">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
-                    {{ strtoupper(substr(auth()->user()->users ?? 'U', 0, 1)) }}
+                    {{ strtoupper(substr(auth()->user()->display_name ?? 'U', 0, 1)) }}
                 </div>
                 <div class="min-w-0 flex-1">
-                    <p class="truncate text-sm font-medium text-slate-200">{{ auth()->user()->users ?? 'Utilisateur' }}</p>
+                    <p class="truncate text-sm font-medium text-slate-200">{{ auth()->user()->display_name ?? 'Utilisateur' }}</p>
                     <p class="truncate text-xs text-slate-500">{{ auth()->user()->role_name }}</p>
                 </div>
                 <form method="POST" action="{{ route('logout') }}">
@@ -151,7 +151,7 @@
                        'bg-slate-100 text-slate-600')) }}">
                     {{ auth()->user()->role_name }}
                 </span>
-                <span class="hidden sm:block text-sm font-medium text-slate-700">{{ auth()->user()->users }}</span>
+                <span class="hidden sm:block text-sm font-medium text-slate-700">{{ auth()->user()->display_name }}</span>
             </div>
             @endauth
         </header>

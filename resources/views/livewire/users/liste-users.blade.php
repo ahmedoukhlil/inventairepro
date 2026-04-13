@@ -200,10 +200,11 @@
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-semibold mr-3">
-                                            {{ strtoupper(substr($user->users, 0, 1)) }}
+                                            {{ strtoupper(substr($user->display_name, 0, 1)) }}
                                         </div>
                                         <div>
-                                            <div class="text-sm font-medium text-gray-900">{{ $user->users }}</div>
+                                            <div class="text-sm font-medium text-gray-900">{{ $user->display_name }}</div>
+                                            <div class="text-xs text-gray-400">{{ $user->users }}</div>
                                             @if($user->idUser === auth()->id())
                                                 <div class="text-xs text-gray-500">(Vous)</div>
                                             @endif

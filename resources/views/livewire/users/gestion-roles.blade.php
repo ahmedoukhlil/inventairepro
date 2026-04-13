@@ -151,11 +151,11 @@
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
                                 <div class="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                                    <span class="text-indigo-600 font-semibold">{{ strtoupper(substr($user->users ?? 'U', 0, 1)) }}</span>
+                                    <span class="text-indigo-600 font-semibold">{{ strtoupper(substr($user->display_name ?? 'U', 0, 1)) }}</span>
                                 </div>
                                 <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">{{ $user->users ?? 'N/A' }}</div>
-                                    <div class="text-xs text-gray-500">ID: {{ $user->idUser }}</div>
+                                    <div class="text-sm font-medium text-gray-900">{{ $user->display_name ?? 'N/A' }}</div>
+                                    <div class="text-xs text-gray-500">{{ $user->users }}</div>
                                 </div>
                             </div>
                         </td>
