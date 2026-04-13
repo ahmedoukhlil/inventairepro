@@ -42,7 +42,7 @@ trait Auditable
             'auditable_type' => static::class,
             'auditable_id'   => $this->getKey(),
             'user_id'        => $user?->idUser ?? $user?->id,
-            'user_name'      => $user?->users ?? $user?->name,
+            'user_name'      => $user?->display_name ?? $user?->name,
             'ip_address'     => request()->ip(),
             'old_values'     => $oldValues ?: null,
             'new_values'     => $newValues ?: null,

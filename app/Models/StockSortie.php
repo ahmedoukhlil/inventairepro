@@ -106,6 +106,6 @@ class StockSortie extends Model
      */
     public function getNomCreateurAttribute(): string
     {
-        return $this->createur ? ($this->createur->users ?? 'Inconnu') : 'Système';
+        return $this->createur ? ($this->createur->display_name ?? 'Inconnu') : 'Système';
     }
 }

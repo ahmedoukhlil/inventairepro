@@ -224,7 +224,7 @@
         </tr>
         <tr>
             <td class="lbl">Établi par :</td>
-            <td class="val">{{ $sortie->createur->users ?? 'Système' }}</td>
+            <td class="val">{{ $sortie->createur?->display_name ?? 'Système' }}</td>
             <td class="lbl">Date d'établissement :</td>
             <td class="val">{{ $sortie->created_at->format('d/m/Y') }}</td>
         </tr>
@@ -275,7 +275,7 @@
         <div class="sig-block">
             <div class="sig-title">Service Approvisionnements</div>
             <div class="sig-line"></div>
-            <div class="sig-name">{{ $sortie->createur->users ?? '' }}</div>
+            <div class="sig-name">{{ $sortie->createur?->display_name ?? '' }}</div>
         </div>
     </div>
 
