@@ -34,7 +34,7 @@
         <form wire:submit.prevent="save" class="space-y-6">
 
             {{-- Date + Demandeur + Observations --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100">
                 <div class="px-6 py-4 border-b border-gray-50">
                     <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
                         <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -89,7 +89,7 @@
             </div>
 
             {{-- Lignes d'articles --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100">
                 <div class="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
                     <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
                         <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
