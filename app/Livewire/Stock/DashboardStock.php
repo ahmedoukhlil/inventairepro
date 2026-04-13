@@ -9,6 +9,7 @@ use App\Models\StockEntree;
 use App\Models\StockSortie;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
 
 #[Layout('components.layouts.app')]
@@ -41,7 +42,12 @@ class DashboardStock extends Component
         if (!$user || !$user->canViewDashboardStock()) {
             abort(403, 'Accès non autorisé.');
         }
+    }
 
+    // Appelé à chaque render (mount + updates), garantit des données fraîches
+    // même après wire:navigate qui ne rappelle pas mount().
+    public function booted()
+    {
         $this->loadStatistics();
     }
 
