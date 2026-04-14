@@ -387,6 +387,7 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
                 Route::get('/', \App\Livewire\Stock\Sorties\ListeSorties::class)->name('index');
                 Route::get('/create', \App\Livewire\Stock\Sorties\FormSortie::class)->name('create');
                 Route::get('/{sortie}/bon', [\App\Http\Controllers\BonSortieController::class, 'imprimer'])->name('bon');
+                Route::get('/bon/groupe/{groupeId}', [\App\Http\Controllers\BonSortieController::class, 'imprimerGroupe'])->name('bon.groupe');
             });
 
             /*

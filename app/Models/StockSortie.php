@@ -21,6 +21,7 @@ class StockSortie extends Model
         'quantite',
         'observations',
         'created_by',
+        'groupe_id',
     ];
 
     protected $casts = [

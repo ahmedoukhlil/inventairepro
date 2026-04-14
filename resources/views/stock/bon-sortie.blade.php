@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bon de Sortie Stock N° {{ str_pad($sortie->id, 4, '0', STR_PAD_LEFT) }}</title>
+    @php
+        $premiere = $sorties->first();
+        $refBon   = $sorties->count() === 1
+            ? 'N° ' . str_pad($premiere->id, 4, '0', STR_PAD_LEFT)
+            : 'Groupe ' . strtoupper(substr($premiere->groupe_id ?? 'N/A', 0, 8));
+    @endphp
+    <title>Bon de Sortie Stock — {{ $refBon }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -19,7 +25,6 @@
             background: #e5e7eb;
         }
 
-        /* ── PAGE A4 ── */
         .page {
             width: 210mm;
             min-height: 297mm;
@@ -28,7 +33,6 @@
             background: #fff;
         }
 
-        /* ── ENTÊTE IMAGE ── */
         .header img {
             width: calc(100% + 24mm);
             margin-left: -12mm;
@@ -36,7 +40,6 @@
             display: block;
         }
 
-        /* ── TITRE ── */
         .bon-title {
             text-align: center;
             margin: 14px 0 12px;
@@ -57,7 +60,6 @@
             font-size: 10pt;
         }
 
-        /* ── INFOS ── */
         .infos-table {
             width: 100%;
             border-collapse: collapse;
@@ -80,7 +82,6 @@
             min-width: 100px;
         }
 
-        /* ── TABLEAU PRODUITS ── */
         .produits-table {
             width: 100%;
             border-collapse: collapse;
@@ -95,6 +96,7 @@
             font-weight: bold;
             text-transform: uppercase;
             font-size: 9pt;
+            background: #f3f4f6;
         }
 
         .produits-table td {
@@ -107,7 +109,6 @@
 
         .tc { text-align: center; }
 
-        /* ── OBSERVATIONS ── */
         .obs-label {
             font-weight: bold;
             font-size: 10pt;
@@ -122,7 +123,6 @@
             margin-bottom: 18px;
         }
 
-        /* ── SIGNATURES ── */
         .signatures {
             display: flex;
             justify-content: space-around;
@@ -154,7 +154,6 @@
             margin-top: 3px;
         }
 
-        /* ── PIED ── */
         .footer {
             position: fixed;
             bottom: 0;
@@ -168,7 +167,6 @@
             background: #fff;
         }
 
-        /* ── IMPRESSION ── */
         @media print {
             body { background: #fff; }
             .no-print { display: none !important; }
@@ -184,11 +182,11 @@
         style="background:#4f46e5;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">
         🖨️ Imprimer
     </button>
-    <button onclick="window.close()"
+    <button onclick="history.back()"
         style="background:#475569;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer;">
-        ✕ Fermer
+        ← Retour
     </button>
-    <span style="color:#94a3b8;font-size:12px;">Bon de Sortie Stock N° {{ str_pad($sortie->id, 4, '0', STR_PAD_LEFT) }}</span>
+    <span style="color:#94a3b8;font-size:12px;">Bon de Sortie — {{ $refBon }}</span>
 </div>
 
 <div class="page">
@@ -202,9 +200,9 @@
     <div class="bon-title">
         <h1>Bon de Sortie Stock</h1>
         <div class="bon-ref">
-            N° <strong>{{ str_pad($sortie->id, 4, '0', STR_PAD_LEFT) }}</strong>
+            {{ $refBon }}
             &nbsp;&nbsp;|&nbsp;&nbsp;
-            Date : <strong>{{ $sortie->date_sortie->format('d/m/Y') }}</strong>
+            Date : <strong>{{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</strong>
         </div>
     </div>
 
@@ -214,75 +212,91 @@
             <td class="lbl">Service émetteur :</td>
             <td class="val">Service Approvisionnements</td>
             <td class="lbl">Date de sortie :</td>
-            <td class="val">{{ $sortie->date_sortie->format('d/m/Y') }}</td>
+            <td class="val">{{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</td>
         </tr>
         <tr>
             <td class="lbl">Demandeur :</td>
-            <td class="val">{{ $sortie->demandeur->nom ?? '-' }}</td>
+            <td class="val">{{ $demandeur->nom ?? '-' }}</td>
             <td class="lbl">Service / Poste :</td>
-            <td class="val">{{ $sortie->demandeur->poste_service ?? '-' }}</td>
+            <td class="val">{{ $demandeur->poste_service ?? '-' }}</td>
         </tr>
         <tr>
             <td class="lbl">Établi par :</td>
-            <td class="val">{{ $sortie->createur?->display_name ?? 'Système' }}</td>
+            <td class="val">{{ $createur?->display_name ?? 'Système' }}</td>
             <td class="lbl">Date d'établissement :</td>
-            <td class="val">{{ $sortie->created_at->format('d/m/Y') }}</td>
+            <td class="val">{{ now()->format('d/m/Y') }}</td>
         </tr>
     </table>
 
-    {{-- ── TABLEAU PRODUIT ── --}}
+    {{-- ── TABLEAU PRODUITS ── --}}
     <table class="produits-table">
         <thead>
             <tr>
                 <th style="width:5%">N°</th>
-                <th style="width:32%">Désignation du produit</th>
-                <th style="width:20%">Catégorie</th>
+                <th style="width:38%">Désignation du produit</th>
+                <th style="width:22%">Catégorie</th>
                 <th style="width:10%">Unité</th>
-                <th style="width:13%">Quantité sortie</th>
-                <th style="width:20%">Observations</th>
+                <th style="width:13%">Qté sortie</th>
+                <th style="width:12%">Magasin</th>
             </tr>
         </thead>
         <tbody>
+            @foreach($sorties as $i => $s)
             <tr>
-                <td class="tc">1</td>
-                <td><strong>{{ $sortie->produit->libelle ?? '-' }}</strong></td>
-                <td class="tc">{{ $sortie->produit->categorie->libelle ?? '-' }}</td>
+                <td class="tc">{{ $i + 1 }}</td>
+                <td><strong>{{ $s->produit->libelle ?? '-' }}</strong></td>
+                <td class="tc">{{ $s->produit->categorie->libelle ?? '-' }}</td>
                 <td class="tc">–</td>
-                <td class="tc"><strong>{{ $sortie->quantite }}</strong></td>
-                <td>{{ $sortie->observations ?? '' }}</td>
+                <td class="tc"><strong>{{ $s->quantite }}</strong></td>
+                <td class="tc">{{ $s->produit->magasin->magasin ?? '-' }}</td>
             </tr>
-            @for($i = 0; $i < 4; $i++)
+            @endforeach
+            {{-- Lignes vides pour compléter jusqu'à 8 lignes minimum --}}
+            @for($j = $sorties->count(); $j < 8; $j++)
             <tr>
-                <td class="tc" style="color:#ccc;">{{ $i + 2 }}</td>
+                <td class="tc" style="color:#ddd;">{{ $j + 1 }}</td>
                 <td></td><td></td><td></td><td></td><td></td>
             </tr>
             @endfor
         </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="4" style="font-weight:bold;text-align:right;border:1px solid #000;padding:6px 8px;">
+                    Total articles : {{ $sorties->count() }}
+                </td>
+                <td class="tc" style="font-weight:bold;border:1px solid #000;">
+                    {{ $sorties->sum('quantite') }}
+                </td>
+                <td style="border:1px solid #000;"></td>
+            </tr>
+        </tfoot>
     </table>
 
     {{-- ── OBSERVATIONS ── --}}
-    <div class="obs-label">Observations générales :</div>
-    <div class="obs-box">{{ $sortie->observations ?? '' }}</div>
+    @if($observations)
+    <div class="obs-label">Observations :</div>
+    <div class="obs-box">{{ $observations }}</div>
+    @endif
 
     {{-- ── SIGNATURES ── --}}
     <div class="signatures">
         <div class="sig-block">
             <div class="sig-title">Le Demandeur</div>
             <div class="sig-line"></div>
-            <div class="sig-name">{{ $sortie->demandeur->nom ?? '' }}</div>
-            <div class="sig-name" style="font-size:8.5pt;color:#666;">{{ $sortie->demandeur->poste_service ?? '' }}</div>
+            <div class="sig-name">{{ $demandeur->nom ?? '' }}</div>
+            <div class="sig-name" style="font-size:8.5pt;color:#666;">{{ $demandeur->poste_service ?? '' }}</div>
         </div>
         <div class="sig-block">
             <div class="sig-title">Service Approvisionnements</div>
             <div class="sig-line"></div>
-            <div class="sig-name">{{ $sortie->createur?->display_name ?? '' }}</div>
+            <div class="sig-name">{{ $createur?->display_name ?? '' }}</div>
         </div>
     </div>
 
     {{-- ── PIED ── --}}
     <div class="footer">
         AGENCE DE GESTION DES PALAIS DE CONGRÈS DE MAURITANIE &nbsp;|&nbsp;
-        Bon de Sortie Stock N° {{ str_pad($sortie->id, 4, '0', STR_PAD_LEFT) }} &nbsp;|&nbsp;
+        Bon de Sortie {{ $refBon }} &nbsp;|&nbsp;
         Imprimé le {{ now()->format('d/m/Y à H:i') }}
     </div>
 

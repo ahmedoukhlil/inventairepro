@@ -9,6 +9,7 @@ use App\Livewire\Traits\WithCachedOptions;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 #[Layout('components.layouts.app')]
 class FormSortie extends Component
@@ -132,7 +133,9 @@ class FormSortie extends Component
         }
 
         try {
-            DB::transaction(function () use ($produits) {
+            $groupeId = Str::uuid()->toString();
+
+            DB::transaction(function () use ($groupeId) {
                 foreach ($this->lignes as $ligne) {
                     StockSortie::create([
                         'date_sortie'  => $this->date_sortie,
@@ -141,13 +144,14 @@ class FormSortie extends Component
                         'quantite'     => $ligne['quantite'],
                         'observations' => $this->observations,
                         'created_by'   => auth()->user()->idUser,
+                        'groupe_id'    => $groupeId,
                     ]);
                 }
             });
 
             $nb = count($this->lignes);
-            session()->flash('success', $nb . ' sortie(s) enregistrée(s) avec succès.');
-            return redirect()->route('stock.sorties.index');
+            session()->flash('success', $nb . ' article(s) enregistré(s) avec succès.');
+            return redirect()->route('stock.sorties.bon.groupe', $groupeId);
         } catch (\Exception $e) {
             session()->flash('error', 'Erreur lors de l\'enregistrement : ' . $e->getMessage());
         }
