@@ -1,4 +1,83 @@
-<div>
+<div
+    x-data="{
+        confirm: {
+            show: false,
+            titre: '',
+            message: '',
+            action: null,
+            danger: true,
+        },
+        demanderConfirmation(titre, message, action) {
+            this.confirm.titre   = titre;
+            this.confirm.message = message;
+            this.confirm.action  = action;
+            this.confirm.show    = true;
+        },
+        valider() {
+            if (this.confirm.action) this.confirm.action();
+            this.confirm.show = false;
+        },
+        annuler() {
+            this.confirm.show = false;
+        }
+    }"
+>
+
+    {{-- Modale de confirmation --}}
+    <div
+        x-show="confirm.show"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style="display:none"
+    >
+        {{-- Fond --}}
+        <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" @click="annuler()"></div>
+
+        {{-- Carte --}}
+        <div
+            x-show="confirm.show"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 z-10"
+        >
+            {{-- Icône --}}
+            <div class="flex items-center gap-4 mb-4">
+                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-gray-900" x-text="confirm.titre"></h3>
+                    <p class="text-sm text-gray-500 mt-0.5" x-text="confirm.message"></p>
+                </div>
+            </div>
+
+            {{-- Boutons --}}
+            <div class="flex justify-end gap-3 mt-6">
+                <button
+                    @click="annuler()"
+                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                    Annuler
+                </button>
+                <button
+                    @click="valider()"
+                    class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
+                    Supprimer
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- En-tête --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
         <div>
@@ -234,9 +313,11 @@
                         @if(auth()->user()->canDeleteStockOperations())
                             @if($isGroupe)
                                 <button
-                                    wire:click="supprimerCommande('{{ $groupe->groupe_key }}')"
-                                    wire:confirm="Supprimer toute cette commande ({{ $nbArticles }} article{{ $nbArticles > 1 ? 's' : '' }}) ? Les stocks seront rétablis automatiquement."
-                                    wire:loading.attr="disabled"
+                                    @click.stop="demanderConfirmation(
+                                        'Supprimer la commande',
+                                        'Cette commande contient {{ $nbArticles }} article{{ $nbArticles > 1 ? 's' : '' }}. Les stocks seront rétablis automatiquement.',
+                                        () => $wire.supprimerCommande('{{ $groupe->groupe_key }}')
+                                    )"
                                     title="Supprimer toute la commande"
                                     class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -245,9 +326,11 @@
                                 </button>
                             @else
                                 <button
-                                    wire:click="supprimerSortie({{ $premiere->id }})"
-                                    wire:confirm="Supprimer cette sortie ? Le stock sera rétabli automatiquement."
-                                    wire:loading.attr="disabled"
+                                    @click.stop="demanderConfirmation(
+                                        'Supprimer la sortie',
+                                        'Le stock sera rétabli automatiquement.',
+                                        () => $wire.supprimerSortie({{ $premiere->id }})
+                                    )"
                                     title="Supprimer cette sortie"
                                     class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -301,9 +384,11 @@
                                     @if(auth()->user()->canDeleteStockOperations() && $isGroupe)
                                         <td class="px-4 py-2.5 text-center">
                                             <button
-                                                wire:click="supprimerSortie({{ $ligne->id }})"
-                                                wire:confirm="Supprimer cet article de la commande ? Le stock sera rétabli."
-                                                wire:loading.attr="disabled"
+                                                @click="demanderConfirmation(
+                                                    'Supprimer l\'article',
+                                                    '{{ addslashes($ligne->produit->libelle ?? 'cet article') }} sera retiré de la commande et le stock rétabli.',
+                                                    () => $wire.supprimerSortie({{ $ligne->id }})
+                                                )"
                                                 title="Supprimer cet article"
                                                 class="inline-flex items-center px-1.5 py-1 text-xs font-medium rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
                                                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
