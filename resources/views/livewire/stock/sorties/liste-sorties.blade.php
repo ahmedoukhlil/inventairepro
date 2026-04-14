@@ -149,7 +149,7 @@
                 $premiere = $lignes->first();
                 $totalQte = $lignes->sum('quantite');
                 $nbArticles = $lignes->count();
-                $isGroupe = str_contains($groupe->groupe_key, '-'); {{-- UUID = vrai groupe --}}
+                $isGroupe = str_contains($groupe->groupe_key, '-');
             @endphp
 
             @if($premiere)
