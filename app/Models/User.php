@@ -44,6 +44,7 @@ class User extends Authenticatable
     protected $fillable = [
         'users',       // Nom d'utilisateur (connexion uniquement)
         'nom_complet', // Nom complet affiché dans l'application
+        'poste',       // Poste / fonction de l'utilisateur
         'mdp',
         'role',
     ];

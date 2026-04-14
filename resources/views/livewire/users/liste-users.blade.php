@@ -204,7 +204,9 @@
                                         </div>
                                         <div>
                                             <div class="text-sm font-medium text-gray-900">{{ $user->display_name }}</div>
-                                            <div class="text-xs text-gray-400">{{ $user->users }}</div>
+                                            <div class="text-xs text-gray-400">
+                                                {{ $user->poste ?? $user->users }}
+                                            </div>
                                             @if($user->idUser === auth()->id())
                                                 <div class="text-xs text-gray-500">(Vous)</div>
                                             @endif

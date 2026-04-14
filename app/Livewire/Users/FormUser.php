@@ -16,6 +16,7 @@ class FormUser extends Component
     public $userId = null;
     public $users = '';        // Nom d'utilisateur (connexion uniquement)
     public $nom_complet = '';  // Nom complet affiché dans l'application
+    public $poste = '';        // Poste / fonction
     public $mdp = '';
     public $mdp_confirmation = '';
     public $role = 'agent';
@@ -44,6 +45,7 @@ class FormUser extends Component
                 $this->userId = $user->idUser;
                 $this->users = $user->users;
                 $this->nom_complet = $user->nom_complet ?? '';
+                $this->poste = $user->poste ?? '';
                 $this->role = $user->role;
             }
         }
@@ -96,6 +98,7 @@ class FormUser extends Component
                     : 'unique:users,users',
             ],
             'nom_complet' => 'nullable|string|max:255',
+            'poste'       => 'nullable|string|max:255',
             'role' => 'required|in:' . implode(',', array_values($roleKeys)),
         ];
 
@@ -159,6 +162,7 @@ class FormUser extends Component
         $data = [
             'users'       => $this->users,
             'nom_complet' => $this->nom_complet ?: null,
+            'poste'       => $this->poste ?: null,
             'role'        => $this->role,
         ];
 

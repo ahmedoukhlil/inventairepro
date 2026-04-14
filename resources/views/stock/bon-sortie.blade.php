@@ -290,6 +290,9 @@
             <div class="sig-title">Service Approvisionnements</div>
             <div class="sig-line"></div>
             <div class="sig-name">{{ $createur?->display_name ?? '' }}</div>
+            @if($createur?->poste)
+                <div class="sig-name" style="font-size:8.5pt;color:#666;">{{ $createur->poste }}</div>
+            @endif
         </div>
     </div>
 

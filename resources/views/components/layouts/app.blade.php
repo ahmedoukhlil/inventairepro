@@ -95,7 +95,7 @@
                 </div>
                 <div class="min-w-0 flex-1">
                     <p class="truncate text-sm font-medium text-slate-200">{{ auth()->user()->display_name ?? 'Utilisateur' }}</p>
-                    <p class="truncate text-xs text-slate-500">{{ auth()->user()->role_name }}</p>
+                    <p class="truncate text-xs text-slate-500">{{ auth()->user()->poste ?? auth()->user()->role_name }}</p>
                 </div>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
