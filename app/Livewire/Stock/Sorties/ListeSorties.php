@@ -38,6 +38,18 @@ class ListeSorties extends Component
         $this->resetPage();
     }
 
+    public function supprimer(int $id): void
+    {
+        if (!auth()->user()->canDeleteStockOperations()) {
+            abort(403);
+        }
+
+        $sortie = StockSortie::findOrFail($id);
+        $sortie->delete(); // L'event deleting remet le stock automatiquement
+
+        session()->flash('success', 'Sortie supprimée. Le stock a été rétabli.');
+    }
+
     public function render()
     {
         $query = StockSortie::query()

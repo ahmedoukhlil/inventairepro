@@ -222,7 +222,12 @@
         </tr>
         <tr>
             <td class="lbl">Établi par :</td>
-            <td class="val">{{ $createur?->display_name ?? 'Système' }}</td>
+            <td class="val">
+                {{ $createur?->display_name ?? 'Système' }}
+                @if($createur?->poste)
+                    <span style="color:#555;font-size:9pt;"> — {{ $createur->poste }}</span>
+                @endif
+            </td>
             <td class="lbl">Date d'établissement :</td>
             <td class="val">{{ now()->format('d/m/Y') }}</td>
         </tr>

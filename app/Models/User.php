@@ -342,6 +342,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Vérifie si l'utilisateur peut supprimer des opérations de stock (admin_stock uniquement)
+     */
+    public function canDeleteStockOperations(): bool
+    {
+        return $this->hasPermission('stock.delete_operations');
+    }
+
+    /**
      * Vérifie si l'utilisateur peut gérer les utilisateurs (CRUD comptes).
      * Réservé au rôle admin uniquement.
      */
@@ -380,7 +388,8 @@ class User extends Authenticatable
                 'stock.manage_references' => $this->isAdmin() || $this->isAdminStock(),
                 'stock.create_entree'     => $this->isAdmin() || $this->isAdminStock(),
                 'stock.create_sortie'     => $this->isAdmin() || $this->isAdminStock() || $this->isAgent(),
-                'stock.view_all_movements'=> $this->isAdmin() || $this->isAdminStock(),
+                'stock.view_all_movements'  => $this->isAdmin() || $this->isAdminStock(),
+                'stock.delete_operations'   => $this->isAdminStock(),
                 default => false,
             };
         }

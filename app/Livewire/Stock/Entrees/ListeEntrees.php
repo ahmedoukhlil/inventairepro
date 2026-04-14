@@ -37,6 +37,18 @@ class ListeEntrees extends Component
         $this->resetPage();
     }
 
+    public function supprimer(int $id): void
+    {
+        if (!auth()->user()->canDeleteStockOperations()) {
+            abort(403);
+        }
+
+        $entree = StockEntree::findOrFail($id);
+        $entree->delete(); // L'event deleting retire la quantité du stock automatiquement
+
+        session()->flash('success', 'Entrée supprimée. Le stock a été ajusté.');
+    }
+
     public function render()
     {
         $entrees = StockEntree::query()
