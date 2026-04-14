@@ -136,15 +136,18 @@ class FormSortie extends Component
             $groupeId = Str::uuid()->toString();
 
             DB::transaction(function () use ($groupeId) {
+                $numeroCommande = StockSortie::genererNumeroCommande($this->date_sortie);
+
                 foreach ($this->lignes as $ligne) {
                     StockSortie::create([
-                        'date_sortie'  => $this->date_sortie,
-                        'produit_id'   => $ligne['produit_id'],
-                        'demandeur_id' => $this->demandeur_id,
-                        'quantite'     => $ligne['quantite'],
-                        'observations' => $this->observations,
-                        'created_by'   => auth()->user()->idUser,
-                        'groupe_id'    => $groupeId,
+                        'date_sortie'      => $this->date_sortie,
+                        'produit_id'       => $ligne['produit_id'],
+                        'demandeur_id'     => $this->demandeur_id,
+                        'quantite'         => $ligne['quantite'],
+                        'observations'     => $this->observations,
+                        'created_by'       => auth()->user()->idUser,
+                        'groupe_id'        => $groupeId,
+                        'numero_commande'  => $numeroCommande,
                     ]);
                 }
             });

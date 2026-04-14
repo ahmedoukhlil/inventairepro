@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     @php
         $premiere = $sorties->first();
-        $refBon   = $sorties->count() === 1
-            ? 'N° ' . str_pad($premiere->id, 4, '0', STR_PAD_LEFT)
-            : 'Groupe ' . strtoupper(substr($premiere->groupe_id ?? 'N/A', 0, 8));
+        $refBon   = $premiere->numero_commande
+            ? 'N°' . $premiere->numero_commande
+            : 'N°' . str_pad($premiere->id, 4, '0', STR_PAD_LEFT);
     @endphp
     <title>Bon de Sortie Stock — {{ $refBon }}</title>
     <style>

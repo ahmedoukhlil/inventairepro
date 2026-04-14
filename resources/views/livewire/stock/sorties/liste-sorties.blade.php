@@ -68,7 +68,7 @@
                            wire:model.live.debounce.300ms="search"
                            wire:loading.attr="disabled"
                            wire:target="search"
-                           placeholder="Produit, observations…"
+                           placeholder="Produit, demandeur…"
                            class="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition">
                     <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -141,114 +141,230 @@
         @endif
     </div>
 
-    {{-- Table --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full">
-                <thead>
-                    <tr class="border-b border-gray-100">
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Date</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Produit</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide hidden md:table-cell">Demandeur</th>
-                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide">Quantité</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide hidden sm:table-cell">Par</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide hidden lg:table-cell">Observations</th>
-                        <th class="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-50">
-                    @forelse($sorties as $sortie)
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-3 whitespace-nowrap">
-                                <p class="text-sm font-medium text-gray-800">{{ $sortie->date_sortie->format('d/m/Y') }}</p>
-                            </td>
-                            <td class="px-4 py-3">
-                                <p class="text-sm font-semibold text-gray-800">{{ $sortie->produit->libelle ?? '—' }}</p>
-                                @if($sortie->produit?->categorie)
-                                    <p class="text-xs text-gray-400">{{ $sortie->produit->categorie->libelle }}</p>
+    {{-- Liste des commandes --}}
+    <div class="space-y-3">
+        @forelse($groupeIds as $groupe)
+            @php
+                $lignes = $toutesLesSorties[$groupe->groupe_key] ?? collect();
+                $premiere = $lignes->first();
+                $totalQte = $lignes->sum('quantite');
+                $nbArticles = $lignes->count();
+                $isGroupe = str_contains($groupe->groupe_key, '-'); {{-- UUID = vrai groupe --}}
+            @endphp
+
+            @if($premiere)
+            <div x-data="{ open: false }"
+                 class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+
+                {{-- En-tête commande (cliquable) --}}
+                <div class="px-5 py-4 flex items-center gap-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                     @click="open = !open">
+
+                    {{-- Chevron --}}
+                    <div class="flex-shrink-0 text-gray-400 transition-transform duration-200"
+                         :class="open ? 'rotate-90' : ''">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+
+                    {{-- N° commande + Date --}}
+                    <div class="flex-shrink-0 w-36">
+                        @if($premiere->numero_commande)
+                            <p class="text-xs font-bold text-violet-600 font-mono">N°{{ $premiere->numero_commande }}</p>
+                        @endif
+                        <p class="text-sm font-semibold text-gray-800">
+                            {{ \Carbon\Carbon::parse($groupe->max_date)->format('d/m/Y') }}
+                        </p>
+                    </div>
+
+                    {{-- Demandeur --}}
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-gray-800 truncate">
+                            {{ $premiere->demandeur->nom ?? '—' }}
+                        </p>
+                        @if($premiere->demandeur?->poste_service)
+                            <p class="text-xs text-gray-400 truncate">{{ $premiere->demandeur->poste_service }}</p>
+                        @endif
+                    </div>
+
+                    {{-- Nb articles --}}
+                    <div class="flex-shrink-0 hidden sm:block text-center w-20">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            {{ $nbArticles }} article{{ $nbArticles > 1 ? 's' : '' }}
+                        </span>
+                    </div>
+
+                    {{-- Total quantité --}}
+                    <div class="flex-shrink-0 w-20 text-center">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-bold bg-violet-100 text-violet-700">
+                            -{{ $totalQte }}
+                        </span>
+                    </div>
+
+                    {{-- Créateur --}}
+                    <div class="flex-shrink-0 hidden lg:block w-32 text-right">
+                        <p class="text-xs text-gray-500 truncate">{{ $premiere->nom_createur }}</p>
+                    </div>
+
+                    {{-- Actions --}}
+                    <div class="flex-shrink-0 flex items-center gap-2" @click.stop>
+                        {{-- Bon de sortie --}}
+                        @if($isGroupe)
+                            <a href="{{ route('stock.sorties.bon.groupe', $groupe->groupe_key) }}" target="_blank"
+                               title="Imprimer le bon de sortie"
+                               class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                </svg>
+                                Bon
+                            </a>
+                        @else
+                            <a href="{{ route('stock.sorties.bon', $premiere->id) }}" target="_blank"
+                               title="Imprimer le bon de sortie"
+                               class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                </svg>
+                                Bon
+                            </a>
+                        @endif
+
+                        {{-- Supprimer commande --}}
+                        @if(auth()->user()->canDeleteStockOperations())
+                            @if($isGroupe)
+                                <button
+                                    wire:click="supprimerCommande('{{ $groupe->groupe_key }}')"
+                                    wire:confirm="Supprimer toute cette commande ({{ $nbArticles }} article{{ $nbArticles > 1 ? 's' : '' }}) ? Les stocks seront rétablis automatiquement."
+                                    wire:loading.attr="disabled"
+                                    title="Supprimer toute la commande"
+                                    class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            @else
+                                <button
+                                    wire:click="supprimerSortie({{ $premiere->id }})"
+                                    wire:confirm="Supprimer cette sortie ? Le stock sera rétabli automatiquement."
+                                    wire:loading.attr="disabled"
+                                    title="Supprimer cette sortie"
+                                    class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            @endif
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Articles (expandable) --}}
+                <div x-show="open" x-transition class="border-t border-gray-100">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="px-6 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide w-8"></th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Produit</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide hidden md:table-cell">Catégorie</th>
+                                <th class="px-4 py-2 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide">Quantité</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide hidden lg:table-cell">Observations</th>
+                                @if(auth()->user()->canDeleteStockOperations() && $isGroupe)
+                                    <th class="px-4 py-2 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide"></th>
                                 @endif
-                            </td>
-                            <td class="px-4 py-3 hidden md:table-cell">
-                                <p class="text-sm text-gray-700">{{ $sortie->demandeur->nom ?? '—' }}</p>
-                                @if($sortie->demandeur?->poste_service)
-                                    <p class="text-xs text-gray-400">{{ $sortie->demandeur->poste_service }}</p>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 text-center whitespace-nowrap">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-bold bg-violet-100 text-violet-700">
-                                    -{{ $sortie->quantite }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-3 hidden sm:table-cell">
-                                <p class="text-sm text-gray-500">{{ $sortie->nom_createur }}</p>
-                            </td>
-                            <td class="px-4 py-3 hidden lg:table-cell">
-                                <p class="text-sm text-gray-500 truncate max-w-[180px]">
-                                    {{ $sortie->observations ? Str::limit($sortie->observations, 40) : '—' }}
-                                </p>
-                            </td>
-                            <td class="px-6 py-3 text-center whitespace-nowrap">
-                                <div class="inline-flex items-center gap-2">
-                                    <a href="{{ route('stock.sorties.bon', $sortie->id) }}" target="_blank"
-                                       title="Imprimer le bon de sortie"
-                                       class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            @foreach($lignes as $ligne)
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-2.5 text-gray-300">
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                         </svg>
-                                        Bon
-                                    </a>
-
-                                    @if(auth()->user()->canDeleteStockOperations())
-                                        <button
-                                            wire:click="supprimer({{ $sortie->id }})"
-                                            wire:confirm="Supprimer cette sortie ? Le stock sera rétabli automatiquement."
-                                            wire:loading.attr="disabled"
-                                            title="Supprimer cette sortie"
-                                            class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
-                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                            </svg>
-                                        </button>
+                                    </td>
+                                    <td class="px-4 py-2.5">
+                                        <p class="text-sm font-medium text-gray-800">{{ $ligne->produit->libelle ?? '—' }}</p>
+                                    </td>
+                                    <td class="px-4 py-2.5 hidden md:table-cell">
+                                        <p class="text-xs text-gray-500">{{ $ligne->produit?->categorie?->libelle ?? '—' }}</p>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-center">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-bold bg-violet-50 text-violet-600">
+                                            -{{ $ligne->quantite }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-2.5 hidden lg:table-cell">
+                                        <p class="text-xs text-gray-400 truncate max-w-[200px]">
+                                            {{ $ligne->observations ? \Illuminate\Support\Str::limit($ligne->observations, 50) : '—' }}
+                                        </p>
+                                    </td>
+                                    @if(auth()->user()->canDeleteStockOperations() && $isGroupe)
+                                        <td class="px-4 py-2.5 text-center">
+                                            <button
+                                                wire:click="supprimerSortie({{ $ligne->id }})"
+                                                wire:confirm="Supprimer cet article de la commande ? Le stock sera rétabli."
+                                                wire:loading.attr="disabled"
+                                                title="Supprimer cet article"
+                                                class="inline-flex items-center px-1.5 py-1 text-xs font-medium rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
+                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                </svg>
+                                            </button>
+                                        </td>
                                     @endif
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="px-6 py-16 text-center">
-                                <div class="flex flex-col items-center gap-3">
-                                    <div class="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center">
-                                        <svg class="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                                        </svg>
-                                    </div>
-                                    <p class="text-sm font-medium text-gray-500">Aucune sortie trouvée</p>
-                                    @if($search || $filterProduit || $filterDemandeur)
-                                        <button wire:click="$set('search', ''); $set('filterProduit', ''); $set('filterDemandeur', '')"
-                                            class="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                                            Effacer les filtres
-                                        </button>
-                                    @endif
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        {{-- Footer pagination --}}
-        @if($sorties->hasPages())
-            <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-4">
-                <p class="text-xs text-gray-500">
-                    {{ $sorties->firstItem() }}–{{ $sorties->lastItem() }} sur {{ $sorties->total() }} sortie{{ $sorties->total() > 1 ? 's' : '' }}
-                </p>
-                {{ $sorties->links() }}
+                                </tr>
+                            @endforeach
+                        </tbody>
+                        @if($nbArticles > 1)
+                        <tfoot>
+                            <tr class="bg-violet-50">
+                                <td class="px-6 py-2"></td>
+                                <td class="px-4 py-2 text-xs font-semibold text-violet-700" colspan="2">Total</td>
+                                <td class="px-4 py-2 text-center">
+                                    <span class="text-sm font-bold text-violet-700">-{{ $totalQte }}</span>
+                                </td>
+                                <td class="px-4 py-2 hidden lg:table-cell"></td>
+                                @if(auth()->user()->canDeleteStockOperations() && $isGroupe)
+                                    <td class="px-4 py-2"></td>
+                                @endif
+                            </tr>
+                        </tfoot>
+                        @endif
+                    </table>
+                </div>
             </div>
-        @else
-            <div class="px-6 py-3 border-t border-gray-50">
-                <p class="text-xs text-gray-400">{{ $sorties->total() }} sortie{{ $sorties->total() > 1 ? 's' : '' }}</p>
+            @endif
+        @empty
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 px-6 py-16 text-center">
+                <div class="flex flex-col items-center gap-3">
+                    <div class="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center">
+                        <svg class="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                    </div>
+                    <p class="text-sm font-medium text-gray-500">Aucune sortie trouvée</p>
+                    @if($search || $filterProduit || $filterDemandeur)
+                        <button wire:click="$set('search', ''); $set('filterProduit', ''); $set('filterDemandeur', '')"
+                            class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                            Effacer les filtres
+                        </button>
+                    @endif
+                </div>
             </div>
-        @endif
+        @endforelse
     </div>
+
+    {{-- Pagination --}}
+    @if($groupeIds->hasPages())
+        <div class="mt-4 px-1 flex items-center justify-between gap-4">
+            <p class="text-xs text-gray-500">
+                {{ $groupeIds->firstItem() }}–{{ $groupeIds->lastItem() }} sur {{ $groupeIds->total() }} commande{{ $groupeIds->total() > 1 ? 's' : '' }}
+            </p>
+            {{ $groupeIds->links() }}
+        </div>
+    @else
+        <div class="mt-3 px-1">
+            <p class="text-xs text-gray-400">{{ $groupeIds->total() }} commande{{ $groupeIds->total() > 1 ? 's' : '' }}</p>
+        </div>
+    @endif
 </div>

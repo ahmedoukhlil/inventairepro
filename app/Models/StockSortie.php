@@ -22,7 +22,27 @@ class StockSortie extends Model
         'observations',
         'created_by',
         'groupe_id',
+        'numero_commande',
     ];
+
+    /**
+     * Génère le prochain numéro de commande pour l'année de la date donnée.
+     * Format : 001/2026
+     * Doit être appelé à l'intérieur d'une transaction pour éviter les doublons.
+     */
+    public static function genererNumeroCommande(string $dateSortie): string
+    {
+        $annee = \Carbon\Carbon::parse($dateSortie)->year;
+
+        $dernierNumero = static::whereYear('date_sortie', $annee)
+            ->whereNotNull('numero_commande')
+            ->lockForUpdate()
+            ->max(DB::raw('CAST(SUBSTRING_INDEX(numero_commande, \'/\', 1) AS UNSIGNED)'));
+
+        $prochain = ($dernierNumero ?? 0) + 1;
+
+        return str_pad($prochain, 3, '0', STR_PAD_LEFT) . '/' . $annee;
+    }
 
     protected $casts = [
         'date_sortie'  => 'date',
