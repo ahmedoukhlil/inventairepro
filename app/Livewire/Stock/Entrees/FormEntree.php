@@ -8,19 +8,21 @@ use App\Models\StockFournisseur;
 use App\Livewire\Traits\WithCachedOptions;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 #[Layout('components.layouts.app')]
 class FormEntree extends Component
 {
     use WithCachedOptions;
 
-    // Champs du formulaire
     public $date_entree;
     public $reference_commande = '';
-    public $produit_id = '';
     public $fournisseur_id = '';
-    public $quantite = 1;
     public $observations = '';
+
+    // Lignes d'articles : [['produit_id' => '', 'quantite' => 1, 'stock_actuel' => 0, 'produit_libelle' => '']]
+    public array $lignes = [];
 
     public function mount()
     {
@@ -29,118 +31,108 @@ class FormEntree extends Component
             abort(403, 'Accès non autorisé. Seuls les administrateurs peuvent créer des entrées.');
         }
 
-        // Date du jour par défaut
         $this->date_entree = now()->format('Y-m-d');
+        $this->lignes = [['produit_id' => '', 'quantite' => 1, 'stock_actuel' => 0, 'produit_libelle' => '']];
     }
 
-    protected function rules()
+    public function ajouterLigne()
     {
-        return [
-            'date_entree' => 'required|date',
-            'reference_commande' => 'nullable|string|max:255',
-            'produit_id' => 'required|exists:stock_produits,id',
-            'fournisseur_id' => 'nullable|exists:stock_fournisseurs,id',
-            'quantite' => 'required|integer|min:1',
-            'observations' => 'nullable|string',
-        ];
+        $this->lignes[] = ['produit_id' => '', 'quantite' => 1, 'stock_actuel' => 0, 'produit_libelle' => ''];
     }
 
-    protected function messages()
+    public function supprimerLigne(int $index)
     {
-        return [
-            'date_entree.required' => 'La date d\'entrée est obligatoire.',
-            'produit_id.required' => 'Le produit est obligatoire.',
-            'produit_id.exists' => 'Le produit sélectionné n\'existe pas.',
-            'fournisseur_id.exists' => 'Le fournisseur sélectionné n\'existe pas.',
-            'quantite.required' => 'La quantité est obligatoire.',
-            'quantite.integer' => 'La quantité doit être un nombre entier.',
-            'quantite.min' => 'La quantité doit être au moins 1.',
-        ];
-    }
-
-    /**
-     * Propriété calculée : Produit sélectionné pour affichage
-     */
-    public function getProduitSelectionneProperty()
-    {
-        if (empty($this->produit_id)) {
-            return null;
+        if (count($this->lignes) > 1) {
+            array_splice($this->lignes, $index, 1);
+            $this->lignes = array_values($this->lignes);
         }
-
-        return StockProduit::with(['categorie', 'magasin'])->find($this->produit_id);
     }
 
-    /**
-     * Options pour le select Produits
-     */
+    public function updatedLignes($value, $key)
+    {
+        [$index, $field] = explode('.', $key, 2);
+        $index = (int) $index;
+
+        if ($field === 'produit_id') {
+            $produit = $value ? StockProduit::find($value) : null;
+            $this->lignes[$index]['stock_actuel']    = $produit ? ($produit->stock_actuel ?? 0) : 0;
+            $this->lignes[$index]['produit_libelle'] = $produit ? $produit->libelle : '';
+        }
+    }
+
     public function getProduitOptionsProperty()
     {
         return cache()->remember('stock_produits_options', 300, function () {
             return StockProduit::with('categorie')
                 ->orderBy('libelle')
                 ->get()
-                ->map(function ($produit) {
-                    return [
-                        'value' => (string)$produit->id,
-                        'text' => $produit->libelle . ' [' . ($produit->categorie->libelle ?? 'Sans catégorie') . ']',
-                    ];
-                })
+                ->map(fn($p) => [
+                    'value' => (string) $p->id,
+                    'text'  => $p->libelle . ' [' . ($p->categorie->libelle ?? 'Sans catégorie') . '] — Stock: ' . $p->stock_actuel,
+                ])
                 ->toArray();
         });
     }
 
-    /**
-     * Options pour le select Fournisseurs
-     */
     public function getFournisseurOptionsProperty()
     {
         return cache()->remember('stock_fournisseurs_options', 300, function () {
             return StockFournisseur::orderBy('libelle')
                 ->get()
-                ->map(function ($fournisseur) {
-                    return [
-                        'value' => (string)$fournisseur->id,
-                        'text' => $fournisseur->libelle,
-                    ];
-                })
+                ->map(fn($f) => [
+                    'value' => (string) $f->id,
+                    'text'  => $f->libelle,
+                ])
                 ->toArray();
         });
     }
 
     public function save()
     {
-        // Vérifier que le produit est sélectionné
-        if (empty($this->produit_id)) {
-            session()->flash('error', 'Veuillez sélectionner un produit.');
+        $this->validate([
+            'date_entree'         => 'required|date',
+            'reference_commande'  => 'nullable|string|max:255',
+            'fournisseur_id'      => 'nullable|exists:stock_fournisseurs,id',
+            'lignes'              => 'required|array|min:1',
+            'lignes.*.produit_id' => 'required|exists:stock_produits,id',
+            'lignes.*.quantite'   => 'required|integer|min:1',
+        ], [
+            'date_entree.required'         => 'La date d\'entrée est obligatoire.',
+            'lignes.*.produit_id.required' => 'Sélectionnez un produit pour chaque ligne.',
+            'lignes.*.quantite.required'   => 'La quantité est obligatoire.',
+            'lignes.*.quantite.min'        => 'La quantité doit être au moins 1.',
+        ]);
+
+        // Vérification des doublons de produits
+        $produitIds = array_column($this->lignes, 'produit_id');
+        if (count($produitIds) !== count(array_unique($produitIds))) {
+            $this->addError('lignes', 'Vous avez sélectionné le même produit plusieurs fois. Fusionnez les lignes.');
             return;
         }
 
-        $validated = $this->validate();
-        
-        // Ajouter l'utilisateur qui crée l'entrée
-        $validated['created_by'] = auth()->user()->idUser;
-
         try {
-            // Vérifier que le produit existe
-            $produit = StockProduit::find($this->produit_id);
-            if (!$produit) {
-                session()->flash('error', 'Le produit sélectionné n\'existe plus.');
-                return;
-            }
+            $groupeId = Str::uuid()->toString();
 
-            // Créer l'entrée (le stock sera mis à jour automatiquement via l'event)
-            StockEntree::create($validated);
+            DB::transaction(function () use ($groupeId) {
+                $numeroEntree = StockEntree::genererNumeroEntree($this->date_entree);
 
-            // Recharger le produit pour vérifier l'alerte
-            $produit->refresh();
-            $message = 'Entrée de stock enregistrée avec succès. Le stock a été mis à jour.';
-            
-            // Si c'était la première entrée, informer l'utilisateur
-            if ($produit->stock_initial == $produit->stock_actuel && $produit->stock_initial == $validated['quantite']) {
-                $message .= ' Le stock initial a été défini à ' . $produit->stock_initial . '.';
-            }
+                foreach ($this->lignes as $ligne) {
+                    StockEntree::create([
+                        'date_entree'        => $this->date_entree,
+                        'reference_commande' => $this->reference_commande ?: null,
+                        'produit_id'         => $ligne['produit_id'],
+                        'fournisseur_id'     => $this->fournisseur_id ?: null,
+                        'quantite'           => $ligne['quantite'],
+                        'observations'       => $this->observations ?: null,
+                        'created_by'         => auth()->user()->idUser,
+                        'groupe_id'          => $groupeId,
+                        'numero_entree'      => $numeroEntree,
+                    ]);
+                }
+            });
 
-            session()->flash('success', $message);
+            $nb = count($this->lignes);
+            session()->flash('success', $nb . ' article(s) enregistré(s) avec succès.');
             return redirect()->route('stock.entrees.index');
         } catch (\Exception $e) {
             session()->flash('error', 'Erreur lors de l\'enregistrement : ' . $e->getMessage());

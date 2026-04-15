@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class StockEntree extends Model
 {
@@ -20,7 +21,28 @@ class StockEntree extends Model
         'quantite',
         'observations',
         'created_by',
+        'groupe_id',
+        'numero_entree',
     ];
+
+    /**
+     * Génère le prochain numéro d'entrée pour l'année de la date donnée.
+     * Format : E-001/2026
+     * Doit être appelé à l'intérieur d'une transaction pour éviter les doublons.
+     */
+    public static function genererNumeroEntree(string $dateEntree): string
+    {
+        $annee = \Carbon\Carbon::parse($dateEntree)->year;
+
+        $dernierNumero = static::whereYear('date_entree', $annee)
+            ->whereNotNull('numero_entree')
+            ->lockForUpdate()
+            ->max(DB::raw('CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(numero_entree, \'-\', -1), \'/\', 1) AS UNSIGNED)'));
+
+        $prochain = ($dernierNumero ?? 0) + 1;
+
+        return 'E-' . str_pad($prochain, 3, '0', STR_PAD_LEFT) . '/' . $annee;
+    }
 
     protected $casts = [
         'date_entree' => 'date',
