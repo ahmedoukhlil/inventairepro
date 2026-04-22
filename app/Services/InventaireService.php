@@ -405,11 +405,12 @@ class InventaireService
         $biensDeplaces = $scans->where('statut_scan', 'deplace')->count();
         $biensAbsents = $scans->where('statut_scan', 'absent')->count();
         $biensDeteriores = $scans->where('statut_scan', 'deteriore')->count();
-        $biensDefectueux = $scans->where('etat_constate', 'mauvais')->count();
+        $biensDefectueux = $scans->whereIn('statut_scan', ['present', 'deplace', 'deteriore'])->where('etat_constate', 'mauvais')->count();
 
-        // Répartition par état physique (Neuf, Bon état, Défectueuse)
-        $biensNeufs = $scans->where('etat_constate', 'neuf')->count();
-        $biensBonEtat = $scans->whereIn('etat_constate', ['bon', 'moyen'])->count();
+        // Répartition par état physique — uniquement sur les biens réellement vérifiés
+        $scansVerifies = $scans->whereIn('statut_scan', ['present', 'deplace', 'deteriore']);
+        $biensNeufs   = $scansVerifies->where('etat_constate', 'neuf')->count();
+        $biensBonEtat = $scansVerifies->whereIn('etat_constate', ['bon', 'moyen'])->count();
 
         $progressionGlobale = $totalLocalisations > 0 
             ? round(($localisationsTerminees / $totalLocalisations) * 100, 2) 

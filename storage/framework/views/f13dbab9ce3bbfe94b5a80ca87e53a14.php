@@ -109,12 +109,12 @@
         <div class="shrink-0 border-t border-slate-700/60 p-4">
             <div class="flex items-center gap-3">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
-                    <?php echo e(strtoupper(substr(auth()->user()->users ?? 'U', 0, 1))); ?>
+                    <?php echo e(strtoupper(substr(auth()->user()->display_name ?? 'U', 0, 1))); ?>
 
                 </div>
                 <div class="min-w-0 flex-1">
-                    <p class="truncate text-sm font-medium text-slate-200"><?php echo e(auth()->user()->users ?? 'Utilisateur'); ?></p>
-                    <p class="truncate text-xs text-slate-500"><?php echo e(auth()->user()->role_name); ?></p>
+                    <p class="truncate text-sm font-medium text-slate-200"><?php echo e(auth()->user()->display_name ?? 'Utilisateur'); ?></p>
+                    <p class="truncate text-xs text-slate-500"><?php echo e(auth()->user()->poste ?? auth()->user()->role_name); ?></p>
                 </div>
                 <form method="POST" action="<?php echo e(route('logout')); ?>">
                     <?php echo csrf_field(); ?>
@@ -169,7 +169,7 @@
                     <?php echo e(auth()->user()->role_name); ?>
 
                 </span>
-                <span class="hidden sm:block text-sm font-medium text-slate-700"><?php echo e(auth()->user()->users); ?></span>
+                <span class="hidden sm:block text-sm font-medium text-slate-700"><?php echo e(auth()->user()->display_name); ?></span>
             </div>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </header>
@@ -196,6 +196,50 @@
 
 <?php echo \Livewire\Mechanisms\FrontendAssets\FrontendAssets::scripts(); ?>
 
+
+<script>
+    const LOGIN_URL = '<?php echo e(route('login')); ?>';
+    const SESSION_CHECK_URL = '<?php echo e(route('session.check')); ?>';
+
+    function redirectToLogin() {
+        window.location.href = LOGIN_URL;
+    }
+
+    // 1. Hook Livewire : intercepter 401/419 sur les requêtes AJAX
+    document.addEventListener('livewire:init', () => {
+        Livewire.hook('request', ({ fail }) => {
+            fail(({ status, preventDefault }) => {
+                if (status === 401 || status === 419) {
+                    preventDefault();
+                    redirectToLogin();
+                }
+            });
+        });
+    });
+
+    // 2. Polling toutes les 60s : vérifier la session avant qu'elle n'expire
+    //    et rediriger proprement avant que Livewire tente une requête échouée.
+    setInterval(function () {
+        fetch(SESSION_CHECK_URL, {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (response) {
+            if (response.status === 401 || response.status === 419) {
+                redirectToLogin();
+            }
+        }).catch(function () {
+            // Erreur réseau — ne pas rediriger (peut être temporaire)
+        });
+    }, 60000);
+
+    // 3. Intercepter les rejets non gérés (erreurs fetch Livewire non catchées)
+    window.addEventListener('unhandledrejection', function (event) {
+        if (event.reason instanceof TypeError && event.reason.message === 'Failed to fetch') {
+            redirectToLogin();
+        }
+    });
+</script>
 
 <script>
     if ('serviceWorker' in navigator) {

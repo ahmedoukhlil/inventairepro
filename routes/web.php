@@ -261,6 +261,9 @@ Route::middleware(['auth', 'session.timeout'])->group(function () {
             // Rapport détaillé d'un inventaire
             Route::get('/{inventaire}/rapport', \App\Livewire\Inventaires\RapportInventaire::class)->name('rapport');
             
+            // Rapport détaillé imprimable
+            Route::get('/{inventaire}/imprimer', [InventaireController::class, 'imprimer'])->name('imprimer');
+
             // Export PDF d'un inventaire
             Route::get('/{inventaire}/export-pdf', [InventaireController::class, 'exportPDF'])->name('export-pdf');
             

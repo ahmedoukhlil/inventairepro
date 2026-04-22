@@ -1,7 +1,8 @@
 <div 
-    x-data="{ 
+    x-data="{
         open: false,
         focusedIndex: -1,
+        dropdownStyle: '',
         get filteredCount() {
             return <?php echo e(count($this->filteredOptions)); ?>;
         },
@@ -9,11 +10,26 @@
             this.$watch('open', value => {
                 if (value) {
                     this.focusedIndex = -1;
+                    this.positionDropdown();
                     this.$nextTick(() => {
                         this.$refs.searchInput?.focus();
                     });
                 } else {
                     this.focusedIndex = -1;
+                }
+            });
+        },
+        positionDropdown() {
+            this.$nextTick(() => {
+                const btn = this.$el.querySelector('button[role=combobox]');
+                if (!btn) return;
+                const rect = btn.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                const dropHeight = 400;
+                if (spaceBelow >= dropHeight || spaceBelow >= 200) {
+                    this.dropdownStyle = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left}px;width:${rect.width}px;z-index:9999;`;
+                } else {
+                    this.dropdownStyle = `position:fixed;bottom:${window.innerHeight - rect.top + 4}px;left:${rect.left}px;width:${rect.width}px;z-index:9999;`;
                 }
             });
         },
@@ -44,13 +60,13 @@
     }"
     x-id="['searchable-combobox', 'searchable-listbox']"
     @click.outside="open = false"
+    @scroll.window="open && positionDropdown()"
+    @resize.window="open && positionDropdown()"
     @keydown.escape="open = false"
     @keydown.arrow-down.prevent="open ? moveFocus('down') : (open = true)"
     @keydown.arrow-up.prevent="open && moveFocus('up')"
     @keydown.enter.prevent="open && selectFocused()"
     class="relative <?php echo e($containerClass); ?>"
-    style="z-index: 100;"
-    :style="{ 'z-index': open ? '9999' : '100' }"
 >
     
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($name): ?>
@@ -128,8 +144,8 @@
         :id="$id('searchable-listbox')"
         role="listbox"
         :aria-labelledby="$id('searchable-combobox')"
-        class="absolute mt-2 w-full bg-white shadow-xl rounded-xl border border-gray-200 overflow-hidden"
-        style="max-height: 400px; z-index: 9999;"
+        class="bg-white shadow-xl rounded-xl border border-gray-200"
+        :style="dropdownStyle + 'max-height:400px;'"
     >
         
         <div class="sticky top-0 z-10 bg-white px-3 py-3 border-b border-gray-200">

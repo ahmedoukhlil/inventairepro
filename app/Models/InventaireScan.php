@@ -179,12 +179,22 @@ class InventaireScan extends Model
      */
     public function getEtatConstateLabelAttribute(): string
     {
-        $labels = [
-            'neuf' => 'Neuf',
-            'bon' => 'Bon état',
-            'moyen' => 'Bon état',
-            'mauvais' => 'Défectueuse',
-        ];
+        static $labels = null;
+        if ($labels === null) {
+            $codeMap = ['NF' => 'neuf', 'BE' => 'bon', 'DFCT' => 'mauvais'];
+            $labelMap = [
+                'neuf' => 'neuf', 'bon' => 'bon', 'bon etat' => 'bon', 'bon état' => 'bon',
+                'mauvais' => 'mauvais', 'défectueux' => 'mauvais', 'defectueux' => 'mauvais',
+                'défectueuse' => 'mauvais', 'defectueuse' => 'mauvais',
+            ];
+            $labels = ['bon' => 'Bon état', 'neuf' => 'Neuf', 'moyen' => 'Moyen', 'mauvais' => 'Défectueux'];
+            foreach (\App\Models\Etat::all() as $etat) {
+                $constate = $codeMap[$etat->CodeEtat] ?? ($labelMap[mb_strtolower(trim($etat->Etat))] ?? null);
+                if ($constate) {
+                    $labels[$constate] = $etat->Etat;
+                }
+            }
+        }
         return $labels[$this->etat_constate ?? 'bon'] ?? 'Bon état';
     }
 

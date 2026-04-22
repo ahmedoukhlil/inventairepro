@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(php -l \"c:/xampp/htdocs/gesimmos/app/Livewire/Inventaires/DashboardInventaire.php\")",
+      "Bash(php -l \"c:/xampp/htdocs/gesimmos/app/Http/Controllers/InventaireController.php\")"
     ]
   }
 }

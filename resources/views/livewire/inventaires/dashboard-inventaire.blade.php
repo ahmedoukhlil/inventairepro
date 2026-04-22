@@ -1,4 +1,59 @@
-<div>
+<div
+    x-data="{
+        modal: null,
+        modals: {
+            demarrer: {
+                icon: 'play',
+                iconBg: 'bg-indigo-100',
+                iconColor: 'text-indigo-600',
+                title: 'Démarrer l\'inventaire',
+                message: 'L\'inventaire sera lancé et les agents pourront commencer les scans. Voulez-vous continuer ?',
+                confirmLabel: 'Démarrer',
+                confirmClass: 'bg-indigo-600 hover:bg-indigo-700',
+                action: 'passerEnCours',
+            },
+            terminer: {
+                icon: 'check',
+                iconBg: 'bg-orange-100',
+                iconColor: 'text-orange-600',
+                title: 'Terminer l\'inventaire',
+                message: 'L\'inventaire sera marqué comme terminé. Assurez-vous que toutes les localisations ont été traitées.',
+                confirmLabel: 'Terminer',
+                confirmClass: 'bg-orange-600 hover:bg-orange-700',
+                action: 'terminerInventaire',
+            },
+            forcer: {
+                icon: 'warning',
+                iconBg: 'bg-red-100',
+                iconColor: 'text-red-600',
+                title: 'Forcer la fin de l\'inventaire',
+                message: '',
+                confirmLabel: 'Forcer la fin',
+                confirmClass: 'bg-red-600 hover:bg-red-700',
+                action: 'terminerInventaireForce',
+            },
+            cloturer: {
+                icon: 'lock',
+                iconBg: 'bg-green-100',
+                iconColor: 'text-green-600',
+                title: 'Clôturer l\'inventaire',
+                message: 'La clôture est définitive et irréversible. L\'inventaire sera archivé et ne pourra plus être modifié.',
+                confirmLabel: 'Clôturer définitivement',
+                confirmClass: 'bg-green-600 hover:bg-green-700',
+                action: 'cloturerInventaire',
+            },
+        },
+        get current() { return this.modal ? this.modals[this.modal] : null; },
+        open(name) { this.modal = name; },
+        close() { this.modal = null; },
+        confirm() {
+            const action = this.current?.action;
+            this.close();
+            if (action) this.$wire[action]();
+        },
+    }"
+    @keydown.escape.window="close()"
+>
     @php
         $isAdmin = auth()->user()->isAdmin();
         $stats = $this->statistiques;
@@ -15,9 +70,9 @@
         ];
     @endphp
 
-    {{-- Polling discret pour inventaires actifs --}}
+    {{-- Polling temps réel pour inventaires actifs (5s) --}}
     @if(in_array($inventaire->statut, ['en_preparation', 'en_cours']))
-        <div wire:poll.10s="refreshStatistiques" class="hidden"></div>
+        <div wire:poll.5s="refreshStatistiques" class="hidden"></div>
     @endif
 
     {{-- ========================================== --}}
@@ -34,11 +89,35 @@
 
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 flex-wrap">
                     <h1 class="text-2xl font-bold text-gray-900">Inventaire {{ $inventaire->annee }}</h1>
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statutsInventaire[$inventaire->statut]['color'] ?? 'bg-gray-100 text-gray-800' }}">
                         {{ $statutsInventaire[$inventaire->statut]['label'] ?? $inventaire->statut }}
                     </span>
+                    @if(in_array($inventaire->statut, ['en_preparation', 'en_cours']))
+                        <span
+                            x-data="{
+                                last: {{ $lastSyncAt }},
+                                now: Math.floor(Date.now()/1000),
+                                get label() {
+                                    const s = Math.max(0, this.now - this.last);
+                                    if (s < 5) return 'à l’instant';
+                                    if (s < 60) return 'il y a ' + s + 's';
+                                    const m = Math.floor(s/60);
+                                    return 'il y a ' + m + 'min';
+                                }
+                            }"
+                            x-init="setInterval(() => now = Math.floor(Date.now()/1000), 1000); $wire.$watch('lastSyncAt', v => last = v)"
+                            class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200"
+                            title="Synchronisation toutes les 5 secondes"
+                        >
+                            <span class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                            </span>
+                            <span>MAJ <span x-text="label"></span></span>
+                        </span>
+                    @endif
                 </div>
                 <p class="mt-1 text-sm text-gray-500">
                     {{ $inventaire->date_debut?->format('d/m/Y') }} - {{ $inventaire->date_fin?->format('d/m/Y') ?? 'En cours' }}
@@ -47,17 +126,33 @@
             <div class="flex items-center gap-2">
                 @if($isAdmin)
                     @if($inventaire->statut === 'en_preparation')
-                        <button wire:click="passerEnCours" wire:confirm="Voulez-vous démarrer cet inventaire ?" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                        <button @click="open('demarrer')" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             Démarrer
                         </button>
                     @elseif($inventaire->statut === 'en_cours')
-                        <button wire:click="terminerInventaire" wire:confirm="Voulez-vous terminer cet inventaire ?" class="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            Terminer
-                        </button>
+                        @php $nbRestantes = $this->localisationsNonTerminees; @endphp
+                        @if($nbRestantes === 0)
+                            <button @click="open('terminer')" class="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Terminer
+                            </button>
+                        @else
+                            <div class="flex items-center gap-2">
+                                <button @click="open('terminer')" class="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Terminer
+                                    <span class="bg-orange-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">{{ $nbRestantes }}</span>
+                                </button>
+                                <button @click="modals.forcer.message = 'ATTENTION : {{ $nbRestantes }} localisation(s) non terminée(s). Tous les biens non scannés seront automatiquement marqués ABSENT. Cette action est irréversible.'; open('forcer')"
+                                    class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    Forcer la fin
+                                </button>
+                            </div>
+                        @endif
                     @elseif($inventaire->statut === 'termine')
-                        <button wire:click="cloturerInventaire" wire:confirm="Voulez-vous clôturer définitivement cet inventaire ? Cette action est irréversible." class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
+                        <button @click="open('cloturer')" class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                             Clôturer
                         </button>
@@ -76,10 +171,35 @@
     {{-- ========================================== --}}
     {{-- SECTION 2 : 3 CARTES KPI                   --}}
     {{-- ========================================== --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+    <style>
+        @keyframes kpi-flash {
+            0%   { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+            30%  { box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.35); }
+            100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+        }
+        .kpi-flash { animation: kpi-flash 1.2s ease-out; }
+    </style>
+    <div
+        class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8"
+        x-data="{
+            prev: { progression: {{ $stats['progression_globale'] }}, conformite: {{ $stats['taux_conformite'] }}, alertes: {{ $this->totalAlertes }} },
+            flash(ref) { const el = this.$refs[ref]; if (!el) return; el.classList.remove('kpi-flash'); void el.offsetWidth; el.classList.add('kpi-flash'); }
+        }"
+        x-init="
+            Livewire.on('statistiques-updated', () => {
+                const progression = {{ $stats['progression_globale'] }};
+                const conformite = {{ $stats['taux_conformite'] }};
+                const alertes = {{ $this->totalAlertes }};
+                if (progression !== prev.progression) flash('cardProgression');
+                if (conformite !== prev.conformite) flash('cardConformite');
+                if (alertes !== prev.alertes) flash('cardAlertes');
+                prev = { progression, conformite, alertes };
+            });
+        "
+    >
 
         {{-- Carte 1 : Progression --}}
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div x-ref="cardProgression" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-shadow">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Progression</h3>
                 <div class="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center">
@@ -102,7 +222,7 @@
             $confBg = $stats['taux_conformite'] >= 90 ? 'bg-green-50' : ($stats['taux_conformite'] >= 70 ? 'bg-amber-50' : 'bg-red-50');
             $confIcon = $stats['taux_conformite'] >= 90 ? 'text-green-600' : ($stats['taux_conformite'] >= 70 ? 'text-amber-600' : 'text-red-600');
         @endphp
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div x-ref="cardConformite" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-shadow">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Conformité</h3>
                 <div class="h-10 w-10 rounded-lg {{ $confBg }} flex items-center justify-center">
@@ -135,7 +255,7 @@
 
         {{-- Carte 3 : Alertes --}}
         @php $totalAlertes = $this->totalAlertes; @endphp
-        <div class="bg-white rounded-xl shadow-sm border {{ $totalAlertes > 0 ? 'border-red-200' : 'border-gray-200' }} p-6">
+        <div x-ref="cardAlertes" class="bg-white rounded-xl shadow-sm border {{ $totalAlertes > 0 ? 'border-red-200' : 'border-gray-200' }} p-6 transition-shadow">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Alertes</h3>
                 <div class="h-10 w-10 rounded-lg {{ $totalAlertes > 0 ? 'bg-red-50' : 'bg-gray-50' }} flex items-center justify-center">
@@ -492,13 +612,40 @@
     </div>
 
     {{-- ========================================== --}}
-    {{-- SECTION 6 : ACTIVITE RECENTE (compacte)     --}}
+    {{-- SECTION 6 : FLUX EN DIRECT (10 derniers)    --}}
     {{-- ========================================== --}}
     @if($this->derniersScans->count() > 0)
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <style>
+            @keyframes scan-new {
+                0%   { background-color: rgba(79, 70, 229, 0.18); transform: translateY(-3px); }
+                100% { background-color: transparent; transform: translateY(0); }
+            }
+            .scan-new { animation: scan-new 1.6s ease-out; }
+        </style>
+        <div
+            class="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+            x-data="{
+                knownIds: @js($this->derniersScans->pluck('id')->toArray()),
+                flashNew() {
+                    this.$nextTick(() => {
+                        document.querySelectorAll('[data-scan-id]').forEach(el => {
+                            const id = parseInt(el.dataset.scanId);
+                            if (!this.knownIds.includes(id)) {
+                                el.classList.remove('scan-new'); void el.offsetWidth; el.classList.add('scan-new');
+                            }
+                        });
+                        this.knownIds = Array.from(document.querySelectorAll('[data-scan-id]')).map(e => parseInt(e.dataset.scanId));
+                    });
+                }
+            }"
+            x-init="Livewire.on('statistiques-updated', () => flashNew())"
+        >
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-base font-semibold text-gray-900">Derniers scans</h3>
-                <span class="inline-flex items-center gap-1.5 text-xs text-gray-400">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900">Flux en direct</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">10 derniers scans · synchronisés depuis la PWA</p>
+                </div>
+                <span class="inline-flex items-center gap-1.5 text-xs text-green-700 bg-green-50 px-2.5 py-1 rounded-full border border-green-200">
                     <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span></span>
                     Temps réel
                 </span>
@@ -518,16 +665,25 @@
                             'absent' => 'bg-red-500',
                             'deteriore' => 'bg-orange-500',
                         ];
+                        $statutLabels = [
+                            'present' => 'Présent',
+                            'deplace' => 'Déplacé',
+                            'absent' => 'Absent',
+                            'deteriore' => 'Détérioré',
+                        ];
                     @endphp
-                    <div class="rounded-lg border {{ $scanColors[$scan->statut_scan] ?? 'border-gray-200 bg-gray-50' }} p-3">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="w-2 h-2 rounded-full {{ $dotColors[$scan->statut_scan] ?? 'bg-gray-400' }} flex-shrink-0"></span>
-                            <span class="text-xs font-mono font-semibold text-gray-700 truncate">{{ $scan->code_inventaire }}</span>
+                    <div data-scan-id="{{ $scan->id }}" wire:key="scan-{{ $scan->id }}" class="rounded-lg border {{ $scanColors[$scan->statut_scan] ?? 'border-gray-200 bg-gray-50' }} p-3">
+                        <div class="flex items-center justify-between gap-2 mb-1">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-2 h-2 rounded-full {{ $dotColors[$scan->statut_scan] ?? 'bg-gray-400' }} flex-shrink-0"></span>
+                                <span class="text-xs font-mono font-semibold text-gray-700 truncate">{{ $scan->code_inventaire }}</span>
+                            </div>
+                            <span class="text-[10px] uppercase font-semibold text-gray-500 tracking-wide">{{ $statutLabels[$scan->statut_scan] ?? $scan->statut_scan }}</span>
                         </div>
                         <p class="text-xs text-gray-500 truncate mb-1" title="{{ $scan->designation }}">{{ $scan->designation }}</p>
                         <div class="flex items-center justify-between text-xs text-gray-400">
-                            <span>{{ $scan->agent?->users ?? $scan->agent?->name ?? 'Système' }}</span>
-                            <span>{{ $scan->date_scan?->diffForHumans() }}</span>
+                            <span class="truncate">{{ $scan->agent?->users ?? $scan->agent?->name ?? 'Système' }}</span>
+                            <span class="flex-shrink-0 ml-1">{{ $scan->date_scan?->diffForHumans(['short' => true]) }}</span>
                         </div>
                     </div>
                 @endforeach
@@ -555,19 +711,13 @@
 
                 const scans = @json($this->scansGraphData);
                 const objectif = {{ $stats['total_biens_attendus'] }};
-                
-                const scansParDate = {};
-                scans.forEach(scan => {
-                    const date = new Date(scan.date_scan).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-                    scansParDate[date] = (scansParDate[date] || 0) + 1;
+
+                // scans = [{date_scan: 'YYYY-MM-DD', nb: N}] trié par date (agrégé en SQL)
+                const dates = scans.map(s => {
+                    const d = new Date(s.date_scan);
+                    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
                 });
-                
-                const dates = Object.keys(scansParDate).sort((a, b) => {
-                    const [da, ma] = a.split('/');
-                    const [db, mb] = b.split('/');
-                    return (ma + da).localeCompare(mb + db);
-                });
-                const quotidien = dates.map(d => scansParDate[d]);
+                const quotidien = scans.map(s => parseInt(s.nb));
                 const cumulatif = [];
                 let cumul = 0;
                 quotidien.forEach(qty => { cumul += qty; cumulatif.push(cumul); });
@@ -679,4 +829,110 @@
     {{-- Messages flash --}}
     <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-3 items-end">
     </div>
+
+    {{-- ═══════════════════════════════════════════════════
+         MODALE DE CONFIRMATION
+    ═══════════════════════════════════════════════════ --}}
+    <div
+        x-show="modal !== null"
+        x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+    >
+        {{-- Backdrop --}}
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="close()"></div>
+
+        {{-- Panneau --}}
+        <div
+            class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+            x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+            x-transition:leave-end="opacity-0 scale-95 translate-y-2"
+            @click.stop
+        >
+            {{-- Barre couleur en haut --}}
+            <div class="h-1 w-full"
+                :class="{
+                    'bg-indigo-500': modal === 'demarrer',
+                    'bg-orange-500': modal === 'terminer',
+                    'bg-red-500':    modal === 'forcer',
+                    'bg-green-500':  modal === 'cloturer',
+                }"
+            ></div>
+
+            <div class="p-6">
+                {{-- Icône + titre --}}
+                <div class="flex items-start gap-4 mb-5">
+                    <div class="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center"
+                        :class="current?.iconBg">
+
+                        {{-- Icône Play --}}
+                        <svg x-show="modal === 'demarrer'" class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        {{-- Icône Check --}}
+                        <svg x-show="modal === 'terminer'" class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        {{-- Icône Warning --}}
+                        <svg x-show="modal === 'forcer'" class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        {{-- Icône Lock --}}
+                        <svg x-show="modal === 'cloturer'" class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-base font-semibold text-gray-900" x-text="current?.title"></h3>
+                        <p class="mt-1 text-sm text-gray-500 leading-relaxed" x-text="current?.message"></p>
+                    </div>
+                </div>
+
+                {{-- Avertissement spécial pour "forcer" --}}
+                <div x-show="modal === 'forcer'"
+                    class="mb-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 flex items-start gap-2">
+                    <svg class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    <p class="text-xs text-red-700 font-medium">Cette action est irréversible. Les biens non scannés seront définitivement marqués comme absents.</p>
+                </div>
+
+                {{-- Avertissement spécial pour "clôturer" --}}
+                <div x-show="modal === 'cloturer'"
+                    class="mb-5 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-2">
+                    <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    <p class="text-xs text-amber-700 font-medium">Après clôture, l'inventaire sera archivé et aucune modification ne sera possible.</p>
+                </div>
+
+                {{-- Boutons --}}
+                <div class="flex gap-3 justify-end">
+                    <button
+                        @click="close()"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300">
+                        Annuler
+                    </button>
+                    <button
+                        @click="confirm()"
+                        class="px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+                        :class="current?.confirmClass"
+                        x-text="current?.confirmLabel">
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>

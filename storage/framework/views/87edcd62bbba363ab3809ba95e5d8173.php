@@ -48,6 +48,7 @@
 >
 
     
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->canViewDashboard()): ?>
     <?php $active = request()->routeIs('dashboard'); ?>
     <a wire:navigate href="<?php echo e(route('dashboard')); ?>"
        class="nav-item <?php echo e($active ? 'nav-active' : 'nav-inactive'); ?>"
@@ -57,6 +58,7 @@
         </svg>
         <span>Dashboard</span>
     </a>
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->guard()->check()): ?>
 
@@ -181,11 +183,13 @@
         <div x-show="open === 'stock'" x-transition x-cloak class="mt-0.5 ml-3 space-y-0.5 border-l border-slate-700/50 pl-3">
 
             
+            <?php if(auth()->user()->canViewDashboardStock()): ?>
             <?php $a = request()->routeIs('stock.dashboard'); ?>
             <a wire:navigate href="<?php echo e(route('stock.dashboard')); ?>" class="nav-sub <?php echo e($a ? 'nav-sub-active' : ''); ?>" <?php if($a): ?> aria-current="page" <?php endif; ?>>
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
                 Dashboard
             </a>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
             
             <?php $a = request()->routeIs('stock.produits.*'); ?>

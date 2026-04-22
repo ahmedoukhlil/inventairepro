@@ -323,19 +323,28 @@
         return {
             toasts: [],
             init() {
-                // Écouter les messages flash de session
+                // Écouter les messages flash de session (au chargement)
                 @if(session('success'))
-                    this.add('{{ session('success') }}', 'success');
+                    this.add(@json(session('success')), 'success');
                 @endif
                 @if(session('error'))
-                    this.add('{{ session('error') }}', 'error');
+                    this.add(@json(session('error')), 'error');
                 @endif
                 @if(session('info'))
-                    this.add('{{ session('info') }}', 'info');
+                    this.add(@json(session('info')), 'info');
                 @endif
                 @if(session('warning'))
-                    this.add('{{ session('warning') }}', 'warning');
+                    this.add(@json(session('warning')), 'warning');
                 @endif
+
+                // Écouter les events Livewire (dispatchés depuis un composant)
+                window.addEventListener('toast', (e) => {
+                    const detail = e.detail || {};
+                    const payload = Array.isArray(detail) ? detail[0] : detail;
+                    if (payload && payload.message) {
+                        this.add(payload.message, payload.type || 'info');
+                    }
+                });
             },
             add(message, type = 'info') {
                 const toast = {

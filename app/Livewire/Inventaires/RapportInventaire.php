@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Inventaires;
 
+use App\Models\Etat;
 use App\Models\Inventaire;
 use App\Models\InventaireScan;
 use App\Services\InventaireService;
@@ -229,7 +230,47 @@ class RapportInventaire extends Component
      */
     public function render()
     {
-        return view('livewire.inventaires.rapport-inventaire');
+        $etatsConstate = $this->buildEtatsConstate();
+        return view('livewire.inventaires.rapport-inventaire', compact('etatsConstate'));
+    }
+
+    private function buildEtatsConstate(): array
+    {
+        // CodeEtat → constate enum mapping (mirrors ScanController::mapEtatToConstate)
+        $codeMap = ['NF' => 'neuf', 'BE' => 'bon', 'DFCT' => 'mauvais'];
+        $labelMap = [
+            'neuf' => 'neuf', 'bon' => 'bon', 'bon etat' => 'bon', 'bon état' => 'bon',
+            'moyen' => 'moyen', 'mauvais' => 'mauvais',
+            'défectueux' => 'mauvais', 'defectueux' => 'mauvais',
+            'défectueuse' => 'mauvais', 'defectueuse' => 'mauvais',
+        ];
+        $colors = [
+            'neuf' => 'bg-green-100 text-green-800',
+            'bon'  => 'bg-blue-100 text-blue-800',
+            'moyen'=> 'bg-yellow-100 text-yellow-800',
+            'mauvais' => 'bg-amber-100 text-amber-800',
+        ];
+
+        $etats = Etat::all();
+        $result = [];
+        foreach ($etats as $etat) {
+            $constate = isset($codeMap[$etat->CodeEtat])
+                ? $codeMap[$etat->CodeEtat]
+                : ($labelMap[mb_strtolower(trim($etat->Etat))] ?? null);
+            if ($constate) {
+                $result[$constate] = [
+                    'label' => $etat->Etat,
+                    'color' => $colors[$constate] ?? 'bg-gray-100 text-gray-800',
+                ];
+            }
+        }
+        // Fallback for 'moyen' if not in DB
+        if (!isset($result['moyen'])) {
+            $result['moyen'] = ['label' => 'Moyen', 'color' => $colors['moyen']];
+        }
+        // Default fallback
+        $result['bon'] ??= ['label' => 'Bon état', 'color' => $colors['bon']];
+        return $result;
     }
 }
 

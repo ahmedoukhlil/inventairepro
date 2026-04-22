@@ -9,6 +9,7 @@ use App\Models\InventaireScan;
 use App\Models\Localisation;
 use App\Models\LocalisationImmo;
 use App\Models\Emplacement;
+use App\Services\InventaireService;
 use Carbon\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -225,21 +226,40 @@ class Dashboard extends Component
             ];
         })->values()->toArray();
 
-        // Statistiques globales
+        // Statistiques globales via InventaireService (avec filtrage correct des états physiques)
         try {
-        $this->statistiquesInventaire = $this->inventaireEnCours->getStatistiques();
+            $inv = $this->inventaireEnCours->load([
+                'inventaireLocalisations',
+                'inventaireScans',
+            ]);
+            $stats = app(InventaireService::class)->calculerStatistiques($inv);
+            $this->statistiquesInventaire = array_merge($this->inventaireEnCours->getStatistiques(), [
+                'progression'            => $stats['progression_globale'] ?? 0,
+                'taux_conformite'        => $stats['taux_conformite'] ?? 0,
+                'total_localisations'    => $stats['total_localisations'] ?? 0,
+                'localisations_terminees'=> $stats['localisations_terminees'] ?? 0,
+                'total_scans'            => $stats['total_biens_scannes'] ?? 0,
+                'total_attendus'         => $stats['total_biens_attendus'] ?? 0,
+                'biens_presents'         => $stats['biens_presents'] ?? 0,
+                'biens_deplaces'         => $stats['biens_deplaces'] ?? 0,
+                'biens_absents'          => $stats['biens_absents'] ?? 0,
+                'biens_deteriores'       => $stats['biens_deteriores'] ?? 0,
+                'biens_defectueux'       => $stats['biens_defectueux'] ?? 0,
+                'biens_neufs'            => $stats['biens_neufs'] ?? 0,
+                'biens_bon_etat'         => $stats['biens_bon_etat'] ?? 0,
+                'taux_couverture'        => $stats['taux_couverture'] ?? 0,
+                'taux_absence'           => $stats['taux_absence'] ?? 0,
+                'nombre_agents'          => $stats['nombre_agents'] ?? 0,
+            ]);
         } catch (\Exception $e) {
+            \Log::warning('Erreur stats dashboard inventaire: ' . $e->getMessage());
             $this->statistiquesInventaire = [
-                'progression' => 0,
-                'taux_conformite' => 0,
-                'duree' => 0,
-                'total_localisations' => 0,
-                'localisations_terminees' => 0,
-                'total_scans' => 0,
-                'scans_presents' => 0,
-                'scans_deplaces' => 0,
-                'scans_absents' => 0,
-                'scans_deteriores' => 0,
+                'progression' => 0, 'taux_conformite' => 0, 'total_localisations' => 0,
+                'localisations_terminees' => 0, 'total_scans' => 0, 'total_attendus' => 0,
+                'biens_presents' => 0, 'biens_deplaces' => 0, 'biens_absents' => 0,
+                'biens_deteriores' => 0, 'biens_defectueux' => 0, 'biens_neufs' => 0,
+                'biens_bon_etat' => 0, 'taux_couverture' => 0, 'taux_absence' => 0,
+                'nombre_agents' => 0,
             ];
         }
 

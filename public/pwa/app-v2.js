@@ -73,12 +73,24 @@ class API {
                 throw new Error('Session expiree');
             }
             const errorText = await response.text();
-            try {
-                const errorData = JSON.parse(errorText);
-                throw new Error(errorData.message || 'Erreur API');
-            } catch {
-                throw new Error(`Erreur HTTP ${response.status}`);
+            let errorData = null;
+            try { errorData = JSON.parse(errorText); } catch {}
+
+            if (response.status === 422 && errorData) {
+                // Erreur de validation Laravel : extraire le premier message utile
+                if (errorData.errors && typeof errorData.errors === 'object') {
+                    const firstField = Object.keys(errorData.errors)[0];
+                    const firstMsg = Array.isArray(errorData.errors[firstField])
+                        ? errorData.errors[firstField][0]
+                        : errorData.errors[firstField];
+                    throw new Error(firstMsg || errorData.message || 'Identifiants incorrects');
+                }
+                throw new Error(errorData.message || 'Identifiants incorrects');
             }
+            if (errorData && errorData.message) {
+                throw new Error(errorData.message);
+            }
+            throw new Error(`Erreur HTTP ${response.status}`);
         }
 
         return await response.json();
