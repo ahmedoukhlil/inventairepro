@@ -3,10 +3,13 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
+        "build": "vite build && npm run build:pwa",
+        "build:pwa": "tailwindcss -i resources/css/pwa.css -o public/pwa/tailwind.css --minify",
+        "watch:pwa": "tailwindcss -i resources/css/pwa.css -o public/pwa/tailwind.css --watch",
         "dev": "vite"
     },
     "devDependencies": {
+        "@tailwindcss/cli": "^4.2.4",
         "@tailwindcss/vite": "^4.0.0",
         "axios": "^1.11.0",
         "concurrently": "^9.0.1",

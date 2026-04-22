@@ -1,0 +1,4 @@
+@import 'tailwindcss';
+
+@source '../../public/pwa/*.html';
+@source '../../public/pwa/*.js';

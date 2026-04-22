@@ -1,9 +1,9 @@
 /**
  * Application PWA Inventaire v2 - Workflow par Emplacement
- * Scan QR code emplacement → Scan codes-barres 128 → Calcul écarts
+ * Scan QR code emplacement -> scan QR biens OU saisie OU liste a cocher -> ecarts
  */
 
-console.log('[App v2] Démarrage...');
+console.log('[App v2] Demarrage...');
 
 // ===========================================
 // CONFIGURATION
@@ -16,49 +16,17 @@ const CONFIG = {
 };
 
 // ===========================================
-// HAPTIC FEEDBACK (Vibrations) - Mobile
+// HAPTIC FEEDBACK
 // ===========================================
 
 class HapticFeedback {
-    static isSupported() {
-        return 'vibrate' in navigator;
-    }
-
-    static light() {
-        if (this.isSupported()) {
-            navigator.vibrate(10);
-        }
-    }
-
-    static medium() {
-        if (this.isSupported()) {
-            navigator.vibrate(20);
-        }
-    }
-
-    static heavy() {
-        if (this.isSupported()) {
-            navigator.vibrate(50);
-        }
-    }
-
-    static success() {
-        if (this.isSupported()) {
-            navigator.vibrate([20, 50, 20]);
-        }
-    }
-
-    static error() {
-        if (this.isSupported()) {
-            navigator.vibrate([50, 100, 50, 100, 50]);
-        }
-    }
-
-    static warning() {
-        if (this.isSupported()) {
-            navigator.vibrate([30, 50, 30]);
-        }
-    }
+    static isSupported() { return 'vibrate' in navigator; }
+    static light() { if (this.isSupported()) navigator.vibrate(10); }
+    static medium() { if (this.isSupported()) navigator.vibrate(20); }
+    static heavy() { if (this.isSupported()) navigator.vibrate(50); }
+    static success() { if (this.isSupported()) navigator.vibrate([20, 50, 20]); }
+    static error() { if (this.isSupported()) navigator.vibrate([50, 100, 50, 100, 50]); }
+    static warning() { if (this.isSupported()) navigator.vibrate([30, 50, 30]); }
 }
 
 // ===========================================
@@ -70,70 +38,55 @@ const AppState = {
     user: null,
     currentEmplacement: null,
     biensAttendus: [],
-    biensScannés: [], // [{ num_ordre, etat_id, photo? }]
-    etats: [], // [{ id, label, require_photo }] depuis API /etats
-    scannerActive: false,
-    barcodeScanner: null,
-    modalBienEnCours: null, // bien en attente de confirmation (num_ordre, designation)
+    biensScannes: [], // [{ num_ordre, etat_id, photo? }]
+    etats: [],
+    empScannerActive: false,
+    bienScannerActive: false,
+    modalBienEnCours: null,
 };
 
 // ===========================================
-// API HELPER
+// API
 // ===========================================
 
 class API {
     static async request(endpoint, options = {}) {
         const url = `${CONFIG.API_BASE_URL}${endpoint}`;
-        const method = options.method || 'GET';
-        
-        const defaultOptions = {
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
+        const defaultHeaders = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         };
-
         if (AppState.token) {
-            defaultOptions.headers['Authorization'] = `Bearer ${AppState.token}`;
+            defaultHeaders['Authorization'] = `Bearer ${AppState.token}`;
         }
 
         const finalOptions = {
-            ...defaultOptions,
             ...options,
-            headers: {
-                ...defaultOptions.headers,
-                ...(options.headers || {})
-            }
+            headers: { ...defaultHeaders, ...(options.headers || {}) }
         };
 
-        try {
-            const response = await fetch(url, finalOptions);
-            
-            if (!response.ok) {
-                if (response.status === 401) {
-                    AuthManager.logout();
-                    throw new Error('Session expirée');
-                }
-                
-                const errorText = await response.text();
-                try {
-                    const errorData = JSON.parse(errorText);
-                    throw new Error(errorData.message || 'Erreur API');
-                } catch {
-                    throw new Error(`Erreur HTTP ${response.status}`);
-                }
-            }
+        const response = await fetch(url, finalOptions);
 
-            return await response.json();
-        } catch (error) {
-            console.error('[API] Erreur:', error);
-            throw error;
+        if (!response.ok) {
+            if (response.status === 401) {
+                AuthManager.logout();
+                throw new Error('Session expiree');
+            }
+            const errorText = await response.text();
+            try {
+                const errorData = JSON.parse(errorText);
+                throw new Error(errorData.message || 'Erreur API');
+            } catch {
+                throw new Error(`Erreur HTTP ${response.status}`);
+            }
         }
+
+        return await response.json();
     }
 }
 
 // ===========================================
-// AUTH MANAGER
+// AUTH
 // ===========================================
 
 class AuthManager {
@@ -141,15 +94,11 @@ class AuthManager {
         try {
             const response = await API.request('/login', {
                 method: 'POST',
-                body: JSON.stringify({ 
-                    users: username, 
-                    mdp: password 
-                })
+                body: JSON.stringify({ users: username, mdp: password })
             });
 
             AppState.token = response.token;
             AppState.user = response.user;
-            
             localStorage.setItem(CONFIG.STORAGE_KEY_TOKEN, response.token);
             localStorage.setItem(CONFIG.STORAGE_KEY_USER, JSON.stringify(response.user));
 
@@ -158,7 +107,8 @@ class AuthManager {
             HapticFeedback.success();
             UI.showView('scanner');
             UI.updateUserInfo();
-            UI.showToast('✅ Connexion réussie', 'success');
+            UI.showToast('Connexion reussie', 'success');
+            EmplacementTabs.activate('scan');
         } catch (error) {
             HapticFeedback.error();
             throw error;
@@ -166,20 +116,20 @@ class AuthManager {
     }
 
     static logout() {
+        EmplacementScanner.stop();
+        BienScanner.stop();
         AppState.token = null;
         AppState.user = null;
         localStorage.removeItem(CONFIG.STORAGE_KEY_TOKEN);
         localStorage.removeItem(CONFIG.STORAGE_KEY_USER);
-        
+
         HapticFeedback.medium();
         UI.showView('login');
-        UI.showToast('👋 Déconnexion', 'info');
     }
 
     static checkAuth() {
         const token = localStorage.getItem(CONFIG.STORAGE_KEY_TOKEN);
         const userStr = localStorage.getItem(CONFIG.STORAGE_KEY_USER);
-
         if (token && userStr) {
             try {
                 AppState.token = token;
@@ -187,6 +137,7 @@ class AuthManager {
                 UI.loadEtats().then(() => {});
                 UI.showView('scanner');
                 UI.updateUserInfo();
+                EmplacementTabs.activate('scan');
                 return true;
             } catch {
                 this.logout();
@@ -197,248 +148,267 @@ class AuthManager {
 }
 
 // ===========================================
-// SCANNER MANAGER - QR Code pour Emplacement
+// GENERIC QR SCANNER (via jsQR)
 // ===========================================
 
-class ScannerManager {
-    static async startQRScanner() {
-        // Vérifier que jsQR est disponible
+class QRScanner {
+    constructor(containerId, onDetected, activeFlagKey) {
+        this.containerId = containerId;
+        this.onDetected = onDetected;
+        this.activeFlagKey = activeFlagKey;
+        this.stream = null;
+        this.video = null;
+        this.rafId = null;
+    }
+
+    async start() {
         if (typeof jsQR === 'undefined') {
-            console.error('[Scanner] jsQR n\'est pas chargé');
-            HapticFeedback.error();
-            UI.showToast('❌ Erreur: Bibliothèque QR code non chargée. Rechargez la page.', 'error');
+            UI.showToast('Bibliotheque QR non chargee. Rechargez la page.', 'error');
             return;
         }
 
-        const container = document.getElementById('scanner-container');
-        container.innerHTML = `
-            <video id="qr-video" class="w-full h-full object-cover" autoplay playsinline muted></video>
-        `;
+        const container = document.getElementById(this.containerId);
+        if (!container) return;
+
+        // Créer la vidéo sans écraser l'overlay (si présent)
+        const overlay = container.querySelector('.scan-overlay');
+        container.querySelectorAll('video').forEach(v => v.remove());
+
+        this.video = document.createElement('video');
+        this.video.setAttribute('autoplay', '');
+        this.video.setAttribute('playsinline', '');
+        this.video.setAttribute('muted', '');
+        this.video.className = 'w-full h-full object-cover';
+        container.insertBefore(this.video, overlay || null);
 
         try {
-            // Configuration optimisée pour mobile Android et iOS
-            const stream = await navigator.mediaDevices.getUserMedia({
+            this.stream = await navigator.mediaDevices.getUserMedia({
                 video: {
-                    facingMode: 'environment', // Caméra arrière
+                    facingMode: 'environment',
                     width: { min: 640, ideal: 1280, max: 1920 },
-                    height: { min: 480, ideal: 720, max: 1080 },
-                    aspectRatio: { ideal: 16/9 },
-                    frameRate: { ideal: 30, max: 60 }
+                    height: { min: 480, ideal: 720, max: 1080 }
                 },
                 audio: false
             });
+            this.video.srcObject = this.stream;
 
-            const video = document.getElementById('qr-video');
-            video.srcObject = stream;
-
-            // Attendre que la vidéo soit prête
-            video.addEventListener('loadedmetadata', () => {
-                console.log('[Scanner] Caméra prête:', video.videoWidth, 'x', video.videoHeight);
-                AppState.scannerActive = true;
+            this.video.addEventListener('loadedmetadata', () => {
+                AppState[this.activeFlagKey] = true;
                 HapticFeedback.light();
-                this.detectQRCode(video);
+                this.detect();
             });
-
         } catch (error) {
-            console.error('[Scanner] Erreur caméra:', error);
+            console.error('[QRScanner] Erreur camera:', error);
             HapticFeedback.error();
-            
-            let errorMessage = '❌ Impossible d\'accéder à la caméra';
-            if (error.name === 'NotAllowedError') {
-                errorMessage = '❌ Permission caméra refusée. Autorisez l\'accès dans les paramètres.';
-            } else if (error.name === 'NotFoundError') {
-                errorMessage = '❌ Aucune caméra trouvée';
-            } else if (error.name === 'NotReadableError') {
-                errorMessage = '❌ Caméra déjà utilisée par une autre application';
-            }
-            
-            UI.showToast(errorMessage, 'error');
+            let msg = 'Impossible d acceder a la camera';
+            if (error.name === 'NotAllowedError') msg = 'Permission camera refusee.';
+            else if (error.name === 'NotFoundError') msg = 'Aucune camera trouvee';
+            else if (error.name === 'NotReadableError') msg = 'Camera deja utilisee';
+            UI.showToast(msg, 'error');
         }
     }
 
-    static detectQRCode(video) {
-        // Vérifier que jsQR est disponible
-        if (typeof jsQR === 'undefined') {
-            console.error('[Scanner] jsQR n\'est pas chargé');
-            HapticFeedback.error();
-            UI.showToast('❌ Erreur: Bibliothèque QR code non chargée', 'error');
-            return;
-        }
-
+    detect() {
         const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-        const scanFrame = () => {
-            if (!AppState.scannerActive) return;
+        const loop = () => {
+            if (!AppState[this.activeFlagKey] || !this.video) return;
 
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
+            if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
+                canvas.width = this.video.videoWidth;
+                canvas.height = this.video.videoHeight;
+                ctx.drawImage(this.video, 0, 0, canvas.width, canvas.height);
                 try {
-                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                        inversionAttempts: 'dontInvert',
-                    });
-
+                    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
                     if (code && code.data) {
-                        console.log('[Scanner] QR Code détecté:', code.data);
-                        this.handleQRCodeDetected(code.data);
+                        this.onDetected(code.data);
                         return;
                     }
-                } catch (error) {
-                    console.error('[Scanner] Erreur lors du scan:', error);
+                } catch (err) {
+                    console.error('[QRScanner] Detect error:', err);
                 }
             }
-
-            requestAnimationFrame(scanFrame);
+            this.rafId = requestAnimationFrame(loop);
         };
 
-        scanFrame();
+        loop();
     }
 
-    static async handleQRCodeDetected(data) {
-        console.log('[Scanner] QR Code détecté:', data);
-        
-        // Format attendu: EMP-{id}
-        const match = data.match(/^EMP-(\d+)$/);
-        
+    stop() {
+        AppState[this.activeFlagKey] = false;
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+        if (this.stream) {
+            this.stream.getTracks().forEach(t => t.stop());
+            this.stream = null;
+        }
+        if (this.video) {
+            this.video.srcObject = null;
+            this.video.remove();
+            this.video = null;
+        }
+    }
+}
+
+// ===========================================
+// EMPLACEMENT SCANNER
+// ===========================================
+
+const EmplacementScanner = {
+    _instance: null,
+    start() {
+        if (this._instance) this._instance.stop();
+        this._instance = new QRScanner('scanner-container', (data) => this.handle(data), 'empScannerActive');
+        this._instance.start();
+    },
+    stop() {
+        if (this._instance) {
+            this._instance.stop();
+            this._instance = null;
+        }
+    },
+    async handle(data) {
+        const match = data.match(/^EMP-(\d+)$/i);
         if (!match) {
-            console.warn('[Scanner] Format QR Code invalide:', data);
             HapticFeedback.warning();
-            UI.showToast(`⚠️ QR Code non reconnu: ${data}. Format attendu: EMP-{id}`, 'warning');
+            UI.showToast(`QR non reconnu : ${data}. Format attendu : EMP-{id}`, 'warning');
             return;
         }
-
-        const idEmplacement = parseInt(match[1], 10);
-        console.log('[Scanner] ID Emplacement extrait:', idEmplacement);
-        
-        this.stopScanner();
-        
-        HapticFeedback.success();
-        UI.showToast('🔍 Chargement de l\'emplacement...', 'info');
-
-        try {
-            const response = await API.request(`/emplacements/${idEmplacement}/biens`);
-            console.log('[Scanner] Réponse API:', response);
-            
-            AppState.currentEmplacement = response.emplacement;
-            AppState.biensAttendus = response.biens;
-            AppState.biensScannés = [];
-
-            HapticFeedback.medium();
-            UI.showEmplacementView();
-            BarcodeScannerManager.startBarcodeScanner();
-
-        } catch (error) {
-            console.error('[Scanner] Erreur API:', error);
-            HapticFeedback.error();
-            UI.showToast('❌ Erreur: ' + error.message, 'error');
-        }
+        this.stop();
+        await loadEmplacement(parseInt(match[1], 10));
     }
+};
 
-    static stopScanner() {
-        AppState.scannerActive = false;
-        const video = document.getElementById('qr-video');
-        if (video && video.srcObject) {
-            video.srcObject.getTracks().forEach(track => track.stop());
+// ===========================================
+// BIEN SCANNER (QR)
+// ===========================================
+
+const BienScanner = {
+    _instance: null,
+    start() {
+        if (this._instance) this._instance.stop();
+        this._instance = new QRScanner('bien-scanner-container', (data) => this.handle(data), 'bienScannerActive');
+        this._instance.start();
+    },
+    stop() {
+        if (this._instance) {
+            this._instance.stop();
+            this._instance = null;
         }
+    },
+    async handle(data) {
+        // Accepte num d'ordre pur ou format BIEN-{n}
+        let numOrdre = null;
+        const match = data.match(/^(?:BIEN-)?(\d+)$/i);
+        if (match) numOrdre = parseInt(match[1], 10);
+
+        if (!numOrdre) {
+            HapticFeedback.warning();
+            UI.showToast(`QR non reconnu : ${data}`, 'warning');
+            return;
+        }
+        submitBien(numOrdre);
+    }
+};
+
+// ===========================================
+// CHARGEMENT D'UN EMPLACEMENT
+// ===========================================
+
+async function loadEmplacement(idEmplacement) {
+    HapticFeedback.success();
+    UI.showToast('Chargement de l\'emplacement...', 'info');
+
+    try {
+        const response = await API.request(`/emplacements/${idEmplacement}/biens`);
+        AppState.currentEmplacement = response.emplacement;
+        AppState.biensAttendus = response.biens || [];
+        AppState.biensScannes = [];
+
+        HapticFeedback.medium();
+        UI.showEmplacementView();
+        BienTabs.activate('scan');
+    } catch (error) {
+        HapticFeedback.error();
+        UI.showToast('Erreur : ' + error.message, 'error');
+        EmplacementTabs.activate('scan');
     }
 }
 
 // ===========================================
-// BARCODE SCANNER - Code-barres 128 avec QuaggaJS
+// AJOUT D'UN BIEN (scan ou saisie)
 // ===========================================
 
-class BarcodeScannerManager {
-    static startBarcodeScanner() {
-        const container = document.getElementById('barcode-scanner-container');
-        
-        // Configuration optimisée pour mobile Android et iOS
-
-        Quagga.init({
-            inputStream: {
-                type: 'LiveStream',
-                target: container,
-                constraints: {
-                    width: { min: 640, ideal: 1280, max: 1920 },
-                    height: { min: 480, ideal: 720, max: 1080 },
-                    facingMode: 'environment', // Caméra arrière
-                    aspectRatio: { ideal: 16/9 }
-                },
-                area: { // Zone de scan optimisée
-                    top: "20%",
-                    right: "10%",
-                    left: "10%",
-                    bottom: "20%"
-                }
-            },
-            frequency: 10, // Réduire la fréquence pour économiser la batterie
-            decoder: {
-                readers: ['code_128_reader'], // Code-barres 128 uniquement
-                multiple: false // Un seul code à la fois
-            },
-            locate: true, // Localiser le code-barres
-            numOfWorkers: navigator.hardwareConcurrency || 2, // Optimiser selon le CPU
-            locator: {
-                patchSize: 'medium',
-                halfSample: true // Performance mobile
-            }
-        }, (err) => {
-            if (err) {
-                console.error('[Barcode] Erreur init:', err);
-                HapticFeedback.error();
-                UI.showToast('❌ Erreur scanner code-barres', 'error');
-                return;
-            }
-
-            Quagga.start();
-            HapticFeedback.light();
-            console.log('[Barcode] Scanner démarré');
-        });
-
-        Quagga.onDetected((result) => {
-            if (result && result.codeResult && result.codeResult.code) {
-                this.handleBarcodeDetected(result.codeResult.code);
-            }
-        });
+function submitBien(numOrdre) {
+    if (AppState.biensScannes.some(b => b.num_ordre === numOrdre)) {
+        HapticFeedback.warning();
+        UI.showToast('Deja enregistre', 'warning');
+        return;
     }
 
-    static async handleBarcodeDetected(codeBarre) {
-        console.log('[Barcode] Détecté:', codeBarre);
+    const bien = AppState.biensAttendus.find(b => b.num_ordre === numOrdre);
+    if (!bien) {
+        HapticFeedback.error();
+        UI.showToast(`Bien non attendu : ${numOrdre}`, 'warning');
+        return;
+    }
 
-        const numOrdre = parseInt(codeBarre, 10);
+    HapticFeedback.light();
+    UI.showModalEtatBien(bien);
+}
 
-        // Vérifier si déjà scanné
-        if (AppState.biensScannés.some(b => b.num_ordre === numOrdre)) {
-            HapticFeedback.warning();
-            UI.showToast('⚠️ Déjà scanné', 'warning');
-            return;
-        }
+// ===========================================
+// GESTIONNAIRES D'ONGLETS
+// ===========================================
 
-        const bien = AppState.biensAttendus.find(b => b.num_ordre === numOrdre);
+const EmplacementTabs = {
+    activate(tab) {
+        document.querySelectorAll('[data-emp-tab]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.empTab === tab);
+        });
+        document.querySelectorAll('[data-emp-panel]').forEach(panel => {
+            panel.classList.toggle('hidden', panel.dataset.empPanel !== tab);
+        });
 
-        if (bien) {
-            HapticFeedback.light();
-            // Afficher le modal pour définir l'état
-            UI.showModalEtatBien(bien);
+        if (tab === 'scan') {
+            EmplacementScanner.start();
         } else {
-            HapticFeedback.error();
-            UI.showToast(`⚠️ Bien non attendu: ${codeBarre}`, 'warning');
+            EmplacementScanner.stop();
+            if (tab === 'manual') {
+                setTimeout(() => document.getElementById('manual-emp-input')?.focus(), 100);
+            }
         }
     }
+};
 
-    static stopBarcodeScanner() {
-        if (Quagga) {
-            Quagga.stop();
-            console.log('[Barcode] Scanner arrêté');
+const BienTabs = {
+    activate(tab) {
+        document.querySelectorAll('[data-bien-tab]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.bienTab === tab);
+        });
+        document.querySelectorAll('[data-bien-panel]').forEach(panel => {
+            panel.classList.toggle('hidden', panel.dataset.bienPanel !== tab);
+        });
+
+        if (tab === 'scan') {
+            BienScanner.start();
+        } else {
+            BienScanner.stop();
+            if (tab === 'manual') {
+                setTimeout(() => document.getElementById('manual-num-ordre-input')?.focus(), 100);
+            } else if (tab === 'list') {
+                UI.renderCheckList();
+            }
         }
     }
-}
+};
 
 // ===========================================
-// UI MANAGER
+// UI
 // ===========================================
 
 class UI {
@@ -448,28 +418,23 @@ class UI {
             const response = await API.request('/etats');
             AppState.etats = response.etats || [];
         } catch (error) {
-            console.warn('[UI] Erreur chargement états:', error);
+            console.warn('[UI] Etats non charges:', error);
             AppState.etats = [];
         }
     }
 
     static showView(viewName) {
-        document.querySelectorAll('[id^="view-"]').forEach(view => {
-            view.classList.add('hidden');
-        });
-
+        document.querySelectorAll('[id^="view-"]').forEach(v => v.classList.add('hidden'));
         const view = document.getElementById(`view-${viewName}`);
-        if (view) {
-            view.classList.remove('hidden');
-        }
+        if (view) view.classList.remove('hidden');
 
-        // Cacher le header sur login
         const header = document.getElementById('app-header');
-        if (viewName === 'login') {
-            header.classList.add('hidden');
-        } else {
-            header.classList.remove('hidden');
-        }
+        if (viewName === 'login') header.classList.add('hidden');
+        else header.classList.remove('hidden');
+
+        // Stopper les scanners si on quitte la vue
+        if (viewName !== 'scanner') EmplacementScanner.stop();
+        if (viewName !== 'emplacement-biens') BienScanner.stop();
     }
 
     static updateUserInfo() {
@@ -484,11 +449,11 @@ class UI {
 
         const emp = AppState.currentEmplacement;
         document.getElementById('emplacement-nom').textContent = emp.nom;
-        
-        let details = emp.code;
-        if (emp.localisation) details += ` • ${emp.localisation.nom}`;
-        if (emp.affectation) details += ` • ${emp.affectation.nom}`;
-        document.getElementById('emplacement-details').textContent = details;
+
+        let details = emp.code || '';
+        if (emp.localisation) details += (details ? ' - ' : '') + emp.localisation.nom;
+        if (emp.affectation) details += (details ? ' - ' : '') + emp.affectation.nom;
+        document.getElementById('emplacement-details').textContent = details || '-';
 
         document.getElementById('biens-count').textContent = `${AppState.biensAttendus.length} bien(s)`;
 
@@ -501,24 +466,24 @@ class UI {
         list.innerHTML = '';
 
         AppState.biensAttendus.forEach(bien => {
-            const scanData = AppState.biensScannés.find(b => b.num_ordre === bien.num_ordre);
+            const scanData = AppState.biensScannes.find(b => b.num_ordre === bien.num_ordre);
             const isScanned = !!scanData;
             const etatObj = scanData && scanData.etat_id ? AppState.etats.find(e => e.id === scanData.etat_id) : null;
             const isDefectueux = etatObj && etatObj.require_photo;
             const etatLabel = etatObj ? etatObj.label : '';
-            
+
             const item = document.createElement('div');
             item.className = `p-3 ${isScanned ? (isDefectueux ? 'bg-amber-50' : 'bg-green-50') : 'bg-white'}`;
             item.innerHTML = `
                 <div class="flex items-center justify-between">
                     <div class="flex-1">
                         <p class="font-medium text-gray-900 text-sm">${bien.designation}</p>
-                        <p class="text-xs text-gray-600">N° ${bien.num_ordre} • ${bien.categorie}${isScanned ? ' • ' + etatLabel : ''}</p>
+                        <p class="text-xs text-gray-600">N° ${bien.num_ordre} - ${bien.categorie || ''}${isScanned ? ' - ' + etatLabel : ''}</p>
                     </div>
                     <div class="ml-3">
-                        ${isScanned ? 
-                            '<svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>' :
-                            '<svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/></svg>'
+                        ${isScanned
+                            ? '<svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>'
+                            : '<svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/></svg>'
                         }
                     </div>
                 </div>
@@ -527,24 +492,52 @@ class UI {
         });
     }
 
+    static renderCheckList() {
+        const container = document.getElementById('list-biens-checkboxes');
+        const countEl = document.getElementById('list-biens-count');
+        container.innerHTML = '';
+
+        if (!AppState.biensAttendus.length) {
+            container.innerHTML = '<div class="p-4 text-center text-sm text-gray-500">Aucun bien attendu</div>';
+            countEl.textContent = '0 bien(s)';
+            return;
+        }
+
+        countEl.textContent = `${AppState.biensAttendus.length} bien(s)`;
+
+        AppState.biensAttendus.forEach(bien => {
+            const isChecked = AppState.biensScannes.some(b => b.num_ordre === bien.num_ordre);
+            const row = document.createElement('label');
+            row.className = `flex items-center gap-3 p-3 cursor-pointer touch-feedback ${isChecked ? 'bg-green-50' : 'hover:bg-gray-50'}`;
+            row.innerHTML = `
+                <input type="checkbox" data-num-ordre="${bien.num_ordre}" ${isChecked ? 'checked' : ''}
+                       class="checkbox-bien w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-gray-900 text-sm truncate">${bien.designation}</p>
+                    <p class="text-xs text-gray-600">N° ${bien.num_ordre} - ${bien.categorie || ''}</p>
+                </div>
+            `;
+            container.appendChild(row);
+        });
+    }
+
     static updateProgress() {
         const total = AppState.biensAttendus.length;
-        const scanned = AppState.biensScannés.length;
-        const percent = total > 0 ? Math.round((scanned / total) * 100) : 0;
-
-        document.getElementById('progress-text').textContent = `${scanned}/${total} biens scannés`;
+        const done = AppState.biensScannes.length;
+        const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+        document.getElementById('progress-text').textContent = `${done}/${total} biens coches`;
         document.getElementById('progress-percent').textContent = `${percent}%`;
         document.getElementById('progress-bar').style.width = `${percent}%`;
     }
 
     static async showResultatsView() {
-        BarcodeScannerManager.stopBarcodeScanner();
+        EmplacementScanner.stop();
+        BienScanner.stop();
 
-        UI.showToast('📊 Calcul des écarts...', 'info');
+        UI.showToast('Calcul des ecarts...', 'info');
 
         try {
-            // Format: [{ num_ordre, etat_id, photo? }] - utilise table etat
-            const biensPayload = AppState.biensScannés.map(b => ({
+            const payload = AppState.biensScannes.map(b => ({
                 num_ordre: b.num_ordre,
                 etat_id: b.etat_id || null,
                 photo: b.photo || null
@@ -552,61 +545,39 @@ class UI {
 
             const response = await API.request(
                 `/emplacements/${AppState.currentEmplacement.id}/terminer`,
-                {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        biens_scannes: biensPayload
-                    })
-                }
+                { method: 'POST', body: JSON.stringify({ biens_scannes: payload }) }
             );
 
             this.showView('resultats');
             this.displayResultats(response);
-
         } catch (error) {
-            UI.showToast('❌ Erreur: ' + error.message, 'error');
+            UI.showToast('Erreur : ' + error.message, 'error');
         }
     }
 
     static showModalEtatBien(bien) {
         AppState.modalBienEnCours = bien;
-        const modal = document.getElementById('modal-etat-bien');
         document.getElementById('modal-etat-designation').textContent = `${bien.designation} (N° ${bien.num_ordre})`;
-        
-        // Boutons dynamiques depuis API /etats
+
         const container = document.getElementById('modal-etat-buttons');
         container.innerHTML = '';
-        if (AppState.etats.length > 0) {
-            AppState.etats.forEach(etat => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'modal-etat-btn touch-target py-3 px-4 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-500 hover:bg-indigo-50 transition';
-                btn.dataset.etatId = etat.id;
-                btn.dataset.requirePhoto = etat.require_photo ? '1' : '0';
-                btn.textContent = etat.label;
-                container.appendChild(btn);
-            });
-        } else {
-            // Fallback si états non chargés (envoie null -> API utilise 'bon')
-            const fallback = [{ id: null, label: 'Bon', require_photo: false }];
-            fallback.forEach(etat => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'modal-etat-btn touch-target py-3 px-4 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-500 hover:bg-indigo-50 transition';
-                btn.dataset.etatId = etat.id ?? '';
-                btn.dataset.requirePhoto = etat.require_photo ? '1' : '0';
-                btn.textContent = etat.label;
-                container.appendChild(btn);
-            });
-        }
-        
-        // Reset modal state
+        const etats = AppState.etats.length ? AppState.etats : [{ id: null, label: 'Bon', require_photo: false }];
+        etats.forEach(etat => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'modal-etat-btn touch-target py-3 px-4 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-500 hover:bg-indigo-50 transition';
+            btn.dataset.etatId = etat.id ?? '';
+            btn.dataset.requirePhoto = etat.require_photo ? '1' : '0';
+            btn.textContent = etat.label;
+            container.appendChild(btn);
+        });
+
         document.getElementById('modal-etat-photo-section').classList.add('hidden');
         document.getElementById('modal-etat-photo-input').value = '';
         document.getElementById('modal-etat-photo-preview').classList.add('hidden');
         document.getElementById('modal-etat-confirmer').disabled = true;
-        
-        modal.classList.remove('hidden');
+
+        document.getElementById('modal-etat-bien').classList.remove('hidden');
     }
 
     static hideModalEtatBien() {
@@ -616,44 +587,50 @@ class UI {
 
     static confirmModalEtatBien(etatId, photoBase64) {
         if (!AppState.modalBienEnCours) return;
-        
         const bien = AppState.modalBienEnCours;
-        AppState.biensScannés.push({
+        AppState.biensScannes.push({
             num_ordre: bien.num_ordre,
             etat_id: etatId ? parseInt(etatId, 10) : null,
             photo: photoBase64 || null
         });
-        
+
         HapticFeedback.success();
-        UI.showToast(`✅ ${bien.designation}`, 'success');
+        UI.showToast(bien.designation, 'success');
         UI.updateBiensList();
         UI.updateProgress();
+
+        // Si on etait dans la liste a cocher, rafraichir aussi la case
+        const activeTab = document.querySelector('[data-bien-tab].active')?.dataset.bienTab;
+        if (activeTab === 'list') UI.renderCheckList();
+
         UI.hideModalEtatBien();
+    }
+
+    static removeBien(numOrdre) {
+        AppState.biensScannes = AppState.biensScannes.filter(b => b.num_ordre !== numOrdre);
+        UI.updateBiensList();
+        UI.updateProgress();
     }
 
     static displayResultats(data) {
         const stats = data.statistiques;
-
         document.getElementById('stat-scannes').textContent = stats.total_scanne;
         document.getElementById('stat-manquants').textContent = stats.total_manquant;
-        
         document.getElementById('conformite-bar').style.width = `${stats.taux_conformite}%`;
         document.getElementById('conformite-text').textContent = `${stats.taux_conformite}%`;
 
-        // Biens manquants
-        if (data.biens_manquants.length > 0) {
+        if (data.biens_manquants && data.biens_manquants.length > 0) {
             document.getElementById('section-manquants').classList.remove('hidden');
-            const listManquants = document.getElementById('list-manquants');
-            listManquants.innerHTML = '';
-
+            const list = document.getElementById('list-manquants');
+            list.innerHTML = '';
             data.biens_manquants.forEach(bien => {
                 const item = document.createElement('div');
                 item.className = 'bg-red-50 border-l-4 border-red-500 p-3 rounded';
                 item.innerHTML = `
                     <p class="font-medium text-red-800">${bien.designation}</p>
-                    <p class="text-sm text-red-600">N° ${bien.num_ordre} • ${bien.categorie}</p>
+                    <p class="text-sm text-red-600">N° ${bien.num_ordre} - ${bien.categorie || ''}</p>
                 `;
-                listManquants.appendChild(item);
+                list.appendChild(item);
             });
         } else {
             document.getElementById('section-manquants').classList.add('hidden');
@@ -662,23 +639,17 @@ class UI {
 
     static showToast(message, type = 'info') {
         const container = document.getElementById('toast-container');
-        
         const colors = {
             success: 'bg-green-500',
             error: 'bg-red-500',
             warning: 'bg-yellow-500',
             info: 'bg-blue-500'
         };
-
         const toast = document.createElement('div');
-        toast.className = `${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg`;
+        toast.className = `${colors[type] || colors.info} text-white px-4 py-3 rounded-lg shadow-lg`;
         toast.textContent = message;
-
         container.appendChild(toast);
-
-        setTimeout(() => {
-            toast.remove();
-        }, 3000);
+        setTimeout(() => toast.remove(), 3000);
     }
 }
 
@@ -689,7 +660,6 @@ class UI {
 // Login
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
     const username = document.getElementById('login-users').value;
     const password = document.getElementById('login-mdp').value;
     const btn = document.getElementById('login-btn');
@@ -718,24 +688,105 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 document.getElementById('menu-btn').addEventListener('click', () => {
     document.getElementById('menu-drawer').classList.remove('hidden');
 });
-
 document.getElementById('close-menu').addEventListener('click', () => {
     document.getElementById('menu-drawer').classList.add('hidden');
 });
-
 document.getElementById('menu-overlay').addEventListener('click', () => {
     document.getElementById('menu-drawer').classList.add('hidden');
 });
-
 document.getElementById('nav-logout').addEventListener('click', () => {
     AuthManager.logout();
     document.getElementById('menu-drawer').classList.add('hidden');
 });
 
-// Scanner
-document.getElementById('start-scanner-btn').addEventListener('click', () => {
-    ScannerManager.startQRScanner();
-    document.getElementById('start-scanner-btn').style.display = 'none';
+// Onglets emplacement
+document.querySelectorAll('[data-emp-tab]').forEach(btn => {
+    btn.addEventListener('click', () => EmplacementTabs.activate(btn.dataset.empTab));
+});
+
+// Saisie manuelle emplacement
+document.getElementById('manual-emp-submit').addEventListener('click', () => {
+    const input = document.getElementById('manual-emp-input');
+    const raw = input.value.trim();
+    if (!raw) {
+        UI.showToast('Saisissez un code ou un ID', 'warning');
+        return;
+    }
+    const match = raw.match(/^(?:EMP-)?(\d+)$/i);
+    if (!match) {
+        UI.showToast('Format invalide (ex: EMP-12 ou 12)', 'warning');
+        return;
+    }
+    input.value = '';
+    loadEmplacement(parseInt(match[1], 10));
+});
+document.getElementById('manual-emp-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('manual-emp-submit').click();
+    }
+});
+
+// Onglets biens
+document.querySelectorAll('[data-bien-tab]').forEach(btn => {
+    btn.addEventListener('click', () => BienTabs.activate(btn.dataset.bienTab));
+});
+
+// Saisie manuelle numero d'ordre
+document.getElementById('manual-num-ordre-submit').addEventListener('click', () => {
+    const input = document.getElementById('manual-num-ordre-input');
+    const raw = input.value.trim();
+    const numOrdre = parseInt(raw, 10);
+    if (!raw || isNaN(numOrdre)) {
+        UI.showToast('Saisissez un numero valide', 'warning');
+        return;
+    }
+    input.value = '';
+    submitBien(numOrdre);
+});
+document.getElementById('manual-num-ordre-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('manual-num-ordre-submit').click();
+    }
+});
+
+// Liste a cocher : changement d'une case
+document.getElementById('list-biens-checkboxes').addEventListener('change', (e) => {
+    const cb = e.target.closest('.checkbox-bien');
+    if (!cb) return;
+    const numOrdre = parseInt(cb.dataset.numOrdre, 10);
+
+    if (cb.checked) {
+        // Re-check: si deja present, ne rien faire ; sinon ouvrir modal etat
+        if (!AppState.biensScannes.some(b => b.num_ordre === numOrdre)) {
+            submitBien(numOrdre);
+            // Si modal annulee, la case sera reinitialisee via renderCheckList
+        }
+    } else {
+        UI.removeBien(numOrdre);
+        UI.renderCheckList();
+    }
+});
+
+// Bouton "tout cocher"
+document.getElementById('btn-tout-cocher').addEventListener('click', () => {
+    const restants = AppState.biensAttendus.filter(b =>
+        !AppState.biensScannes.some(s => s.num_ordre === b.num_ordre)
+    );
+    if (!restants.length) {
+        UI.showToast('Tous les biens sont deja coches', 'info');
+        return;
+    }
+    // Ajouter sans modal (etat null = "bon" cote API)
+    restants.forEach(bien => {
+        AppState.biensScannes.push({ num_ordre: bien.num_ordre, etat_id: null, photo: null });
+    });
+    HapticFeedback.success();
+    UI.showToast(`${restants.length} bien(s) coches`, 'success');
+    UI.updateBiensList();
+    UI.updateProgress();
+    UI.renderCheckList();
 });
 
 // Terminer scan emplacement
@@ -749,26 +800,27 @@ document.getElementById('btn-terminer-emplacement').addEventListener('click', ()
 document.getElementById('btn-nouveau-scan').addEventListener('click', () => {
     AppState.currentEmplacement = null;
     AppState.biensAttendus = [];
-    AppState.biensScannés = [];
+    AppState.biensScannes = [];
     UI.showView('scanner');
+    EmplacementTabs.activate('scan');
 });
 
-// Modal État du bien
+// Modal etat du bien
 let modalEtatSelectionne = null;
 let modalPhotoBase64 = null;
 
 document.getElementById('modal-etat-buttons').addEventListener('click', (e) => {
     const btn = e.target.closest('.modal-etat-btn');
     if (!btn) return;
-    
+
     document.querySelectorAll('.modal-etat-btn').forEach(b => b.classList.remove('border-indigo-600', 'bg-indigo-50'));
     btn.classList.add('border-indigo-600', 'bg-indigo-50');
     modalEtatSelectionne = btn.dataset.etatId;
     const requirePhoto = btn.dataset.requirePhoto === '1';
-    
+
     const photoSection = document.getElementById('modal-etat-photo-section');
     const confirmBtn = document.getElementById('modal-etat-confirmer');
-    
+
     if (requirePhoto) {
         photoSection.classList.remove('hidden');
         confirmBtn.disabled = !modalPhotoBase64;
@@ -782,7 +834,6 @@ document.getElementById('modal-etat-buttons').addEventListener('click', (e) => {
 document.getElementById('modal-etat-photo-input').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
     const reader = new FileReader();
     reader.onload = (event) => {
         modalPhotoBase64 = event.target.result;
@@ -802,24 +853,27 @@ document.getElementById('modal-etat-photo-retake').addEventListener('click', () 
     document.getElementById('modal-etat-confirmer').disabled = requirePhoto;
 });
 
-document.getElementById('modal-etat-annuler').addEventListener('click', () => {
+function closeModalEtat() {
     UI.hideModalEtatBien();
     modalEtatSelectionne = null;
     modalPhotoBase64 = null;
-});
+    // Si on a annule depuis la checklist, decocher la case
+    const activeTab = document.querySelector('[data-bien-tab].active')?.dataset.bienTab;
+    if (activeTab === 'list') UI.renderCheckList();
+}
 
-document.getElementById('modal-etat-overlay').addEventListener('click', () => {
-    UI.hideModalEtatBien();
-    modalEtatSelectionne = null;
-    modalPhotoBase64 = null;
-});
+document.getElementById('modal-etat-annuler').addEventListener('click', closeModalEtat);
+document.getElementById('modal-etat-overlay').addEventListener('click', closeModalEtat);
 
 document.getElementById('modal-etat-confirmer').addEventListener('click', () => {
-    if (!modalEtatSelectionne) return;
+    if (!modalEtatSelectionne && AppState.etats.length > 0) {
+        UI.showToast('Selectionnez un etat', 'warning');
+        return;
+    }
     const btn = document.querySelector('.modal-etat-btn.border-indigo-600');
     const requirePhoto = btn && btn.dataset.requirePhoto === '1';
     if (requirePhoto && !modalPhotoBase64) {
-        UI.showToast('📷 Veuillez prendre une photo du bien défectueux', 'warning');
+        UI.showToast('Prenez une photo du bien defectueux', 'warning');
         return;
     }
     UI.confirmModalEtatBien(modalEtatSelectionne, modalPhotoBase64);
@@ -833,7 +887,6 @@ document.getElementById('modal-etat-confirmer').addEventListener('click', () => 
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[App v2] Init...');
-    
     if (!AuthManager.checkAuth()) {
         UI.showView('login');
     }

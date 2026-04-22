@@ -3,20 +3,20 @@
  * Gère le cache, le mode offline et la synchronisation en arrière-plan
  */
 
-const CACHE_NAME = 'inventaire-scanner-v3';
+const CACHE_NAME = 'inventaire-scanner-v6';
 const ASSETS_TO_CACHE = [
   '/pwa/',
-  '/pwa/index.html',
   '/pwa/index-v2.html',
   '/pwa/collecte-initiale.html',
-  '/pwa/app.js',
   '/pwa/app-v2.js',
   '/pwa/collecte-initiale.js',
   '/pwa/styles.css',
+  '/pwa/tailwind.css',
   '/pwa/manifest.json',
-  '/pwa/assets/icons/icon-192x192.png',
-  '/pwa/assets/icons/icon-512x512.png',
-  'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js'
+  '/images/icons/icon-144x144.png',
+  '/images/icons/icon-192x192.png',
+  '/images/icons/icon-512x512.png',
+  'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js'
 ];
 
 /**
@@ -27,17 +27,22 @@ self.addEventListener('install', (event) => {
   
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
+      .then(async (cache) => {
         console.log('[Service Worker] Mise en cache des assets');
-        return cache.addAll(ASSETS_TO_CACHE);
+        await Promise.all(
+          ASSETS_TO_CACHE.map(async (url) => {
+            try {
+              const isCrossOrigin = url.startsWith('http');
+              const request = new Request(url, isCrossOrigin ? { mode: 'no-cors' } : {});
+              const response = await fetch(request);
+              await cache.put(url, response);
+            } catch (err) {
+              console.warn('[Service Worker] Asset non mis en cache:', url, err);
+            }
+          })
+        );
       })
-      .catch((error) => {
-        console.error('[Service Worker] Erreur lors de la mise en cache:', error);
-      })
-      .then(() => {
-        // Forcer l'activation immédiate du nouveau service worker
-        return self.skipWaiting();
-      })
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -83,27 +88,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stratégie Network First pour les appels API
+  // Stratégie Network First pour les appels API (GET uniquement, lectures idempotentes)
   if (url.pathname.startsWith('/api/')) {
+    const cacheableApi = /\/api\/v1\/(emplacements\/[^/]+\/biens|localisations|biens|etats|inventaires\/current)/.test(url.pathname);
+
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Vérifier que la réponse est valide
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
+          if (cacheableApi && response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME)
+              .then((cache) => cache.put(request, responseClone))
+              .catch((error) => console.error('[Service Worker] Erreur cache API:', error));
           }
-
-          // Clone la réponse pour la mettre en cache
-          const responseClone = response.clone();
-          
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(request, responseClone);
-            })
-            .catch((error) => {
-              console.error('[Service Worker] Erreur mise en cache API:', error);
-            });
-
           return response;
         })
         .catch(() => {
@@ -141,12 +138,10 @@ self.addEventListener('fetch', (event) => {
         // Si pas dans le cache, récupérer depuis le réseau
         return fetch(request)
           .then((response) => {
-            // Vérifier que la réponse est valide
-            if (!response || response.status !== 200 || response.type !== 'basic') {
+            if (!response || (response.status !== 200 && response.type !== 'opaque')) {
               return response;
             }
 
-            // Mettre en cache les nouvelles ressources
             const responseClone = response.clone();
             
             caches.open(CACHE_NAME)
@@ -198,13 +193,16 @@ async function syncScans() {
 
     for (const scan of scans) {
       try {
-        // Envoyer chaque scan à l'API
-        const response = await fetch(`/api/v1/inventaires/${scan.inventaire_id}/scan`, {
+        const endpoint = scan.emplacement_id
+          ? `/api/v1/emplacements/${scan.emplacement_id}/scan`
+          : `/api/v1/inventaires/${scan.inventaire_id}/scan`;
+
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${scan.token}`,
-            'X-CSRF-TOKEN': scan.csrf_token || ''
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${scan.token}`
           },
           body: JSON.stringify(scan.data)
         });
