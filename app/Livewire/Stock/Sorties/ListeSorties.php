@@ -21,6 +21,12 @@ class ListeSorties extends Component
     public $dateDebut = '';
     public $dateFin = '';
 
+    // Modification de quantité
+    public $modifierSortieId = null;
+    public $modifierNouvelleQuantite = '';
+    public $modifierAncienneQuantite = 0;
+    public $modifierProduitLibelle = '';
+
     protected $queryString = ['search', 'filterProduit', 'filterDemandeur', 'dateDebut', 'dateFin'];
 
     public function mount()
@@ -38,6 +44,73 @@ class ListeSorties extends Component
     public function updatingFilterDemandeur() { $this->resetPage(); }
     public function updatingDateDebut() { $this->resetPage(); }
     public function updatingDateFin() { $this->resetPage(); }
+
+    public function ouvrirModifierSortie(int $id): void
+    {
+        $sortie = StockSortie::with('produit')->findOrFail($id);
+        $this->modifierSortieId = $id;
+        $this->modifierAncienneQuantite = $sortie->quantite;
+        $this->modifierNouvelleQuantite = $sortie->quantite;
+        $this->modifierProduitLibelle = $sortie->produit->libelle ?? '';
+        $this->dispatch('ouvrir-modal-modifier');
+    }
+
+    public function confirmerModifierSortie(): void
+    {
+        if (!auth()->user()->canDeleteStockOperations()) {
+            abort(403);
+        }
+
+        $this->validate([
+            'modifierNouvelleQuantite' => 'required|integer|min:1',
+        ], [
+            'modifierNouvelleQuantite.required' => 'La quantité est obligatoire.',
+            'modifierNouvelleQuantite.integer'  => 'La quantité doit être un entier.',
+            'modifierNouvelleQuantite.min'      => 'La quantité doit être au moins 1.',
+        ]);
+
+        $sortie = StockSortie::with('produit')->findOrFail($this->modifierSortieId);
+        $ancienne = $sortie->quantite;
+        $nouvelle = (int) $this->modifierNouvelleQuantite;
+        $diff = $nouvelle - $ancienne;
+
+        $produit = $sortie->produit;
+        if ($produit && $diff !== 0) {
+            if ($diff > 0) {
+                // On sort plus => stock diminue
+                $produit->retirerStock($diff);
+            } else {
+                // On sort moins => stock remonte
+                $produit->ajouterStock(abs($diff));
+            }
+        }
+
+        $sortie->quantite = $nouvelle;
+        $sortie->save();
+
+        $this->modifierSortieId = null;
+        $this->modifierNouvelleQuantite = '';
+        $this->modifierAncienneQuantite = 0;
+        $this->modifierProduitLibelle = '';
+        $this->dispatch('fermer-modal-modifier');
+
+        $msg = $diff > 0
+            ? "Quantité augmentée de {$ancienne} à {$nouvelle}. Stock réduit de " . abs($diff) . " unités."
+            : ($diff < 0
+                ? "Quantité réduite de {$ancienne} à {$nouvelle}. Stock restauré de " . abs($diff) . " unités."
+                : "Aucun changement.");
+
+        session()->flash('success', $msg);
+    }
+
+    public function annulerModifierSortie(): void
+    {
+        $this->modifierSortieId = null;
+        $this->modifierNouvelleQuantite = '';
+        $this->modifierAncienneQuantite = 0;
+        $this->modifierProduitLibelle = '';
+        $this->dispatch('fermer-modal-modifier');
+    }
 
     public function supprimerCommande(string $groupeId): void
     {

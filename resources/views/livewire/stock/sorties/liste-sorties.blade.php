@@ -7,6 +7,7 @@
             action: null,
             danger: true,
         },
+        modifierModal: false,
         demanderConfirmation(titre, message, action) {
             this.confirm.titre   = titre;
             this.confirm.message = message;
@@ -21,6 +22,8 @@
             this.confirm.show = false;
         }
     }"
+    @ouvrir-modal-modifier.window="modifierModal = true"
+    @fermer-modal-modifier.window="modifierModal = false"
 >
 
     {{-- Modale de confirmation --}}
@@ -73,6 +76,86 @@
                     @click="valider()"
                     class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
                     Supprimer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modale de modification de quantité --}}
+    <div
+        x-show="modifierModal"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style="display:none"
+    >
+        <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" @click="$wire.annulerModifierSortie()"></div>
+        <div
+            x-show="modifierModal"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 z-10"
+        >
+            <div class="flex items-center gap-4 mb-4">
+                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-gray-900">Modifier la quantité</h3>
+                    <p class="text-sm text-gray-500 mt-0.5">{{ $modifierProduitLibelle }}</p>
+                </div>
+            </div>
+
+            <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                <strong>Ancienne quantité :</strong> {{ $modifierAncienneQuantite }} unités<br>
+                Le stock sera ajusté automatiquement selon la différence.
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Nouvelle quantité</label>
+                <input type="number"
+                       wire:model="modifierNouvelleQuantite"
+                       min="1"
+                       class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition"
+                       placeholder="Saisir la nouvelle quantité">
+                @error('modifierNouvelleQuantite')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+
+            @if($modifierNouvelleQuantite && $modifierNouvelleQuantite != $modifierAncienneQuantite && $modifierNouvelleQuantite > 0)
+                @php $diff = (int)$modifierNouvelleQuantite - $modifierAncienneQuantite; @endphp
+                <div class="mb-4 p-3 rounded-lg text-xs font-medium {{ $diff > 0 ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-emerald-50 border border-emerald-200 text-emerald-700' }}">
+                    @if($diff > 0)
+                        Stock diminuera de <strong>{{ abs($diff) }}</strong> unités supplémentaires
+                    @else
+                        Stock augmentera de <strong>{{ abs($diff) }}</strong> unités restituées
+                    @endif
+                </div>
+            @endif
+
+            <div class="flex justify-end gap-3 mt-6">
+                <button
+                    wire:click="annulerModifierSortie"
+                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                    Annuler
+                </button>
+                <button
+                    wire:click="confirmerModifierSortie"
+                    wire:loading.attr="disabled"
+                    class="px-4 py-2 text-sm font-medium text-white bg-violet-600 rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-60">
+                    <span wire:loading.remove wire:target="confirmerModifierSortie">Enregistrer</span>
+                    <span wire:loading wire:target="confirmerModifierSortie">Enregistrement…</span>
                 </button>
             </div>
         </div>
@@ -309,6 +392,18 @@
                             </a>
                         @endif
 
+                        {{-- Modifier sortie (non groupée uniquement) --}}
+                        @if(!$isGroupe && auth()->user()->canDeleteStockOperations())
+                            <button
+                                @click.stop="$wire.ouvrirModifierSortie({{ $premiere->id }})"
+                                title="Modifier la quantité"
+                                class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-lg bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                </svg>
+                            </button>
+                        @endif
+
                         {{-- Supprimer commande --}}
                         @if(auth()->user()->canDeleteStockOperations())
                             @if($isGroupe)
@@ -352,7 +447,7 @@
                                 <th class="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide hidden md:table-cell">Catégorie</th>
                                 <th class="px-4 py-2 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide">Quantité</th>
                                 <th class="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide hidden lg:table-cell">Observations</th>
-                                @if(auth()->user()->canDeleteStockOperations() && $isGroupe)
+                                @if(auth()->user()->canDeleteStockOperations())
                                     <th class="px-4 py-2 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide"></th>
                                 @endif
                             </tr>
@@ -381,20 +476,32 @@
                                             {{ $ligne->observations ? \Illuminate\Support\Str::limit($ligne->observations, 50) : '—' }}
                                         </p>
                                     </td>
-                                    @if(auth()->user()->canDeleteStockOperations() && $isGroupe)
+                                    @if(auth()->user()->canDeleteStockOperations())
                                         <td class="px-4 py-2.5 text-center">
-                                            <button
-                                                @click="demanderConfirmation(
-                                                    'Supprimer l\'article',
-                                                    '{{ addslashes($ligne->produit->libelle ?? 'cet article') }} sera retiré de la commande et le stock rétabli.',
-                                                    () => $wire.supprimerSortie({{ $ligne->id }})
-                                                )"
-                                                title="Supprimer cet article"
-                                                class="inline-flex items-center px-1.5 py-1 text-xs font-medium rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
-                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                </svg>
-                                            </button>
+                                            <div class="flex items-center justify-center gap-1">
+                                                <button
+                                                    @click="$wire.ouvrirModifierSortie({{ $ligne->id }})"
+                                                    title="Modifier la quantité"
+                                                    class="inline-flex items-center px-1.5 py-1 text-xs font-medium rounded-lg bg-violet-50 text-violet-500 hover:bg-violet-100 transition-colors">
+                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                    </svg>
+                                                </button>
+                                                @if($isGroupe)
+                                                <button
+                                                    @click="demanderConfirmation(
+                                                        'Supprimer l\'article',
+                                                        '{{ addslashes($ligne->produit->libelle ?? 'cet article') }} sera retiré de la commande et le stock rétabli.',
+                                                        () => $wire.supprimerSortie({{ $ligne->id }})
+                                                    )"
+                                                    title="Supprimer cet article"
+                                                    class="inline-flex items-center px-1.5 py-1 text-xs font-medium rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
+                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                                @endif
+                                            </div>
                                         </td>
                                     @endif
                                 </tr>
@@ -409,7 +516,7 @@
                                     <span class="text-sm font-bold text-violet-700">-{{ $totalQte }}</span>
                                 </td>
                                 <td class="px-4 py-2 hidden lg:table-cell"></td>
-                                @if(auth()->user()->canDeleteStockOperations() && $isGroupe)
+                                @if(auth()->user()->canDeleteStockOperations())
                                     <td class="px-4 py-2"></td>
                                 @endif
                             </tr>
