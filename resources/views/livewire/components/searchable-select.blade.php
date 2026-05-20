@@ -24,12 +24,32 @@
                 const btn = this.$el.querySelector('button[role=combobox]');
                 if (!btn) return;
                 const rect = btn.getBoundingClientRect();
+                const isMobile = window.innerWidth < 640;
                 const spaceBelow = window.innerHeight - rect.bottom;
                 const dropHeight = 400;
-                if (spaceBelow >= dropHeight || spaceBelow >= 200) {
-                    this.dropdownStyle = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left}px;width:${rect.width}px;z-index:9999;`;
+                const margin = 12;
+
+                if (isMobile) {
+                    // Sur mobile : pleine largeur avec marges horizontales
+                    const left = margin;
+                    const width = window.innerWidth - margin * 2;
+                    if (spaceBelow >= 240) {
+                        this.dropdownStyle = `position:fixed;top:${rect.bottom + 4}px;left:${left}px;width:${width}px;z-index:9999;`;
+                    } else {
+                        this.dropdownStyle = `position:fixed;bottom:${window.innerHeight - rect.top + 4}px;left:${left}px;width:${width}px;z-index:9999;`;
+                    }
                 } else {
-                    this.dropdownStyle = `position:fixed;bottom:${window.innerHeight - rect.top + 4}px;left:${rect.left}px;width:${rect.width}px;z-index:9999;`;
+                    // Desktop : largeur du bouton, peut déborder à droite si nécessaire
+                    let left = rect.left;
+                    const minWidth = Math.max(rect.width, 280);
+                    if (left + minWidth > window.innerWidth - 8) {
+                        left = window.innerWidth - minWidth - 8;
+                    }
+                    if (spaceBelow >= dropHeight || spaceBelow >= 200) {
+                        this.dropdownStyle = `position:fixed;top:${rect.bottom + 4}px;left:${left}px;width:${minWidth}px;z-index:9999;`;
+                    } else {
+                        this.dropdownStyle = `position:fixed;bottom:${window.innerHeight - rect.top + 4}px;left:${left}px;width:${minWidth}px;z-index:9999;`;
+                    }
                 }
             });
         },
@@ -143,8 +163,8 @@
         :id="$id('searchable-listbox')"
         role="listbox"
         :aria-labelledby="$id('searchable-combobox')"
-        class="bg-white shadow-xl rounded-xl border border-gray-200"
-        :style="dropdownStyle + 'max-height:400px;'"
+        class="bg-white shadow-xl rounded-xl border border-gray-200 overflow-hidden"
+        :style="dropdownStyle + 'max-height:min(400px, 60vh);overflow:hidden;'"
     >
         {{-- Barre de recherche améliorée --}}
         <div class="sticky top-0 z-10 bg-white px-3 py-3 border-b border-gray-200">
@@ -192,7 +212,7 @@
         </div>
 
         {{-- Liste des options avec scroll --}}
-        <div class="overflow-y-auto py-1" style="max-height: 280px;">
+        <div class="overflow-y-auto py-1" style="max-height: min(280px, 40vh);">
             @forelse($this->filteredOptions as $index => $option)
                 <div
                     wire:key="option-{{ $option['value'] }}-{{ $loop->index }}"

@@ -10,8 +10,8 @@
                 </svg>
             </a>
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">Nouvelle entrée de stock</h1>
-                <p class="text-gray-500 mt-0.5">Enregistrez un approvisionnement — plusieurs articles possibles</p>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Nouvelle entrée de stock</h1>
+                <p class="text-gray-500 mt-0.5 text-sm">Enregistrez un approvisionnement — plusieurs articles possibles</p>
             </div>
         </div>
 
@@ -37,7 +37,7 @@
 
             {{-- Identification du bon --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                <div class="px-6 py-4 border-b border-gray-50">
+                <div class="px-5 py-4 border-b border-gray-50">
                     <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
                         <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -45,7 +45,8 @@
                         Identification du bon
                     </h2>
                 </div>
-                <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {{-- Date --}}
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
@@ -70,7 +71,7 @@
                     </div>
 
                     {{-- Fournisseur --}}
-                    <div>
+                    <div class="sm:col-span-2 lg:col-span-1">
                         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                             Fournisseur <span class="font-normal text-gray-400 normal-case">(optionnel)</span>
                         </label>
@@ -89,7 +90,7 @@
                 </div>
 
                 {{-- Observations --}}
-                <div class="px-6 pb-6">
+                <div class="px-5 pb-5">
                     <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Observations</label>
                     <textarea wire:model="observations" rows="2"
                               placeholder="Notes, remarques sur cet approvisionnement…"
@@ -99,7 +100,7 @@
 
             {{-- Articles --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                <div class="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
+                <div class="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
                     <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
                         <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
@@ -110,25 +111,38 @@
                         </span>
                     </h2>
                     <button type="button" wire:click="ajouterLigne"
-                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors">
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors border border-emerald-200">
                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
-                        Ajouter un article
+                        <span class="hidden sm:inline">Ajouter un article</span>
+                        <span class="sm:hidden">Ajouter</span>
                     </button>
                 </div>
 
                 <div class="divide-y divide-gray-50">
                     @foreach($lignes as $index => $ligne)
-                        <div class="p-5 flex gap-4 items-start" wire:key="ligne-{{ $index }}">
+                        <div class="p-4 sm:p-5" wire:key="ligne-{{ $index }}">
 
-                            {{-- Numéro ligne --}}
-                            <div class="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold mt-1">
-                                {{ $index + 1 }}
+                            {{-- Mobile : layout empilé avec numéro en haut --}}
+                            <div class="flex items-center gap-3 mb-3 sm:hidden">
+                                <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                    {{ $index + 1 }}
+                                </div>
+                                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Article {{ $index + 1 }}</span>
+                                @if(count($lignes) > 1)
+                                    <button type="button" wire:click="supprimerLigne({{ $index }})"
+                                            class="ml-auto flex items-center gap-1 px-2 py-1 text-xs text-red-500 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                        Supprimer
+                                    </button>
+                                @endif
                             </div>
 
-                            {{-- Produit --}}
-                            <div class="flex-1 min-w-0">
+                            {{-- Produit (pleine largeur sur mobile) --}}
+                            <div class="mb-3 sm:hidden">
                                 <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                                     Produit <span class="text-red-500">*</span>
                                 </label>
@@ -138,7 +152,7 @@
                                     placeholder="Sélectionner un produit"
                                     search-placeholder="Rechercher…"
                                     no-results-text="Aucun produit trouvé"
-                                    :key="'produit-' . $index"
+                                    :key="'produit-mobile-' . $index"
                                 />
                                 @error("lignes.$index.produit_id")
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -150,46 +164,101 @@
                                 @endif
                             </div>
 
-                            {{-- Quantité --}}
-                            <div class="flex-shrink-0 w-32">
+                            {{-- Quantité (pleine largeur sur mobile) --}}
+                            <div class="sm:hidden">
                                 <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                                    Qté reçue <span class="text-red-500">*</span>
+                                    Quantité reçue <span class="text-red-500">*</span>
                                 </label>
                                 <input type="number" wire:model="lignes.{{ $index }}.quantite" min="1"
-                                       class="w-full px-3 py-2.5 text-sm border rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-center font-semibold
+                                       placeholder="0"
+                                       class="w-full px-4 py-2.5 text-sm border rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition font-semibold
                                               @error("lignes.$index.quantite") border-red-400 bg-red-50 @else border-gray-200 @enderror">
                                 @error("lignes.$index.quantite")
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
 
-                            {{-- Supprimer ligne --}}
-                            <div class="flex-shrink-0 mt-6">
-                                @if(count($lignes) > 1)
-                                    <button type="button" wire:click="supprimerLigne({{ $index }})"
-                                            title="Supprimer cette ligne"
-                                            class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                        </svg>
-                                    </button>
-                                @else
-                                    <div class="w-8 h-8"></div>
-                                @endif
+                            {{-- Desktop : layout horizontal --}}
+                            <div class="hidden sm:flex gap-4 items-start">
+
+                                {{-- Numéro ligne --}}
+                                <div class="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold mt-6">
+                                    {{ $index + 1 }}
+                                </div>
+
+                                {{-- Produit --}}
+                                <div class="flex-1 min-w-0">
+                                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                                        Produit <span class="text-red-500">*</span>
+                                    </label>
+                                    <livewire:components.searchable-select
+                                        wire:model.live="lignes.{{ $index }}.produit_id"
+                                        :options="$this->produitOptions"
+                                        placeholder="Sélectionner un produit"
+                                        search-placeholder="Rechercher…"
+                                        no-results-text="Aucun produit trouvé"
+                                        :key="'produit-desktop-' . $index"
+                                    />
+                                    @error("lignes.$index.produit_id")
+                                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                    @enderror
+                                    @if(!empty($ligne['produit_libelle']))
+                                        <p class="mt-1 text-xs text-gray-400">
+                                            Stock actuel : <span class="font-semibold text-gray-600">{{ $ligne['stock_actuel'] }}</span>
+                                        </p>
+                                    @endif
+                                </div>
+
+                                {{-- Quantité --}}
+                                <div class="flex-shrink-0 w-32">
+                                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                                        Qté reçue <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="number" wire:model="lignes.{{ $index }}.quantite" min="1"
+                                           class="w-full px-3 py-2.5 text-sm border rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-center font-semibold
+                                                  @error("lignes.$index.quantite") border-red-400 bg-red-50 @else border-gray-200 @enderror">
+                                    @error("lignes.$index.quantite")
+                                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                {{-- Supprimer ligne --}}
+                                <div class="flex-shrink-0 mt-6">
+                                    @if(count($lignes) > 1)
+                                        <button type="button" wire:click="supprimerLigne({{ $index }})"
+                                                title="Supprimer cette ligne"
+                                                class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    @else
+                                        <div class="w-8 h-8"></div>
+                                    @endif
+                                </div>
                             </div>
+
                         </div>
                     @endforeach
                 </div>
 
-                {{-- Récap total --}}
-                @if(count($lignes) > 1)
-                    <div class="px-6 py-3 border-t border-gray-50 bg-emerald-50 flex items-center justify-between rounded-b-xl">
-                        <span class="text-xs text-emerald-700 font-medium">{{ count($lignes) }} articles</span>
+                {{-- Récap total + bouton ajouter en bas --}}
+                <div class="px-5 py-3 border-t border-gray-100 bg-gray-50 rounded-b-xl flex items-center justify-between gap-3">
+                    @if(count($lignes) > 1)
                         <span class="text-xs text-emerald-700 font-semibold">
-                            Total : {{ array_sum(array_column($lignes, 'quantite')) }} unités
+                            {{ count($lignes) }} articles · Total : {{ array_sum(array_column($lignes, 'quantite')) }} unités
                         </span>
-                    </div>
-                @endif
+                    @else
+                        <span></span>
+                    @endif
+                    <button type="button" wire:click="ajouterLigne"
+                            class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Ajouter un autre article
+                    </button>
+                </div>
             </div>
 
             {{-- Actions --}}
